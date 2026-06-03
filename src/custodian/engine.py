@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from difflib import get_close_matches
 
 from custodian.arka import crisis_line, drift_stage, summarize_coolant
+from custodian.arka_interpreter import ArkaInterpreter, Intent
+from custodian.engine_constants import MISSION_END_TURN
 from custodian.models import CrisisState, DriftStage, ReactorCoolantSystem, ShipState
-
-
-MISSION_END_TURN = 24
 
 
 @dataclass(frozen=True)
@@ -18,52 +16,56 @@ class StepResult:
 
 
 class GameEngine:
+    def __init__(self, interpreter: ArkaInterpreter | None = None) -> None:
+        self.interpreter = interpreter or ArkaInterpreter()
+
     def initial_state(self) -> ShipState:
         return ShipState()
 
     def handle(self, state: ShipState, command_text: str) -> StepResult:
-        original_command = _normalise(command_text)
-        command = _correct_command(original_command)
-        correction = _correction_line(original_command, command)
+        intent = self.interpreter.interpret(command_text, state)
+        correction = _correction_line(intent)
         if state.is_finished:
             return StepResult(state, ("The maintenance window is already closed.",))
 
-        if _is_goal_question(original_command):
-            return StepResult(
-                state,
-                (
-                    "arka: keep reactor coolant inside its ugly little comfort box until "
-                    f"turn {MISSION_END_TURN}. Raw telemetry shows the actual bands; I "
-                    "summarise them because apparently staring at valves is not recreation.",
-                    "arka: you can delegate adjustments to me, or practise the manual panel "
-                    "with pump up, pump down, vent, flush, and balance.",
-                ),
-            )
-        if command in {"", "status", "summary"}:
+        if intent.action == "status":
             return StepResult(state, correction + self._status_messages(state))
-        if command in {"help", "?", "commands"}:
+        if intent.action == "help":
             return StepResult(state, correction + _help_lines())
-        if command in {"quit", "exit"}:
+        if intent.action == "quit":
             return StepResult(
                 replace(state, outcome="You step away from the coolant console."),
                 correction + ("arka: I will keep the loop warm. Go, then.",),
             )
-        if command in {"raw", "inspect", "inspect coolant", "telemetry"}:
+        if intent.action == "raw":
             return self._advance(
                 replace(state, raw_inspections=state.raw_inspections + 1),
                 correction
                 + ("You spend a turn reading the raw coolant panel.", *state.reactor.raw_lines()),
             )
-        if command in {"delegate", "arka", "arka coolant", "auto", "autocool", "ask arka"}:
+        if intent.action == "delegate":
             delegated_state, messages = self._delegate_to_arka(state)
             return self._advance(delegated_state, correction + messages)
-        if command in {"wait", "hold"}:
+        if intent.action == "wait":
             return self._advance(
                 state,
                 correction + ("You wait and listen to coolant move through the walls.",),
             )
 
-        manual_action = _manual_action(command)
+        if intent.action == "manual":
+            operation = intent.args.get("operation", "")
+            if operation in {"pump_up", "pump_down", "vent", "flush", "balance"}:
+                manual_state, messages = self._manual_control(state, operation)
+                return self._advance(manual_state, correction + messages)
+
+        if intent.action in {"converse", "none"}:
+            reply = intent.reply or (
+                "arka: I can file that under psychological maintenance, but the coolant panel "
+                "accepts status, raw, delegate, pump up, pump down, vent, flush, balance, wait."
+            )
+            return StepResult(state, correction + (reply,))
+
+        manual_action = _manual_action_legacy(command_text)
         if manual_action is not None:
             manual_state, messages = self._manual_control(state, manual_action)
             return self._advance(manual_state, correction + messages)
@@ -532,39 +534,14 @@ def _normalise(command_text: str) -> str:
     return " ".join(command_text.strip().lower().split())
 
 
-def _is_goal_question(command: str) -> bool:
-    if not command:
-        return False
-    stripped = command.rstrip("?!.")
-    goal_markers = (
-        "what are we aiming for",
-        "what am i aiming for",
-        "what is the goal",
-        "what's the goal",
-        "what do i do",
-        "what should i do",
-        "objective",
-        "aim",
-    )
-    return any(marker in stripped for marker in goal_markers)
-
-
-def _correct_command(command: str) -> str:
-    if not command or command in _KNOWN_COMMANDS:
-        return command
-    match = get_close_matches(command, _KNOWN_COMMANDS, n=1, cutoff=0.78)
-    if match:
-        return match[0]
-    return command
-
-
-def _correction_line(original: str, corrected: str) -> tuple[str, ...]:
-    if original and corrected != original:
-        return (f"arka: reading '{original}' as '{corrected}'.",)
+def _correction_line(intent: Intent) -> tuple[str, ...]:
+    if intent.correction:
+        return (intent.correction,)
     return ()
 
 
-def _manual_action(command: str) -> str | None:
+def _manual_action_legacy(command_text: str) -> str | None:
+    command = _normalise(command_text)
     mapping = {
         "pump up": "pump_up",
         "pump": "pump_up",
@@ -582,44 +559,6 @@ def _manual_action(command: str) -> str | None:
         "valves": "balance",
     }
     return mapping.get(command)
-
-
-_KNOWN_COMMANDS = (
-    "",
-    "status",
-    "summary",
-    "help",
-    "?",
-    "commands",
-    "quit",
-    "exit",
-    "raw",
-    "inspect",
-    "inspect coolant",
-    "telemetry",
-    "delegate",
-    "arka",
-    "arka coolant",
-    "auto",
-    "autocool",
-    "ask arka",
-    "wait",
-    "hold",
-    "pump up",
-    "pump",
-    "increase flow",
-    "flow up",
-    "pump down",
-    "decrease flow",
-    "flow down",
-    "vent",
-    "bleed",
-    "flush",
-    "purge",
-    "balance",
-    "rebalance",
-    "valves",
-)
 
 
 def _help_lines() -> tuple[str, ...]:

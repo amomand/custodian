@@ -11,11 +11,12 @@ requires-python = ">=3.11"
 authors = [
   { name = "Alex Omand" }
 ]
-dependencies = []
+dependencies = [
+  "openai>=1.0.0",
+]
 
 [project.scripts]
 custodian = "custodian.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-

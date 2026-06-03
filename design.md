@@ -15,18 +15,18 @@ terminal loop, and one 20-30 turn arc.
 
 Included:
 
-- Deterministic terminal command loop.
+- Terminal command loop with deterministic state transitions.
 - Pure state transitions around `ShipState`.
 - One `ReactorCoolantSystem` with raw telemetry.
 - An `arka` layer that summarises the same system.
+- Optional arka interpreter for natural-language input and off-script replies.
 - Manual actions and delegation as competing ways to spend a turn.
 - Hidden manual familiarity gained only through manual coolant actions.
 - Summary drift from accurate to interpretive, selective, and wrong.
 - Scripted time pressure events where practised manual control matters.
 
-Excluded:
+Still excluded:
 
-- LLM integration.
 - Multiple systems.
 - Map movement.
 - Random generation.
@@ -83,7 +83,31 @@ The engine exposes one transition method:
 GameEngine.handle(state, command_text) -> StepResult
 ```
 
-The CLI only prints messages and feeds input back into the engine.
+The CLI only prints messages and feeds input back into the engine. The arka
+interpreter returns an `Intent`, but the engine remains the only authority that
+can advance time, change telemetry, resolve crises, or record familiarity.
+
+## Arka Interpreter
+
+The model-backed path is intentionally narrow. It can classify natural player
+text into known actions and supply short arka replies for conversation or
+off-script input. It cannot mutate state.
+
+The supported intent actions are:
+
+- `status`
+- `raw`
+- `delegate`
+- `manual`
+- `wait`
+- `help`
+- `quit`
+- `converse`
+- `none`
+
+Obvious commands and typos are handled without calling the model. If
+`OPENAI_API_KEY` is absent, the game keeps working in deterministic fallback
+mode.
 
 ## Arka Drift
 
@@ -136,4 +160,3 @@ the main score.
    early.
 4. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.
-

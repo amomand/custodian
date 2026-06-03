@@ -9,15 +9,33 @@ manual action.
 
 ## Run
 
+Fast local launch from the repo:
+
+```bash
+python3 main.py
+```
+
+The deterministic fallback works without an API key. For the model-backed arka
+interpreter, set up a virtual environment and `.env`:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+cp .env.example .env
+```
+
+Then add `OPENAI_API_KEY` to `.env` and launch:
+
+```bash
+python3 main.py
+```
+
+The package entrypoint still works after an editable install:
+
 ```bash
 python3 -m pip install -e .
 custodian
-```
-
-Without installing:
-
-```bash
-PYTHONPATH=src python3 -m custodian
 ```
 
 ## Test
@@ -30,3 +48,6 @@ PYTHONPATH=src python3 -m unittest discover -s tests
 
 The original idea note is copied into [docs/original-idea.md](docs/original-idea.md).
 The current MVP design is in [design.md](design.md).
+arka's editable character brief is in [docs/lore/arka.md](docs/lore/arka.md).
+The AI boundary is documented in
+[docs/architecture/ai-interpreter.md](docs/architecture/ai-interpreter.md).
