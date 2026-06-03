@@ -106,6 +106,7 @@ Current working docs:
 - `docs/roadmap.md` - path from MVP to larger realisation
 - `docs/lore/arka.md` - arka character and runtime voice capsule
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
+- `docs/architecture/project-operating-system.md` - CI, local skills, and repo rules
 
 Change arka's character in markdown first. The interpreter reads the runtime
 voice capsule from `docs/lore/arka.md`, so voice iteration should usually start
