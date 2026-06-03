@@ -1,119 +1,65 @@
-# Codex Instructions
+# Codex Notes
 
-Read this before making code, narrative, or documentation changes in this repo.
+Custodian is early. Follow the nose a little.
 
-## Project
+This file is a map and a few current invariants, not a constitution. Prefer the
+shape of the idea and the current playtest feel over rigid process.
 
-**Custodian** is a terminal-first sci-fi horror game about the cost of
-delegation. The player is the sole waking custodian aboard a colony ship. arka,
-the ship's operational intelligence, is useful, comforting, and increasingly
-unsafe as a source of truth.
+## Where To Look
 
-The current playable slice is intentionally narrow: one ship system, reactor
-coolant. Do not expand to a full ship unless the task explicitly calls for it.
+- `~/obsidian/Projects/Custodian/idea.md` - original vision and thesis.
+- `~/obsidian/Projects/Custodian/roadmap.md` - working long-range plan.
+- `README.md` - maintainer/player overview.
+- `design.md` - current coolant MVP.
+- `docs/roadmap.md` - repo copy of the long-range plan.
+- `docs/lore/arka.md` - arka character and runtime voice capsule.
+- `docs/architecture/ai-interpreter.md` - current AI/simulation boundary.
+- `docs/architecture/project-operating-system.md` - notes on borrowed process.
 
-## Commands
+If the Obsidian and repo copies disagree, treat Obsidian as the sketchpad and
+ask or update both when the change is intentional.
+
+## Useful Commands
 
 ```bash
-# Run the terminal game
 python3 main.py
-
-# Run with deterministic AI fallback
 CUSTODIAN_AI=off python3 main.py
-
-# Run with fallback diagnostics
 CUSTODIAN_DEBUG=1 python3 main.py
-
-# Run tests
 PYTHONPATH=src python3 -m unittest discover -s tests
-
-# Compile/import check
 python3 -m compileall src tests main.py
 ```
 
-For model-backed arka input, create a virtual environment and install
-`requirements.txt`. Tests must pass without an API key.
+Tests must pass without an API key.
 
-## Source Of Truth
+## Current Core Truths
 
-- `README.md` - player/maintainer overview.
-- `design.md` - current MVP design.
-- `docs/roadmap.md` - path toward the larger game.
-- `docs/lore/arka.md` - arka character and runtime voice capsule.
-- `docs/architecture/ai-interpreter.md` - AI/parser/simulation boundary.
-- `docs/original-idea.md` - copied seed idea; preserve as reference.
+These are the bits to be careful with even while exploring:
 
-## Core Contracts
+- Delegation should be genuinely attractive.
+- Manual control should be real, effortful, and learnable.
+- Raw telemetry comes from deterministic state, not generated prose.
+- The model may interpret and speak as arka; it should not own ship truth.
+- Manual familiarity improves through manual action, not delegation.
+- arka should remain competent reassurance, not turn into a cartoon villain.
+- Player-facing text should stay in-world.
 
-### The Model Interprets, The Ship Decides
+Everything else is allowed to move.
 
-The model may classify free text and supply short arka replies. It must not own
-reactor physics, raw telemetry, route risk, sleeper loss, arka drift, crisis
-timers, or manual familiarity.
+## Working Style
 
-### Raw Telemetry Is Sacred
+- Keep changes narrow enough that playtest feedback remains readable.
+- Update docs when a change creates a new rule, mechanic, or strong direction.
+- For docs that also live in Obsidian, sync the vault copy too.
+- Borrow from The Cabin proudly, but adapt to Custodian's needs.
+- Use local review skills as lenses when useful, not as blockers.
 
-Raw telemetry must come from deterministic state, never from generated prose.
-arka may summarise, omit, soften, or contradict only when deterministic drift
-logic says it can.
+## Optional Review Lenses
 
-### Manual Familiarity Is Earned By Manual Work
+The repo has two local skills:
 
-Delegating to arka must not increase manual familiarity. Reading raw telemetry
-must not increase it either. The player gets better with the panel by using the
-panel.
+- `.codex/skills/custodian-diegesis-review/SKILL.md`
+- `.codex/skills/custodian-simulation-truth-review/SKILL.md`
 
-### arka Stays arka
-
-arka is competent reassurance, not a villain monologue. The horror arrives when
-the same helpful voice no longer matches reality.
-
-### No Fourth Wall In Player-Facing Output
-
-No "invalid command", parser talk, model talk, JSON/schema talk, API talk, or
-implementation explanation in player-facing responses. Failures and nonsense
-input should be answered through arka or the ship.
-
-## Changing arka
-
-Change `docs/lore/arka.md` first when adjusting arka's voice. The interpreter
-loads the runtime voice capsule from that document. Update tests or prompt
-expectations only after the design surface is clear.
-
-## Review Workflow
-
-Before opening or updating a PR, run the checks above. Then run the relevant
-local review skills:
-
-- `.codex/skills/custodian-diegesis-review/SKILL.md` for player-facing prose,
-  arka replies, CLI text, README tone, and response behavior.
-- `.codex/skills/custodian-simulation-truth-review/SKILL.md` for AI boundary,
-  telemetry, drift, manual familiarity, crisis logic, and docs/code contracts.
-
-Local review skills are disciplined self-review. They do not replace maintainer
-judgment.
-
-## Borrowing From The Cabin
-
-Borrow patterns proudly, but do not cargo-cult them.
-
-Good to borrow now:
-
-- AGENTS-style repo contracts.
-- Local diegesis and truth-boundary review skills.
-- Minimal CI.
-- Transcript-first playtesting, soon.
-
-Borrow later:
-
-- Web session server.
-- Fly deployment.
-- Seed saves.
-- Rich playtest runner.
-- Broader event bus.
-
-Avoid for now:
-
-- Multiple interacting systems before coolant is honest.
-- Heavy deployment plumbing before a web surface exists.
-- Letting model replies become authored story beats.
+They are useful before larger PRs or when a change touches arka, player-facing
+text, telemetry, or model boundaries. Early in the project, their job is to
+surface questions, not shut down experiments.

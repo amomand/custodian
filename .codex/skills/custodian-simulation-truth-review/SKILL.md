@@ -1,29 +1,34 @@
 ---
 name: custodian-simulation-truth-review
-description: Run a local pre-PR review of Custodian changes for violations of the simulation truth boundary: model-owned telemetry, non-deterministic arka wrongness, delegation/manual familiarity drift, crisis logic drift, and docs/code contradictions.
+description: Use as an optional review lens for Custodian changes that touch model boundaries, telemetry, arka summaries, drift, manual familiarity, crisis logic, or docs/code contracts. It protects the thesis without freezing early design.
 ---
 
 # Custodian Simulation Truth Review
 
-Use this skill before opening or updating a PR when a change touches game state,
-AI interpretation, arka summaries, telemetry, crisis logic, manual familiarity,
+Use this as a local review lens when a change touches game state, AI
+interpretation, arka summaries, telemetry, crisis logic, manual familiarity,
 delegation, route/system mechanics, tests, configuration, or architecture docs.
 
-This is a local review skill. Do not post its output to GitHub automatically.
-Report the verdict in the PR summary or maintainer update.
+This is not a gate. It exists because Custodian's central risk is subtle: if the
+model starts inventing ship truth, the game stops being about delegation and
+becomes ordinary chatbot unreliability.
 
-## Scope
+## Current Lens
 
-Review the branch diff against main:
+Look for changes that might accidentally make any of these true:
 
-```bash
-git diff --name-only origin/main...HEAD
-git diff --stat origin/main...HEAD
-```
+- The model invents or mutates raw telemetry.
+- The model advances turns, resolves crises, changes sleeper losses, changes
+  manual familiarity, or updates reactor state.
+- arka wrongness becomes unplanned model drift instead of deterministic game
+  drift.
+- Delegation increases manual familiarity.
+- Reading raw telemetry increases manual familiarity.
+- Critical crisis outcomes depend on generated prose.
+- Docs describe commands, model defaults, env vars, state transitions, or AI
+  boundaries differently from implementation.
 
-If that base is unavailable, use the best local base and state what you used.
-
-Useful anchors:
+## Useful Anchors
 
 - `src/custodian/models.py`
 - `src/custodian/engine.py`
@@ -34,62 +39,34 @@ Useful anchors:
 - `docs/roadmap.md`
 - `tests/**`
 
-## Truth Boundary
-
-Report a finding when a change allows or documents any of these:
-
-- The model invents or mutates raw telemetry.
-- The model advances turns, resolves crises, changes sleeper losses, changes
-  manual familiarity, or updates reactor state.
-- arka's wrongness becomes ordinary model drift instead of deterministic game
-  drift.
-- Delegation increases manual familiarity.
-- Reading raw telemetry increases manual familiarity.
-- Critical crisis outcomes depend on generated prose.
-- Docs describe a command, model default, env var, state transition, or AI
-  boundary differently from implementation.
-
-## What Does Not Count
-
-Ignore:
-
-- Docs that are merely incomplete.
-- TODOs or open questions unless the change makes them false.
-- Prose tone issues unless they also affect the truth boundary.
-- Tests that use fake model data to prove sanitising.
-- Mechanical refactors that preserve the contracts above.
-
 ## Review Procedure
 
-1. Inspect the changed-file list first.
-2. Read changed files and nearby contract docs.
-3. Trace player input through intent parsing into engine state if needed.
-4. Report only concrete, actionable drift.
+1. Inspect changed files first.
+2. Trace input through intent parsing into engine state if needed.
+3. Read nearby docs only to confirm a concrete mismatch.
+4. Ignore docs that are merely incomplete or exploratory.
+5. Prefer "this may be crossing the boundary" over hard failure language unless
+   the model truly owns ship truth.
 
 ## Output
 
-Use one strict verdict:
-
-- `PASS`: no actionable simulation-truth concern.
-- `CONCERN`: likely drift with a clear file-level fix.
-- `BLOCKER`: model/simulation boundary violation or misleading contract drift.
-
-Format:
+Use this shape:
 
 ```markdown
-Simulation Truth Review: VERDICT
+Simulation Truth Review: PASS | QUESTIONS | CONCERNS
 
-Reviewed changed files for model/simulation boundary issues.
+What I checked:
+- ...
 
-Blockers:
+Questions:
 - None.
 
 Concerns:
 - None.
 
 Notes:
-- Reviewed changed files in scope; no other actionable simulation-truth findings found.
+- ...
 ```
 
-For findings, include conflicting paths, line numbers when available, why the
-boundary matters, and the smallest useful fix.
+Use `PASS` when nothing actionable appears. Use `QUESTIONS` for uncertain design
+boundary issues. Use `CONCERNS` for concrete model/simulation boundary drift.

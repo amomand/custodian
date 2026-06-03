@@ -15,12 +15,13 @@ central risk: the in-game AI is not just a narrator. arka is a mechanic. That
 means the repo needs guardrails around simulation truth as much as guardrails
 around diegesis.
 
-## Borrow Now
+## Borrow Now, Lightly
 
 ### AGENTS.md
 
-Custodian should have a short project contract for coding agents. This is worth
-having early because the design has invariants that are easy to violate:
+Custodian should have a short map for coding agents. This is worth having early
+because the design has a few invariants that are easy to violate, but it should
+not become a constitution while the game is still finding itself:
 
 - raw telemetry never comes from the model
 - model output never mutates ship state
@@ -40,16 +41,17 @@ The current CI should stay small:
 No deployment yet. No web checks until a web surface exists. No heavy lint stack
 until style drift becomes a problem.
 
-### Local Review Skills
+### Local Review Skills As Lenses
 
-The Cabin's diegesis and continuity skills are a good pattern. Custodian needs
-two first-pass skills:
+The Cabin's diegesis and continuity skills are a good pattern. Custodian has two
+first-pass skills, but they should stay softer than The Cabin's for now:
 
 - diegesis review
 - simulation truth review
 
 The second one is Custodian-specific. It watches the AI/simulation boundary
-where this game's thesis lives.
+where this game's thesis lives. Both skills should surface questions and
+concerns, not block every experiment.
 
 ## Borrow Soon
 
@@ -122,7 +124,7 @@ containment, and endings. It is too much for one coolant loop.
 
 The Cabin uses local skills plus Copilot review as an agent PR loop. Custodian
 can adopt that once there are regular PRs and enough surface area to justify the
-ceremony. For now, local review skills and CI are enough.
+ceremony. For now, optional review lenses and CI are enough.
 
 ## Do Not Borrow Yet
 
@@ -145,8 +147,8 @@ For ordinary changes:
 2. Make the narrow change.
 3. Run tests.
 4. Run compile check for code changes.
-5. Run diegesis review for player-facing text.
-6. Run simulation truth review for state, AI, telemetry, or mechanics.
+5. Consider diegesis review for player-facing text.
+6. Consider simulation truth review for state, AI, telemetry, or mechanics.
 7. Update docs when behavior changes.
 
 For playtest-driven changes:

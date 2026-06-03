@@ -299,24 +299,22 @@ Possible path:
 - GitHub Pages can host static shell, but the model-backed game needs a server
   unless the API key stays client-side, which it should not.
 
-### Repo Rules
+### Repo Notes
 
-Add an `AGENTS.md` once conventions settle:
+Keep `AGENTS.md` as a lightweight map while the project is still exploratory:
 
-- Preserve diegesis.
-- Keep state transitions deterministic.
-- Do not let model code mutate ship truth.
-- Update docs when mechanics or lore change.
-- Run tests and transcript scenarios before push.
-- Keep `.env` ignored.
+- point to the Obsidian idea and roadmap
+- point to the current repo docs
+- list only the core truths we are confident about
+- keep review skills framed as optional lenses
+- avoid turning early design instincts into process law
 
 ### Local Skills And Agentic Workflows
 
 Useful future skills:
 
 - Diegesis review: scan changed player-facing text for fourth-wall breaks.
-- Continuity review: compare mechanics/docs/lore for contradictions.
-- AI boundary review: flag model-owned state changes or raw telemetry leaks.
+- Simulation truth review: flag model-owned state changes or raw telemetry leaks.
 - Playtest summariser: read transcripts and extract player behaviour patterns.
 - Balance review: inspect scripted routes and report dominant strategies.
 
@@ -475,7 +473,8 @@ Examples:
 - Manual practice improves only through manual action.
 - Delegation is logged by behaviour, not declared preference.
 
-Put these in `AGENTS.md` once stable.
+Keep these visible in `AGENTS.md`, but let the wording change while the game is
+still teaching us what it is.
 
 ## Open Questions
 
