@@ -18,6 +18,33 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(state.manual_familiarity, 0)
         self.assertEqual(state.delegated_controls, 3)
 
+    def test_goal_question_gets_diegetic_answer_without_advancing_time(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "what are we aiming for?")
+
+        self.assertEqual(result.state.turn, 1)
+        self.assertFalse(result.advanced)
+        self.assertIn("keep reactor coolant", result.messages[0])
+
+    def test_obvious_delegate_typo_is_corrected_and_executed(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "deleagte")
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.delegated_controls, 1)
+        self.assertIn("reading 'deleagte' as 'delegate'", result.messages[0])
+
+    def test_obvious_manual_typo_is_corrected_and_executed(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "pupm up")
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.manual_familiarity, 1)
+        self.assertIn("reading 'pupm up' as 'pump up'", result.messages[0])
+
     def test_manual_practice_makes_balance_more_effective(self) -> None:
         rough = ShipState(
             reactor=ReactorCoolantSystem(valve_skew_pct=30, flow_lps=70),
@@ -105,4 +132,3 @@ class EngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

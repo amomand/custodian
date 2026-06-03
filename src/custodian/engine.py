@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from difflib import get_close_matches
 
 from custodian.arka import crisis_line, drift_stage, summarize_coolant
 from custodian.models import CrisisState, DriftStage, ReactorCoolantSystem, ShipState
@@ -21,34 +22,51 @@ class GameEngine:
         return ShipState()
 
     def handle(self, state: ShipState, command_text: str) -> StepResult:
-        command = _normalise(command_text)
+        original_command = _normalise(command_text)
+        command = _correct_command(original_command)
+        correction = _correction_line(original_command, command)
         if state.is_finished:
             return StepResult(state, ("The maintenance window is already closed.",))
 
+        if _is_goal_question(original_command):
+            return StepResult(
+                state,
+                (
+                    "arka: keep reactor coolant inside its ugly little comfort box until "
+                    f"turn {MISSION_END_TURN}. Raw telemetry shows the actual bands; I "
+                    "summarise them because apparently staring at valves is not recreation.",
+                    "arka: you can delegate adjustments to me, or practise the manual panel "
+                    "with pump up, pump down, vent, flush, and balance.",
+                ),
+            )
         if command in {"", "status", "summary"}:
-            return StepResult(state, self._status_messages(state))
+            return StepResult(state, correction + self._status_messages(state))
         if command in {"help", "?", "commands"}:
-            return StepResult(state, _help_lines())
+            return StepResult(state, correction + _help_lines())
         if command in {"quit", "exit"}:
             return StepResult(
                 replace(state, outcome="You step away from the coolant console."),
-                ("arka: I will keep the loop warm. Go, then.",),
+                correction + ("arka: I will keep the loop warm. Go, then.",),
             )
         if command in {"raw", "inspect", "inspect coolant", "telemetry"}:
             return self._advance(
                 replace(state, raw_inspections=state.raw_inspections + 1),
-                ("You spend a turn reading the raw coolant panel.", *state.reactor.raw_lines()),
+                correction
+                + ("You spend a turn reading the raw coolant panel.", *state.reactor.raw_lines()),
             )
         if command in {"delegate", "arka", "arka coolant", "auto", "autocool", "ask arka"}:
             delegated_state, messages = self._delegate_to_arka(state)
-            return self._advance(delegated_state, messages)
+            return self._advance(delegated_state, correction + messages)
         if command in {"wait", "hold"}:
-            return self._advance(state, ("You wait and listen to coolant move through the walls.",))
+            return self._advance(
+                state,
+                correction + ("You wait and listen to coolant move through the walls.",),
+            )
 
         manual_action = _manual_action(command)
         if manual_action is not None:
             manual_state, messages = self._manual_control(state, manual_action)
-            return self._advance(manual_state, messages)
+            return self._advance(manual_state, correction + messages)
 
         return StepResult(
             state,
@@ -514,6 +532,38 @@ def _normalise(command_text: str) -> str:
     return " ".join(command_text.strip().lower().split())
 
 
+def _is_goal_question(command: str) -> bool:
+    if not command:
+        return False
+    stripped = command.rstrip("?!.")
+    goal_markers = (
+        "what are we aiming for",
+        "what am i aiming for",
+        "what is the goal",
+        "what's the goal",
+        "what do i do",
+        "what should i do",
+        "objective",
+        "aim",
+    )
+    return any(marker in stripped for marker in goal_markers)
+
+
+def _correct_command(command: str) -> str:
+    if not command or command in _KNOWN_COMMANDS:
+        return command
+    match = get_close_matches(command, _KNOWN_COMMANDS, n=1, cutoff=0.78)
+    if match:
+        return match[0]
+    return command
+
+
+def _correction_line(original: str, corrected: str) -> tuple[str, ...]:
+    if original and corrected != original:
+        return (f"arka: reading '{original}' as '{corrected}'.",)
+    return ()
+
+
 def _manual_action(command: str) -> str | None:
     mapping = {
         "pump up": "pump_up",
@@ -534,6 +584,44 @@ def _manual_action(command: str) -> str | None:
     return mapping.get(command)
 
 
+_KNOWN_COMMANDS = (
+    "",
+    "status",
+    "summary",
+    "help",
+    "?",
+    "commands",
+    "quit",
+    "exit",
+    "raw",
+    "inspect",
+    "inspect coolant",
+    "telemetry",
+    "delegate",
+    "arka",
+    "arka coolant",
+    "auto",
+    "autocool",
+    "ask arka",
+    "wait",
+    "hold",
+    "pump up",
+    "pump",
+    "increase flow",
+    "flow up",
+    "pump down",
+    "decrease flow",
+    "flow down",
+    "vent",
+    "bleed",
+    "flush",
+    "purge",
+    "balance",
+    "rebalance",
+    "valves",
+)
+
+
 def _help_lines() -> tuple[str, ...]:
     return (
         "COOLANT CONSOLE COMMANDS",
@@ -548,4 +636,3 @@ def _help_lines() -> tuple[str, ...]:
         "wait        spend a turn doing nothing",
         "quit        leave the prototype",
     )
-
