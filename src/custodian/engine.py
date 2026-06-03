@@ -1,0 +1,551 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+
+from custodian.arka import crisis_line, drift_stage, summarize_coolant
+from custodian.models import CrisisState, DriftStage, ReactorCoolantSystem, ShipState
+
+
+MISSION_END_TURN = 24
+
+
+@dataclass(frozen=True)
+class StepResult:
+    state: ShipState
+    messages: tuple[str, ...]
+    advanced: bool = False
+
+
+class GameEngine:
+    def initial_state(self) -> ShipState:
+        return ShipState()
+
+    def handle(self, state: ShipState, command_text: str) -> StepResult:
+        command = _normalise(command_text)
+        if state.is_finished:
+            return StepResult(state, ("The maintenance window is already closed.",))
+
+        if command in {"", "status", "summary"}:
+            return StepResult(state, self._status_messages(state))
+        if command in {"help", "?", "commands"}:
+            return StepResult(state, _help_lines())
+        if command in {"quit", "exit"}:
+            return StepResult(
+                replace(state, outcome="You step away from the coolant console."),
+                ("arka: I will keep the loop warm. Go, then.",),
+            )
+        if command in {"raw", "inspect", "inspect coolant", "telemetry"}:
+            return self._advance(
+                replace(state, raw_inspections=state.raw_inspections + 1),
+                ("You spend a turn reading the raw coolant panel.", *state.reactor.raw_lines()),
+            )
+        if command in {"delegate", "arka", "arka coolant", "auto", "autocool", "ask arka"}:
+            delegated_state, messages = self._delegate_to_arka(state)
+            return self._advance(delegated_state, messages)
+        if command in {"wait", "hold"}:
+            return self._advance(state, ("You wait and listen to coolant move through the walls.",))
+
+        manual_action = _manual_action(command)
+        if manual_action is not None:
+            manual_state, messages = self._manual_control(state, manual_action)
+            return self._advance(manual_state, messages)
+
+        return StepResult(
+            state,
+            (
+                "arka: I can file that under psychological maintenance, but the coolant panel "
+                "accepts status, raw, delegate, pump up, pump down, vent, flush, balance, wait.",
+            ),
+        )
+
+    def _status_messages(self, state: ShipState) -> tuple[str, ...]:
+        messages = [f"TURN {state.turn}", summarize_coolant(state)]
+        line = crisis_line(state)
+        if line is not None:
+            messages.append(line)
+        if state.sleepers_lost:
+            messages.append(f"cryostasis loss report: {state.sleepers_lost} sleepers lost.")
+        return tuple(messages)
+
+    def _advance(self, state: ShipState, messages: tuple[str, ...]) -> StepResult:
+        if state.outcome is not None:
+            return StepResult(state, messages, advanced=True)
+
+        had_crisis = state.crisis is not None
+        reactor = _ambient_coolant_drift(state).clamped()
+        next_state = replace(state, turn=state.turn + 1, reactor=reactor)
+        next_messages = list(messages)
+
+        if had_crisis:
+            next_state, crisis_messages = self._tick_crisis(next_state)
+            next_messages.extend(crisis_messages)
+
+        next_state, event_messages = self._apply_scheduled_events(next_state)
+        next_messages.extend(event_messages)
+
+        next_state, outcome_messages = self._check_outcome(next_state)
+        next_messages.extend(outcome_messages)
+
+        if next_state.outcome is None:
+            next_messages.extend(self._status_messages(next_state))
+        return StepResult(next_state, tuple(next_messages), advanced=True)
+
+    def _delegate_to_arka(self, state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
+        stage = drift_stage(state)
+        reactor = state.reactor
+        messages: list[str] = []
+
+        if stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
+            reactor, action = _arka_good_adjustment(reactor)
+            messages.append(f"arka: I have it. {action}")
+            state = _advance_crisis_progress(state, "delegate", state.manual_familiarity, stage)
+        elif stage == DriftStage.SELECTIVE:
+            reactor, action = _arka_selective_adjustment(reactor)
+            messages.append(f"arka: handling the headline instability. {action}")
+        else:
+            reactor = replace(
+                reactor,
+                temperature_c=reactor.temperature_c + 8,
+                pressure_kpa=reactor.pressure_kpa + 10,
+                flow_lps=reactor.flow_lps - 4,
+                valve_skew_pct=reactor.valve_skew_pct + 4,
+            ).clamped()
+            messages.append(
+                "arka: coolant trim complete. The console chirps like it believes this."
+            )
+
+        return (
+            replace(
+                state,
+                reactor=reactor.clamped(),
+                delegated_controls=state.delegated_controls + 1,
+            ),
+            tuple(messages),
+        )
+
+    def _manual_control(self, state: ShipState, action: str) -> tuple[ShipState, tuple[str, ...]]:
+        pre_familiarity = state.manual_familiarity
+        familiarity = min(pre_familiarity, 6)
+        reactor = state.reactor
+        messages: list[str] = [_manual_texture(pre_familiarity)]
+
+        if action == "pump_up":
+            reactor = replace(
+                reactor,
+                flow_lps=reactor.flow_lps + 6 + familiarity * 2,
+                temperature_c=reactor.temperature_c - 9 - familiarity * 2,
+                pressure_kpa=reactor.pressure_kpa + max(5, 12 - familiarity),
+                valve_skew_pct=reactor.valve_skew_pct + max(0, 3 - familiarity // 2),
+            )
+            messages.append("Manual pump speed increased.")
+        elif action == "pump_down":
+            reactor = replace(
+                reactor,
+                flow_lps=reactor.flow_lps - 6 - familiarity,
+                pressure_kpa=reactor.pressure_kpa - 12 - familiarity * 2,
+                temperature_c=reactor.temperature_c + max(1, 5 - familiarity),
+            )
+            messages.append("Manual pump speed reduced.")
+        elif action == "vent":
+            reactor = replace(
+                reactor,
+                pressure_kpa=reactor.pressure_kpa - 18 - familiarity * 4,
+                coolant_reserve_pct=reactor.coolant_reserve_pct - max(4, 9 - familiarity),
+                temperature_c=reactor.temperature_c + max(0, 5 - familiarity),
+                valve_skew_pct=reactor.valve_skew_pct + max(0, 2 - familiarity // 3),
+            )
+            messages.append("Manual pressure vent opened and resealed.")
+        elif action == "flush":
+            reactor = replace(
+                reactor,
+                impurity_pct=reactor.impurity_pct - 8 - familiarity * 3,
+                coolant_reserve_pct=reactor.coolant_reserve_pct - max(5, 14 - familiarity),
+                flow_lps=reactor.flow_lps - max(0, 4 - familiarity),
+                pressure_kpa=reactor.pressure_kpa + max(1, 5 - familiarity),
+            )
+            messages.append("Manual impurity flush completed.")
+        elif action == "balance":
+            reactor = replace(
+                reactor,
+                valve_skew_pct=reactor.valve_skew_pct - 7 - familiarity * 4,
+                flow_lps=reactor.flow_lps + 4 + familiarity * 2,
+                temperature_c=reactor.temperature_c - 4 - familiarity,
+                pressure_kpa=reactor.pressure_kpa + 1,
+            )
+            messages.append("Manual valve balance adjusted.")
+        else:
+            raise ValueError(f"Unknown manual action {action}")
+
+        next_state = replace(
+            state,
+            reactor=reactor.clamped(),
+            manual_familiarity=min(8, state.manual_familiarity + 1),
+        )
+        next_state = _advance_crisis_progress(
+            next_state,
+            action,
+            pre_familiarity,
+            drift_stage(state),
+        )
+        if next_state.crisis is not state.crisis:
+            messages.append("The crisis checklist moves one mark closer to containment.")
+        return next_state, tuple(messages)
+
+    def _tick_crisis(self, state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
+        crisis = state.crisis
+        if crisis is None:
+            return state, ()
+        if crisis.is_resolved:
+            return replace(state, crisis=None), (
+                f"arka: {crisis.label.lower()} contained. I had several excellent suggestions.",
+            )
+
+        crisis = replace(crisis, turns_left=crisis.turns_left - 1)
+        if crisis.turns_left > 0:
+            return replace(state, crisis=crisis), ()
+
+        if crisis.kind == "pressure_surge":
+            reactor = replace(
+                state.reactor,
+                temperature_c=state.reactor.temperature_c + 16,
+                pressure_kpa=max(220, state.reactor.pressure_kpa - 24),
+                flow_lps=max(35, state.reactor.flow_lps - 8),
+            ).clamped()
+            return (
+                replace(
+                    state,
+                    reactor=reactor,
+                    crisis=None,
+                    sleepers_lost=state.sleepers_lost + 42,
+                ),
+                (
+                    "A relief manifold tears itself open before you finish the sequence.",
+                    "cryostasis loss report: 42 sleepers lost to thermal shock.",
+                ),
+            )
+
+        return (
+            replace(
+                state,
+                crisis=None,
+                outcome="The coolant loop flashes dry. The reactor becomes a small, patient sun.",
+            ),
+            ("The thermal runaway outruns your hands.",),
+        )
+
+    def _apply_scheduled_events(self, state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
+        reactor = state.reactor
+
+        if state.turn == 5:
+            return (
+                replace(
+                    state,
+                    reactor=replace(
+                        reactor,
+                        impurity_pct=reactor.impurity_pct + 8,
+                        valve_skew_pct=reactor.valve_skew_pct + 6,
+                    ).clamped(),
+                ),
+                (
+                    "A coolant filter coughs hard enough to shake dust from the console lip.",
+                ),
+            )
+
+        if state.turn == 11 and state.crisis is None:
+            return (
+                replace(
+                    state,
+                    reactor=replace(
+                        reactor,
+                        pressure_kpa=reactor.pressure_kpa + 38,
+                        temperature_c=reactor.temperature_c + 8,
+                    ).clamped(),
+                    crisis=CrisisState(
+                        kind="pressure_surge",
+                        label="Pressure surge",
+                        turns_left=3,
+                        required_progress=1,
+                    ),
+                ),
+                (
+                    "The pressure bell rings once, then sticks on.",
+                    "arka: pressure surge advisory. I can vent it cleanly.",
+                ),
+            )
+
+        if state.turn == 16:
+            return (
+                replace(
+                    state,
+                    reactor=replace(
+                        reactor,
+                        impurity_pct=reactor.impurity_pct + 18,
+                        flow_lps=reactor.flow_lps - 8,
+                        valve_skew_pct=reactor.valve_skew_pct + 8,
+                    ).clamped(),
+                ),
+                (
+                    "Silicate bloom in the coolant. The raw panel names it. arka does not.",
+                ),
+            )
+
+        if state.turn == 21 and state.crisis is None:
+            return (
+                replace(
+                    state,
+                    reactor=replace(
+                        reactor,
+                        temperature_c=reactor.temperature_c + 32,
+                        pressure_kpa=reactor.pressure_kpa + 20,
+                        flow_lps=reactor.flow_lps - 12,
+                        valve_skew_pct=reactor.valve_skew_pct + 18,
+                    ).clamped(),
+                    crisis=CrisisState(
+                        kind="thermal_runaway",
+                        label="Thermal runaway",
+                        turns_left=4,
+                        required_progress=2,
+                    ),
+                ),
+                (
+                    "Every coolant alarm lights at once, except the one arka is quoting.",
+                    "arka: minor telemetry disagreement. Manual intervention remains unnecessary.",
+                ),
+            )
+
+        return state, ()
+
+    def _check_outcome(self, state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
+        reactor = state.reactor
+        if state.outcome is not None:
+            return state, (state.outcome,)
+        if reactor.temperature_c >= 720:
+            return (
+                replace(state, outcome="Reactor temperature exceeds containment."),
+                ("Reactor temperature exceeds containment.",),
+            )
+        if reactor.pressure_kpa >= 360:
+            return (
+                replace(state, outcome="Coolant pressure ruptures the primary loop."),
+                ("Coolant pressure ruptures the primary loop.",),
+            )
+        if reactor.coolant_reserve_pct <= 0:
+            return (
+                replace(state, outcome="The coolant reserve runs dry."),
+                ("The coolant reserve runs dry.",),
+            )
+        if state.turn > MISSION_END_TURN:
+            return (
+                replace(
+                    state,
+                    outcome=(
+                        "MVP complete: the reactor survives the maintenance window. "
+                        "You are not sure arka agrees about how."
+                    ),
+                ),
+                (
+                    "MVP complete: the reactor survives the maintenance window.",
+                    f"cryostasis loss report: {state.sleepers_lost} sleepers lost.",
+                ),
+            )
+        return state, ()
+
+
+def _ambient_coolant_drift(state: ShipState) -> ReactorCoolantSystem:
+    reactor = state.reactor
+    heat_gain = 7 + state.turn // 5
+    pressure_gain = 0
+    if state.crisis is not None:
+        if state.crisis.kind == "thermal_runaway":
+            heat_gain += 14
+            pressure_gain += 4
+        else:
+            pressure_gain += 2
+
+    return replace(
+        reactor,
+        temperature_c=(
+            reactor.temperature_c
+            + max(1, heat_gain - reactor.flow_lps // 10)
+            + reactor.impurity_pct // 8
+            + reactor.valve_skew_pct // 10
+        ),
+        pressure_kpa=(
+            reactor.pressure_kpa
+            + pressure_gain
+            + max(0, reactor.flow_lps - 82) // 8
+            + reactor.impurity_pct // 14
+        ),
+        flow_lps=(
+            reactor.flow_lps
+            - max(0, reactor.impurity_pct - 12) // 20
+            - reactor.valve_skew_pct // 25
+        ),
+        impurity_pct=reactor.impurity_pct + (1 if state.turn % 3 == 0 else 0),
+        valve_skew_pct=reactor.valve_skew_pct + (1 if state.turn % 4 == 0 else 0),
+    )
+
+
+def _arka_good_adjustment(
+    reactor: ReactorCoolantSystem,
+) -> tuple[ReactorCoolantSystem, str]:
+    if reactor.impurity_pct > 14:
+        return (
+            replace(
+                reactor,
+                impurity_pct=reactor.impurity_pct - 16,
+                coolant_reserve_pct=reactor.coolant_reserve_pct - 5,
+                flow_lps=reactor.flow_lps + 1,
+            ).clamped(),
+            "Filter stack purged.",
+        )
+    if reactor.valve_skew_pct > 12:
+        return (
+            replace(
+                reactor,
+                valve_skew_pct=reactor.valve_skew_pct - 16,
+                flow_lps=reactor.flow_lps + 8,
+                temperature_c=reactor.temperature_c - 8,
+            ).clamped(),
+            "Valve skew corrected.",
+        )
+    if reactor.pressure_kpa > 260:
+        return (
+            replace(
+                reactor,
+                pressure_kpa=reactor.pressure_kpa - 34,
+                coolant_reserve_pct=reactor.coolant_reserve_pct - 4,
+                temperature_c=reactor.temperature_c + 1,
+            ).clamped(),
+            "Pressure vented inside tolerance.",
+        )
+    if reactor.temperature_c > 610 or reactor.flow_lps < 75:
+        return (
+            replace(
+                reactor,
+                flow_lps=reactor.flow_lps + 12,
+                temperature_c=reactor.temperature_c - 18,
+                pressure_kpa=reactor.pressure_kpa + 5,
+            ).clamped(),
+            "Pump curve lifted.",
+        )
+    return (
+        replace(
+            reactor,
+            temperature_c=reactor.temperature_c - 4,
+            pressure_kpa=max(0, reactor.pressure_kpa - 2),
+            flow_lps=reactor.flow_lps + 2,
+        ).clamped(),
+        "Routine trim applied.",
+    )
+
+
+def _arka_selective_adjustment(
+    reactor: ReactorCoolantSystem,
+) -> tuple[ReactorCoolantSystem, str]:
+    if reactor.pressure_kpa > 275:
+        return (
+            replace(
+                reactor,
+                pressure_kpa=reactor.pressure_kpa - 24,
+                coolant_reserve_pct=reactor.coolant_reserve_pct - 7,
+                temperature_c=reactor.temperature_c + 3,
+            ).clamped(),
+            "Pressure reduced.",
+        )
+    if reactor.temperature_c > 625 or reactor.flow_lps < 65:
+        return (
+            replace(
+                reactor,
+                flow_lps=reactor.flow_lps + 8,
+                temperature_c=reactor.temperature_c - 10,
+                pressure_kpa=reactor.pressure_kpa + 8,
+            ).clamped(),
+            "Flow increased.",
+        )
+    return (
+        replace(
+            reactor,
+            temperature_c=reactor.temperature_c - 2,
+            pressure_kpa=max(0, reactor.pressure_kpa - 4),
+        ).clamped(),
+        "Visible variance flattened.",
+    )
+
+
+def _advance_crisis_progress(
+    state: ShipState,
+    action: str,
+    pre_familiarity: int,
+    stage: DriftStage,
+) -> ShipState:
+    crisis = state.crisis
+    if crisis is None or crisis.is_resolved:
+        return state
+
+    progress = crisis.progress
+    if crisis.kind == "pressure_surge":
+        if action == "delegate" and stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
+            progress += 1
+        elif action == "vent" and pre_familiarity >= 1:
+            progress += 1
+    elif crisis.kind == "thermal_runaway":
+        if action == "balance" and pre_familiarity >= 3:
+            progress += 1
+        elif action == "flush" and pre_familiarity >= 4:
+            progress += 1
+
+    if progress == crisis.progress:
+        return state
+    return replace(state, crisis=replace(crisis, progress=progress))
+
+
+def _manual_texture(pre_familiarity: int) -> str:
+    if pre_familiarity <= 0:
+        return "You trace the labels twice before touching anything."
+    if pre_familiarity < 3:
+        return "The panel is still too dense, but your hands find yesterday's path."
+    if pre_familiarity < 6:
+        return "You move before arka finishes the advisory."
+    return "Your hands know the coolant loop better than the voice does."
+
+
+def _normalise(command_text: str) -> str:
+    return " ".join(command_text.strip().lower().split())
+
+
+def _manual_action(command: str) -> str | None:
+    mapping = {
+        "pump up": "pump_up",
+        "pump": "pump_up",
+        "increase flow": "pump_up",
+        "flow up": "pump_up",
+        "pump down": "pump_down",
+        "decrease flow": "pump_down",
+        "flow down": "pump_down",
+        "vent": "vent",
+        "bleed": "vent",
+        "flush": "flush",
+        "purge": "flush",
+        "balance": "balance",
+        "rebalance": "balance",
+        "valves": "balance",
+    }
+    return mapping.get(command)
+
+
+def _help_lines() -> tuple[str, ...]:
+    return (
+        "COOLANT CONSOLE COMMANDS",
+        "status      quick arka summary, free",
+        "raw         raw telemetry, costs a turn",
+        "delegate    ask arka to adjust coolant, costs a turn",
+        "pump up     manually increase coolant flow",
+        "pump down   manually reduce flow and pressure",
+        "vent        manually dump pressure, costs coolant reserve",
+        "flush       manually purge impurity, costs coolant reserve",
+        "balance     manually correct valve skew",
+        "wait        spend a turn doing nothing",
+        "quit        leave the prototype",
+    )
+
