@@ -6,6 +6,7 @@ from functools import lru_cache
 import inspect
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
 from custodian.arka import drift_stage, summarize_coolant
@@ -78,13 +79,32 @@ class ArkaInterpreter:
         if ruled is not None:
             return ruled
 
-        if not self.config.custodian_ai or not self.config.openai_api_key or OpenAI is None:
+        if not self.config.custodian_ai:
+            _debug(self.config, "CUSTODIAN_AI disabled; using deterministic fallback")
             return Intent(
                 "converse",
                 {},
                 0.0,
                 reply=DIEGETIC_FALLBACK,
-                rationale="offline fallback",
+                rationale="AI disabled",
+            )
+        if not self.config.openai_api_key:
+            _debug(self.config, "OPENAI_API_KEY missing; using deterministic fallback")
+            return Intent(
+                "converse",
+                {},
+                0.0,
+                reply=DIEGETIC_FALLBACK,
+                rationale="missing API key",
+            )
+        if OpenAI is None:
+            _debug(self.config, "OpenAI SDK missing; install requirements.txt")
+            return Intent(
+                "converse",
+                {},
+                0.0,
+                reply=DIEGETIC_FALLBACK,
+                rationale="OpenAI SDK missing",
             )
 
         context = build_arka_context(state)
@@ -137,6 +157,7 @@ def _cached_model_intent(
     try:
         return interpreter._call_model(user_text, json.loads(context_json))
     except Exception as exc:
+        _debug(interpreter.config, f"model call failed: {exc!r}")
         return Intent(
             "converse",
             {},
@@ -217,6 +238,11 @@ def register_interpreter(interpreter: ArkaInterpreter) -> None:
 
 def clear_response_cache() -> None:
     _cached_model_intent.cache_clear()
+
+
+def _debug(config: Config, message: str) -> None:
+    if config.debug_mode:
+        print(f"[custodian ai] {message}", file=sys.stderr)
 
 
 def _system_prompt() -> str:

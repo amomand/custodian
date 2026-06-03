@@ -11,6 +11,7 @@ class Config:
     openai_model: str = "gpt-5.4-mini"
     openai_reasoning_effort: str = "none"
     custodian_ai: bool = True
+    debug_mode: bool = False
 
 
 def load_config(env_path: Path | None = None) -> Config:
@@ -24,6 +25,8 @@ def load_config(env_path: Path | None = None) -> Config:
         openai_reasoning_effort=os.getenv("OPENAI_REASONING_EFFORT", "none"),
         custodian_ai=os.getenv("CUSTODIAN_AI", "on").strip().lower()
         not in {"0", "false", "no", "off"},
+        debug_mode=os.getenv("CUSTODIAN_DEBUG", "").strip().lower()
+        in {"1", "true", "yes", "on"},
     )
 
 
