@@ -103,6 +103,7 @@ The original project note is preserved in `docs/original-idea.md`.
 Current working docs:
 
 - `design.md` - MVP thesis, loop, systems, and turn arc
+- `docs/roadmap.md` - path from MVP to larger realisation
 - `docs/lore/arka.md` - arka character and runtime voice capsule
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
 
