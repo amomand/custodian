@@ -1,7 +1,7 @@
 import unittest
 
-from custodian.models import ReactorCoolantSystem, ShipState
-from custodian.telemetry import coolant_hud_lines
+from custodian.models import CryostasisSystem, ReactorCoolantSystem, ShipState
+from custodian.telemetry import coolant_hud_lines, cryostasis_hud_lines
 
 
 class TelemetryTests(unittest.TestCase):
@@ -24,6 +24,26 @@ class TelemetryTests(unittest.TestCase):
         self.assertIn("HIGH", hud)
         self.assertIn("68 L/s", hud)
         self.assertIn("LOW", hud)
+        self.assertNotIn("arka:", hud)
+
+    def test_cryo_hud_carries_sleepers_without_arka_voice(self) -> None:
+        state = ShipState(
+            cryostasis=CryostasisSystem(
+                bank_temperature_c=-164,
+                neural_stability_pct=71,
+                sedative_balance_pct=66,
+                pod_fault_load=17,
+                sleepers_at_risk=23,
+            )
+        )
+
+        hud = "\n".join(cryostasis_hud_lines(state))
+
+        self.assertIn("CRYOSTASIS", hud)
+        self.assertIn("-164 C", hud)
+        self.assertIn("71%", hud)
+        self.assertIn("23 sleepers", hud)
+        self.assertIn("HIGH", hud)
         self.assertNotIn("arka:", hud)
 
 

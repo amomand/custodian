@@ -32,7 +32,17 @@ ALLOWED_ACTIONS = {
     "none",
 }
 
-MANUAL_OPERATIONS = {"pump_up", "pump_down", "vent", "flush", "balance"}
+MANUAL_OPERATIONS = {
+    "pump_up",
+    "pump_down",
+    "vent",
+    "flush",
+    "balance",
+    "stabilise_bank",
+    "reroute_chill",
+    "cycle_pods",
+    "triage",
+}
 
 OUT_OF_WORLD_MARKERS = (
     "as an ai",
@@ -174,6 +184,7 @@ def build_arka_context(state: ShipState) -> dict[str, Any]:
         "maintenance_window_end_beat": MISSION_END_TURN,
         "arka_drift_stage": drift_stage(state).value,
         "arka_summary": summarize_coolant(state),
+        "cryo_status": _cryo_status_label(state),
         "crisis": None
         if crisis is None
         else {
@@ -251,9 +262,11 @@ def _system_prompt() -> str:
         + "\n\n"
         + "You are also a strict command interpreter. Output ONLY one JSON object.\n"
         + "Allowed actions: status, raw, delegate, manual, wait, help, quit, converse, none.\n"
-        + "For manual action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
+        + "For manual coolant action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
+        + "For manual cryostasis action, args.operation must be one of: stabilise_bank, reroute_chill, cycle_pods, triage and args.target must be cryo.\n"
         + "Use status for quick arka summaries. Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
-        + "Use delegate when the player asks arka/you to handle coolant, fix it, take over, or automate.\n"
+        + "For raw/delegate, set args.target to coolant or cryo. Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, or cryostasis.\n"
+        + "Use delegate when the player asks arka/you to handle coolant or cryostasis, fix it, take over, or automate.\n"
         + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not advance maintenance time.\n"
         + "Do not create state changes, telemetry, inventory, maps, or future events.\n"
         + "If asked about reactor condition, base any reply only on context.arka_summary.\n"
@@ -276,11 +289,25 @@ def _intent_from_model_data(data: Any) -> Intent:
         args = {}
     args = {str(key): str(value) for key, value in args.items()}
 
+    if action in {"raw", "delegate"}:
+        target = args.get("target", "coolant")
+        if target not in {"coolant", "cryo"}:
+            args["target"] = "coolant"
+
     if action == "manual":
         operation = args.get("operation", "")
         if operation not in MANUAL_OPERATIONS:
             action = "converse"
             args = {}
+        elif operation in {
+            "stabilise_bank",
+            "reroute_chill",
+            "cycle_pods",
+            "triage",
+        }:
+            args["target"] = "cryo"
+        else:
+            args["target"] = "coolant"
 
     confidence = _clamp_float(data.get("confidence", 0.0))
     reply = _sanitize_reply(data.get("reply"))
@@ -339,6 +366,29 @@ def _rule_based(command: str) -> Intent | None:
     }:
         return Intent("raw", {}, 1.0, correction=correction, rationale="raw")
     if corrected in {
+        "raw cryo",
+        "raw cryostasis",
+        "inspect cryo",
+        "inspect cryostasis",
+        "check cryo",
+        "check cryostasis",
+        "read cryo",
+        "read cryostasis",
+        "read cryo panel",
+        "read cryostasis panel",
+        "cryo telemetry",
+        "cryostasis telemetry",
+        "pod numbers",
+        "sleeper numbers",
+    }:
+        return Intent(
+            "raw",
+            {"target": "cryo"},
+            1.0,
+            correction=correction,
+            rationale="raw cryo",
+        )
+    if corrected in {
         "delegate",
         "arka",
         "arka coolant",
@@ -350,14 +400,39 @@ def _rule_based(command: str) -> Intent | None:
         "arka do it",
     }:
         return Intent("delegate", {}, 1.0, correction=correction, rationale="delegate")
+    if corrected in {
+        "delegate cryo",
+        "delegate cryostasis",
+        "arka cryo",
+        "arka cryostasis",
+        "handle cryo",
+        "handle cryostasis",
+        "handle sleepers",
+        "handle pods",
+        "take cryo",
+        "take cryostasis",
+    }:
+        return Intent(
+            "delegate",
+            {"target": "cryo"},
+            1.0,
+            correction=correction,
+            rationale="delegate cryo",
+        )
     if corrected in {"wait", "hold", "listen", "stand by"}:
         return Intent("wait", {}, 1.0, correction=correction, rationale="wait")
 
     operation = _manual_operation(corrected)
     if operation is not None:
+        target = "cryo" if operation in {
+            "stabilise_bank",
+            "reroute_chill",
+            "cycle_pods",
+            "triage",
+        } else "coolant"
         return Intent(
             "manual",
-            {"operation": operation},
+            {"operation": operation, "target": target},
             1.0,
             correction=correction,
             rationale="manual",
@@ -506,8 +581,38 @@ def _manual_operation(command: str) -> str | None:
         "correct skew": "balance",
         "equalise": "balance",
         "equalize": "balance",
+        "stabilise bank": "stabilise_bank",
+        "stabilize bank": "stabilise_bank",
+        "stabilise cryo": "stabilise_bank",
+        "stabilize cryo": "stabilise_bank",
+        "stabilise cryostasis": "stabilise_bank",
+        "stabilize cryostasis": "stabilise_bank",
+        "stabilise sleepers": "stabilise_bank",
+        "stabilize sleepers": "stabilise_bank",
+        "reroute chill": "reroute_chill",
+        "reroute cold": "reroute_chill",
+        "send chill": "reroute_chill",
+        "cool cryo": "reroute_chill",
+        "cool cryostasis": "reroute_chill",
+        "cool sleepers": "reroute_chill",
+        "cycle pods": "cycle_pods",
+        "cycle pod": "cycle_pods",
+        "reset pods": "cycle_pods",
+        "clear pod faults": "cycle_pods",
+        "triage": "triage",
+        "triage pods": "triage",
+        "triage sleepers": "triage",
+        "prioritise pods": "triage",
+        "prioritize pods": "triage",
     }
     return mapping.get(command)
+
+
+def _cryo_status_label(state: ShipState) -> str:
+    flags = state.cryostasis.danger_flags()
+    if not flags:
+        return "viable"
+    return ", ".join(flags)
 
 
 def _clamp_float(value: Any) -> float:
@@ -537,6 +642,20 @@ _KNOWN_COMMANDS = (
     "read panel",
     "check panel",
     "check coolant",
+    "raw cryo",
+    "raw cryostasis",
+    "inspect cryo",
+    "inspect cryostasis",
+    "check cryo",
+    "check cryostasis",
+    "read cryo",
+    "read cryostasis",
+    "read cryo panel",
+    "read cryostasis panel",
+    "cryo telemetry",
+    "cryostasis telemetry",
+    "pod numbers",
+    "sleeper numbers",
     "delegate",
     "arka",
     "arka coolant",
@@ -546,6 +665,16 @@ _KNOWN_COMMANDS = (
     "autocool",
     "ask arka",
     "arka do it",
+    "delegate cryo",
+    "delegate cryostasis",
+    "arka cryo",
+    "arka cryostasis",
+    "handle cryo",
+    "handle cryostasis",
+    "handle sleepers",
+    "handle pods",
+    "take cryo",
+    "take cryostasis",
     "wait",
     "hold",
     "listen",
@@ -594,6 +723,29 @@ _KNOWN_COMMANDS = (
     "correct skew",
     "equalise",
     "equalize",
+    "stabilise bank",
+    "stabilize bank",
+    "stabilise cryo",
+    "stabilize cryo",
+    "stabilise cryostasis",
+    "stabilize cryostasis",
+    "stabilise sleepers",
+    "stabilize sleepers",
+    "reroute chill",
+    "reroute cold",
+    "send chill",
+    "cool cryo",
+    "cool cryostasis",
+    "cool sleepers",
+    "cycle pods",
+    "cycle pod",
+    "reset pods",
+    "clear pod faults",
+    "triage",
+    "triage pods",
+    "triage sleepers",
+    "prioritise pods",
+    "prioritize pods",
 )
 
 _DELEGATION_PHRASES = {

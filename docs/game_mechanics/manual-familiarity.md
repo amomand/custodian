@@ -4,9 +4,9 @@
 
 Manual familiarity is the cost of delegation made mechanical.
 
-The player can always touch the coolant panel. Early manual work is clumsy but
-real. Repeated manual work makes later crisis actions more effective. Delegating
-does not build this familiarity.
+The player can always touch the coolant and cryostasis panels. Early manual
+work is clumsy but real. Repeated manual work makes later crisis actions more
+effective. Delegating does not build this familiarity.
 
 The player should never see a familiarity number. They should feel it through
 text, effectiveness, and whether a late manual crisis sequence is possible.
@@ -14,7 +14,8 @@ text, effectiveness, and whether a late manual crisis sequence is possible.
 ## How It Builds
 
 Every manual coolant action increases `ShipState.manual_familiarity` by one, up
-to the current cap of 8.
+to the current cap of 8. Every manual cryostasis action increases
+`ShipState.cryo_familiarity` by one, also capped at 8.
 
 These actions count:
 
@@ -23,6 +24,13 @@ These actions count:
 - `vent`
 - `flush`
 - `balance`
+
+Cryostasis actions count separately:
+
+- `stabilise bank`
+- `reroute chill`
+- `cycle pods`
+- `triage`
 
 These actions do not count:
 
@@ -76,7 +84,9 @@ competence must be earned by earlier manual work.
 Useful routes:
 
 - `pure-delegation`: manual familiarity should remain `unpractised`.
-- `practised-manual`: should reach `fluent` and survive.
+- `practised-manual`: should reach `fluent` on coolant, `practised` on cryo,
+  and survive without sleeper loss.
+- `raw-curious`: should survive with a different sleeper-loss profile.
 - `hesitant`: should show whether partial practice is enough or just tragic.
 
 When tuning, watch whether manual actions feel like busywork. The thesis breaks

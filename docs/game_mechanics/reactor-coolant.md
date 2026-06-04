@@ -11,7 +11,8 @@ one place:
 - familiarity matters later
 - delegation changes the player's relationship with the system
 
-Do not add another system until coolant is worth replaying.
+Coolant is now short enough to share attention with cryostasis. It remains the
+reference system for manual effort, arka drift, and final crisis pressure.
 
 ## Telemetry
 
@@ -79,10 +80,10 @@ This is deterministic. If a transcript changes, the code changed.
 
 Current authored beats:
 
-- Beat 5: filter fouling adds impurity and valve skew.
-- Beat 11: pressure surge starts a short crisis that arka can still solve.
-- Beat 16: silicate bloom makes impurity and skew the real problem.
-- Beat 21: thermal runaway starts the final crisis.
+- Beat 3: filter fouling adds impurity and valve skew.
+- Beat 8: pressure surge starts a short crisis that arka can still solve while
+  still accurate or interpretive. The surge also warms cryostasis.
+- Beat 10: thermal runaway starts the final crisis and pressures cryostasis.
 
 The player does not see beat numbers. They experience events, alarms, HUD
 movement, arka framing, and their own competence or lack of it.
@@ -111,6 +112,8 @@ python3 tools/playtest_runner.py --all --summary-only
 The current useful anchors are:
 
 - `pure-delegation`: should be tempting, then costly.
-- `practised-manual`: should survive without feeling like a hidden cheat code.
+- `practised-manual`: should split attention and survive without sleeper loss.
 - `raw-curious`: should survive with frequent raw readings and a different cost profile.
+- `mixed-system-stress`: should show arka covering one panel while the player
+  works the other.
 - `hesitant`: should expose whether the first-run affordances are too thin.

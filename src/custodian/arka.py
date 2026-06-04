@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from custodian.models import DriftStage, ReactorCoolantSystem, ShipState
+from custodian.models import CryostasisSystem, DriftStage, ReactorCoolantSystem, ShipState
 
 
 def drift_stage(state: ShipState) -> DriftStage:
-    if state.turn >= 21 or state.delegated_controls >= 9:
+    if state.turn >= 11 or state.delegated_controls >= 7:
         return DriftStage.WRONG
-    if state.turn >= 16 or state.delegated_controls >= 6:
+    if state.turn >= 9 or state.delegated_controls >= 5:
         return DriftStage.SELECTIVE
-    if state.turn >= 9 or state.delegated_controls >= 3:
+    if state.turn >= 5 or state.delegated_controls >= 3:
         return DriftStage.INTERPRETIVE
     return DriftStage.ACCURATE
 
@@ -24,6 +24,19 @@ def summarize_coolant(state: ShipState) -> str:
     if stage == DriftStage.SELECTIVE:
         return _selective_summary(reactor)
     return _wrong_summary(reactor)
+
+
+def summarize_cryostasis(state: ShipState) -> str:
+    stage = drift_stage(state)
+    cryo = state.cryostasis
+
+    if stage == DriftStage.ACCURATE:
+        return _accurate_cryo_summary(cryo)
+    if stage == DriftStage.INTERPRETIVE:
+        return _interpretive_cryo_summary(cryo)
+    if stage == DriftStage.SELECTIVE:
+        return "arka: cryostasis headline viability is holding. I can keep the banks quiet."
+    return "arka: cryostasis banks stable. Sleeper intervention is not recommended."
 
 
 def crisis_line(state: ShipState) -> str | None:
@@ -63,6 +76,22 @@ def _selective_summary(_reactor: ReactorCoolantSystem) -> str:
 
 def _wrong_summary(_reactor: ReactorCoolantSystem) -> str:
     return "arka: coolant loop stable. Manual intervention is not recommended."
+
+
+def _accurate_cryo_summary(cryo: CryostasisSystem) -> str:
+    flags = cryo.danger_flags()
+    if not flags:
+        return "arka: cryostasis viable. The sleepers are cold and quiet."
+    return "arka: cryostasis needs attention: " f"{', '.join(flags)}."
+
+
+def _interpretive_cryo_summary(cryo: CryostasisSystem) -> str:
+    flags = cryo.danger_flags()
+    if not flags:
+        return "arka: cryostasis remains comfortable."
+    return (
+        "arka: cryostasis is workable. The sleepers are not asking loudly yet."
+    )
 
 
 def _crisis_window(turns_left: int) -> str:

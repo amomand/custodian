@@ -12,9 +12,9 @@ def opening_lines() -> tuple[str, ...]:
         "custodian roster: 1 responsive",
         "",
         "arka: Good. You're awake.",
-        "arka: Reactor coolant is drifting. Nothing dramatic.",
-        "arka: I can take it, if you like. Raw panel and manual controls are live.",
-        "arka: Pumps, vent, flush, balance. Unglamorous verbs, but they work.",
+        "arka: Reactor coolant is drifting. Cryostasis is colder than you are.",
+        "arka: I can take coolant or cryo, if you like. Raw panels and manual controls are live.",
+        "arka: Pumps, vent, flush, balance. Banks, chill, pods, triage. Unglamorous verbs, but they work.",
         "Type help for commands.",
         "",
     )
@@ -29,6 +29,7 @@ def closing_lines(state: ShipState) -> tuple[str, ...]:
         "MAINTENANCE WINDOW CLOSED",
         f"reactor: {_reactor_debrief(state)}",
         f"custodian: {_manual_debrief(state)}",
+        f"cryostasis: {_cryo_debrief(state)}",
         f"delegation: {_delegation_debrief(state)}",
         f"raw panel: {_raw_debrief(state)}",
         _closing_arka_line(state),
@@ -36,7 +37,7 @@ def closing_lines(state: ShipState) -> tuple[str, ...]:
 
 
 def _is_quit_outcome(outcome: str) -> bool:
-    return outcome == "You step away from the coolant console."
+    return outcome == "You step away from the maintenance console."
 
 
 def _reactor_debrief(state: ShipState) -> str:
@@ -61,6 +62,19 @@ def _manual_debrief(state: ShipState) -> str:
     if familiarity <= 5:
         return "some manual paths started becoming memory."
     return "your hands knew where to go before the advisory finished."
+
+
+def _cryo_debrief(state: ShipState) -> str:
+    familiarity = state.cryo_familiarity
+    if state.sleepers_lost:
+        if familiarity <= 0:
+            return "the sleepers stayed numbers until the loss report printed."
+        return "you answered some banks. Not all of them answered back."
+    if familiarity <= 0:
+        return "left to arka and luck."
+    if familiarity <= 2:
+        return "you learned which alarms had people behind them."
+    return "held cold enough that nobody woke inside the dark."
 
 
 def _delegation_debrief(state: ShipState) -> str:

@@ -60,6 +60,49 @@ class ReactorCoolantSystem:
 
 
 @dataclass(frozen=True)
+class CryostasisSystem:
+    bank_temperature_c: int = -184
+    neural_stability_pct: int = 94
+    sedative_balance_pct: int = 50
+    pod_fault_load: int = 3
+    sleepers_at_risk: int = 0
+
+    def clamped(self) -> "CryostasisSystem":
+        return replace(
+            self,
+            bank_temperature_c=max(-220, min(-120, self.bank_temperature_c)),
+            neural_stability_pct=max(0, min(100, self.neural_stability_pct)),
+            sedative_balance_pct=max(0, min(100, self.sedative_balance_pct)),
+            pod_fault_load=max(0, min(100, self.pod_fault_load)),
+            sleepers_at_risk=max(0, min(240, self.sleepers_at_risk)),
+        )
+
+    def danger_flags(self) -> tuple[str, ...]:
+        flags: list[str] = []
+        if self.bank_temperature_c > -170:
+            flags.append("bank warming")
+        if self.neural_stability_pct < 78:
+            flags.append("neural stability low")
+        if self.sedative_balance_pct < 38 or self.sedative_balance_pct > 62:
+            flags.append("sedative balance off")
+        if self.pod_fault_load > 12:
+            flags.append("pod faults high")
+        if self.sleepers_at_risk > 0:
+            flags.append("sleepers at risk")
+        return tuple(flags)
+
+    def raw_lines(self) -> tuple[str, ...]:
+        return (
+            "RAW CRYOSTASIS TELEMETRY",
+            f"bank_temperature_c   {self.bank_temperature_c:>4}   nominal -196 to -170",
+            f"neural_stability_pct {self.neural_stability_pct:>4}   caution below 78",
+            f"sedative_balance_pct {self.sedative_balance_pct:>4}   nominal 38-62",
+            f"pod_fault_load       {self.pod_fault_load:>4}   nominal 0-12",
+            f"sleepers_at_risk     {self.sleepers_at_risk:>4}   nominal 0",
+        )
+
+
+@dataclass(frozen=True)
 class CrisisState:
     kind: str
     label: str
@@ -76,8 +119,11 @@ class CrisisState:
 class ShipState:
     turn: int = 1
     reactor: ReactorCoolantSystem = field(default_factory=ReactorCoolantSystem)
+    cryostasis: CryostasisSystem = field(default_factory=CryostasisSystem)
     manual_familiarity: int = 0
+    cryo_familiarity: int = 0
     delegated_controls: int = 0
+    delegated_cryo_controls: int = 0
     raw_inspections: int = 0
     sleepers_lost: int = 0
     crisis: CrisisState | None = None
@@ -86,4 +132,3 @@ class ShipState:
     @property
     def is_finished(self) -> bool:
         return self.outcome is not None
-
