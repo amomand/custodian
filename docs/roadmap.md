@@ -226,6 +226,9 @@ Possible approaches:
 - a clearer terminal status layout with separated system blocks (started)
 - compact threshold bars or banded indicators for high/low/nominal telemetry
   (started)
+- tab completion for common terminal commands, probably via `readline`, so
+  multi-word controls like `delegate cryo` and `reroute chill` are less tedious
+  during repeated playtests
 - a curses-style or browser-lite maintainer console that reads the same engine
   state
 - transcript folding or a pinned current-state panel so repeated HUD output does
