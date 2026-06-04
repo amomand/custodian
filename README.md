@@ -87,6 +87,8 @@ tests so the suite stays fast and local.
 
 - **Natural language arka layer** - free text becomes a structured `Intent`
 - **Deterministic fallback** - the game remains playable without credentials
+- **Diegetic boot sequence** - the prototype now opens as an in-world shell
+- **Run debrief** - endings reflect manual practice, delegation, and raw checks
 - **Diegetic command handling** - no invalid-command voice
 - **Reactor coolant model** - temperature, pressure, flow, impurity, valve skew, reserve
 - **Delegation tracking** - arka control affects drift, not a visible trust meter
@@ -104,6 +106,7 @@ Current working docs:
 
 - `design.md` - MVP thesis, loop, systems, and turn arc
 - `docs/roadmap.md` - path from MVP to larger realisation
+- `docs/game_mechanics/opening-sequence.md` - boot text and run debrief notes
 - `docs/lore/arka.md` - arka character and runtime voice capsule
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
 - `docs/architecture/project-operating-system.md` - CI, local skills, and repo rules
@@ -124,6 +127,8 @@ custodian/
 ├── docs/
 │   ├── architecture/
 │   │   └── ai-interpreter.md       # AI/parser/simulation boundary
+│   ├── game_mechanics/
+│   │   └── opening-sequence.md     # Boot/debrief design notes
 │   ├── lore/
 │   │   └── arka.md                 # arka voice and character notes
 │   └── original-idea.md            # Copied seed idea
@@ -133,6 +138,7 @@ custodian/
 │   ├── arka_interpreter.py         # Intent parser and optional model call
 │   ├── config.py                   # .env loading
 │   ├── models.py                   # ShipState and reactor telemetry
+│   ├── narrative.py                # Opening and closing terminal text
 │   └── cli.py                      # Terminal loop
 └── tests/                          # Unit tests and AI boundary tests
 ```

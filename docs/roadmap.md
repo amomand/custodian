@@ -27,6 +27,7 @@ The repo currently has a narrow terminal MVP:
 - Deterministic `ShipState` and coolant state transitions.
 - arka summary drift: accurate, interpretive, selective, wrong.
 - Optional model-backed arka interpreter for natural-language input.
+- Diegetic opening screen and closing debrief.
 - Hidden manual familiarity.
 - A short scripted maintenance arc.
 - Tests around state transitions and AI boundary.
@@ -76,11 +77,14 @@ contracts, voice, mechanics, architecture, and open questions.
 
 Goal: make the current MVP worth replaying and worth studying.
 
-Build:
+Done:
 
 - Opening screen and boot sequence.
-- Better first-run affordances without tutorialising the trap away.
 - A short debrief or end screen that reflects delegation and manual practice.
+
+Build Next:
+
+- Better first-run affordances without tutorialising the trap away.
 - More natural-language synonyms for manual and delegation actions.
 - Debug/status commands for development that are clearly non-player-facing.
 - A transcript playtest runner like The Cabin's local scenarios.
@@ -98,7 +102,7 @@ Document:
 - `docs/game_mechanics/reactor-coolant.md`
 - `docs/game_mechanics/manual-familiarity.md`
 - `docs/game_mechanics/delegation-and-drift.md`
-- `docs/game_mechanics/opening-sequence.md`
+- `docs/game_mechanics/opening-sequence.md` (started)
 
 Exit criteria:
 
@@ -355,7 +359,7 @@ Long term:
 
 ## Opening Sequence
 
-Needed soon.
+Implemented in the terminal MVP, with room to tune.
 
 Purpose:
 
@@ -364,21 +368,24 @@ Purpose:
 - Establish raw telemetry as available but not emotionally inviting.
 - Put the player at the coolant panel fast.
 
-Possible shape:
+Current shape:
 
 ```text
 A.R.K.A MAINTENANCE SHELL
-colony vessel: [name pending]
-custodian wake cycle: unscheduled
+wake cycle: unscheduled
 crew status: asleep
+custodian roster: 1 responsive
 
 arka: Good. You're awake.
 arka: Reactor coolant is drifting. Nothing dramatic.
-arka: I can take it, if you like.
+arka: I can take it, if you like. Raw panel is live if you want it.
 ```
 
 The opening should not over-teach. It should give the player enough to act and
 enough uncertainty to ask arka for help.
+
+The closing debrief is also in place. It reflects containment, manual practice,
+delegation, and raw telemetry habits without showing hidden scores.
 
 ## Web And Graphics Track
 
@@ -491,14 +498,12 @@ still teaching us what it is.
 
 ## Near-Term Suggested Order
 
-1. Add opening screen.
-2. Add transcript playtest runner.
-3. Improve arka natural-language coverage now that `.env` is live.
-4. Write coolant mechanic docs.
-5. Add CI for tests and compile checks.
-6. Add seed states for key turns.
-7. Tune the coolant MVP from transcripts.
-8. Add save/load.
-9. Decide whether the second system is cryostasis or route plotting.
-10. Start the first web surface only after the terminal loop has enough shape to
+1. Add transcript playtest runner.
+2. Improve arka natural-language coverage now that `.env` is live.
+3. Write coolant mechanic docs.
+4. Add seed states for key turns.
+5. Tune the coolant MVP from transcripts.
+6. Add save/load.
+7. Decide whether the second system is cryostasis or route plotting.
+8. Start the first web surface only after the terminal loop has enough shape to
     be worth preserving.

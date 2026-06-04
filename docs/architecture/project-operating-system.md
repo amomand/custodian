@@ -57,7 +57,8 @@ concerns, not block every experiment.
 
 ### Transcript Playtest Runner
 
-This should probably be the next infrastructure lift.
+This should probably be the next infrastructure lift now that the terminal
+opening and debrief exist.
 
 Custodian needs transcripts because the design is about player habits. A good
 playtest report should show:
@@ -75,7 +76,8 @@ This will help detect whether players really stop reading raw telemetry.
 
 ### Seed States
 
-Seed states become useful once the opening screen and coolant arc are stable:
+Seed states become useful once the coolant arc is stable enough to compare
+against itself:
 
 - turn 1 clean start
 - post-filter fouling
@@ -92,7 +94,7 @@ should add docs only as mechanics become real:
 - `docs/game_mechanics/reactor-coolant.md`
 - `docs/game_mechanics/manual-familiarity.md`
 - `docs/game_mechanics/delegation-and-drift.md`
-- `docs/game_mechanics/opening-sequence.md`
+- `docs/game_mechanics/opening-sequence.md` (started)
 
 ## Borrow Later
 

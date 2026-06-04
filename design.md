@@ -20,6 +20,7 @@ Included:
 - One `ReactorCoolantSystem` with raw telemetry.
 - An `arka` layer that summarises the same system.
 - Optional arka interpreter for natural-language input and off-script replies.
+- Diegetic opening screen and closing debrief.
 - Manual actions and delegation as competing ways to spend a turn.
 - Hidden manual familiarity gained only through manual coolant actions.
 - Summary drift from accurate to interpretive, selective, and wrong.
@@ -87,6 +88,10 @@ The CLI only prints messages and feeds input back into the engine. The arka
 interpreter returns an `Intent`, but the engine remains the only authority that
 can advance time, change telemetry, resolve crises, or record familiarity.
 
+Opening and closing text lives in `custodian.narrative`. The debrief can read
+hidden state, but it must translate habits into fiction rather than showing
+hidden numbers.
+
 ## Arka Interpreter
 
 The model-backed path is intentionally narrow. It can classify natural player
@@ -151,12 +156,16 @@ Failure:
 Sleeper losses can happen before total failure. They are a pressure signal, not
 the main score.
 
+The terminal ending should stay in-world. Prototype labels belong in tests and
+docs, not in the text shown to the player.
+
 ## Incremental Plan
 
-1. Build the deterministic engine and terminal loop.
+1. Build the deterministic engine and terminal loop. Done.
 2. Add focused tests for manual familiarity, delegation, drift, and crisis
-   resolution.
-3. Play the arc by hand and tune numbers until delegation feels genuinely useful
+   resolution. Done.
+3. Add diegetic opening and habit-sensitive debrief. Done.
+4. Play the arc by hand and tune numbers until delegation feels genuinely useful
    early.
-4. Keep future expansion behind the same state-transition shape: more systems
+5. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.

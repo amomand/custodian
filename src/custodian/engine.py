@@ -359,12 +359,12 @@ class GameEngine:
                 replace(
                     state,
                     outcome=(
-                        "MVP complete: the reactor survives the maintenance window. "
+                        "The reactor survives the maintenance window. "
                         "You are not sure arka agrees about how."
                     ),
                 ),
                 (
-                    "MVP complete: the reactor survives the maintenance window.",
+                    "The reactor survives the maintenance window.",
                     f"cryostasis loss report: {state.sleepers_lost} sleepers lost.",
                 ),
             )

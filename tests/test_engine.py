@@ -127,7 +127,7 @@ class EngineTests(unittest.TestCase):
                 break
 
         self.assertIsNotNone(state.outcome)
-        self.assertIn("MVP complete", state.outcome)
+        self.assertIn("survives the maintenance window", state.outcome)
 
 
 if __name__ == "__main__":
