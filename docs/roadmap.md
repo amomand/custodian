@@ -356,6 +356,14 @@ Graphics should eventually show:
 - arka advisory channel.
 - Raw telemetry channel.
 
+Open UI hypothesis to test, not canon:
+
+- System stats may want threshold bars, small dials, or banded indicators that
+  show nominal ranges at a glance. The player should be able to see "too high",
+  "too low", and "inside tolerance" without parsing every number under pressure.
+  This should make raw truth quicker to scan without making arka obsolete, and
+  it should be contested in mockups/playtests before becoming a rule.
+
 ## Phase 5: Full Game Realisation
 
 Goal: complete the central arc without over-explaining it.
