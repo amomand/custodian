@@ -10,7 +10,8 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("A.R.K.A MAINTENANCE SHELL", opening)
         self.assertIn("arka: Good. You're awake.", opening)
-        self.assertIn("Raw panel is live", opening)
+        self.assertIn("Raw panel and manual controls are live", opening)
+        self.assertIn("Pumps, vent, flush, balance", opening)
 
     def test_quit_has_no_debrief(self) -> None:
         state = ShipState(outcome="You step away from the coolant console.")

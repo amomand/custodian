@@ -154,6 +154,10 @@ SCENARIOS: dict[str, Scenario] = {
             "balance",
             "flush",
             "pump up",
+            "balance",
+            "flush",
+            "vent",
+            "pump up",
         ),
     ),
     "hesitant": Scenario(
@@ -182,6 +186,30 @@ SCENARIOS: dict[str, Scenario] = {
         ),
     ),
 }
+
+
+def scenario_from_file(path: Path) -> Scenario:
+    commands = commands_from_file(path)
+    if not commands:
+        raise ValueError(f"command file {path} did not contain any commands")
+    return Scenario(
+        name=path.stem,
+        description=f"Commands loaded from {path}.",
+        commands=commands,
+    )
+
+
+def commands_from_file(path: Path) -> tuple[str, ...]:
+    commands: list[str] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(">"):
+            line = line[1:].strip()
+        if line:
+            commands.append(line)
+    return tuple(commands)
 
 
 def run_scenario(scenario: Scenario) -> PlaytestReport:

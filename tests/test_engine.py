@@ -39,6 +39,28 @@ class EngineTests(unittest.TestCase):
         self.assertIn("arka: coolant loop nominal", output)
         self.assertNotIn("TURN", output)
 
+    def test_dev_debug_command_is_non_advancing_and_non_diegetic(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, ":debug")
+
+        self.assertEqual(result.state.turn, 1)
+        self.assertFalse(result.advanced)
+        self.assertEqual(result.messages[0], "DEV STATE")
+        self.assertIn("manual familiarity: 0", result.messages)
+
+    def test_scheduled_event_requests_presentation_break(self) -> None:
+        state = self.engine.initial_state()
+
+        for command in ("wait", "wait", "wait"):
+            state = self.engine.handle(state, command).state
+        result = self.engine.handle(state, "wait")
+
+        self.assertTrue(result.presentation_break)
+        self.assertTrue(
+            any("coolant filter coughs" in message for message in result.messages)
+        )
+
     def test_obvious_delegate_typo_is_corrected_and_executed(self) -> None:
         state = self.engine.initial_state()
 

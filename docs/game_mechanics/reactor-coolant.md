@@ -112,5 +112,5 @@ The current useful anchors are:
 
 - `pure-delegation`: should be tempting, then costly.
 - `practised-manual`: should survive without feeling like a hidden cheat code.
-- `raw-curious`: should show raw reading as useful but expensive attention.
+- `raw-curious`: should survive with frequent raw readings and a different cost profile.
 - `hesitant`: should expose whether the first-run affordances are too thin.

@@ -98,6 +98,34 @@ class ArkaInterpreterTests(unittest.TestCase):
 
         self.assertEqual(intent.action, "delegate")
 
+    def test_manual_synonyms_are_rule_based(self) -> None:
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        examples = {
+            "dump pressure": "vent",
+            "clean filter": "flush",
+            "align valves": "balance",
+            "cool it down": "pump_up",
+            "slow pump": "pump_down",
+        }
+
+        for phrase, operation in examples.items():
+            with self.subTest(phrase=phrase):
+                intent = interpreter.interpret(phrase, ShipState())
+                self.assertEqual(intent.action, "manual")
+                self.assertEqual(intent.args["operation"], operation)
+
+    def test_non_manual_synonyms_are_rule_based(self) -> None:
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        self.assertEqual(interpreter.interpret("check panel", ShipState()).action, "raw")
+        self.assertEqual(interpreter.interpret("run automatic", ShipState()).action, "delegate")
+        self.assertEqual(interpreter.interpret("stand by", ShipState()).action, "wait")
+
     def test_context_exposes_arka_summary_not_raw_panel(self) -> None:
         state = ShipState(
             turn=21,

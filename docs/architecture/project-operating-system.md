@@ -81,6 +81,18 @@ Current local command:
 python3 tools/playtest_runner.py --all --summary-only
 ```
 
+Ad-hoc command files are also supported:
+
+```bash
+python3 tools/playtest_runner.py --commands-file path/to/route.txt
+```
+
+Developer diagnostics are deliberately colon-prefixed and non-diegetic:
+
+- `:debug`
+- `:metrics`
+- `:help`
+
 ### Seed States
 
 The first named seed states exist in `custodian.seeds`:

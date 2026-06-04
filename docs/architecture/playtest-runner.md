@@ -37,6 +37,12 @@ Run one full transcript:
 python3 tools/playtest_runner.py --scenario practised-manual
 ```
 
+Run an ad-hoc command file:
+
+```bash
+python3 tools/playtest_runner.py --commands-file path/to/route.txt
+```
+
 Write local markdown reports:
 
 ```bash
@@ -45,6 +51,10 @@ python3 tools/playtest_runner.py --all --write reports/playtests
 
 `reports/playtests/` is ignored by git. Promote a transcript into `docs/` only
 when it becomes design evidence worth preserving.
+
+Command files are plain text: one command per line. Blank lines and lines
+starting with `#` are ignored. Leading `>` is stripped so pasted transcript
+commands work.
 
 ## Current Scenarios
 
@@ -65,6 +75,7 @@ when it becomes design evidence worth preserving.
 - repeatedly reads raw telemetry
 - mixes manual work and delegation
 - useful for watching whether raw checks become legible habits
+- currently survives the maintenance window with cryostasis losses
 
 `hesitant`
 
@@ -107,7 +118,6 @@ tuning.
 
 ## Outstanding
 
-- Add a way to run ad-hoc command files.
 - Add optional seed-start routes once useful.
 - Add transcript comparison if route text stabilises.
 - Decide whether selected transcripts should become checked-in golden fixtures.

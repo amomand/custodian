@@ -15,6 +15,10 @@ It usually can.
 delegation. The first MVP proves the thesis with one ship system: reactor
 coolant.
 
+Phase 0 is concluded: the coolant slice is playable, documented, and covered by
+deterministic playtest transcripts. Phase 1 starts with terminal game spine work
+such as save/load, command history, and the next system decision.
+
 The player can work the coolant panel by hand. It is real, useful, and a
 little fiddly. Or the player can ask `arka` to handle it. Early on, arka is
 better. Later, arka's account of the ship starts to drift, and the player may
@@ -78,10 +82,19 @@ CUSTODIAN_DEBUG=1 python3 main.py
 PYTHONPATH=src python3 -m unittest discover -s tests
 printf 'can you handle it?\nquit\n' | python3 main.py
 python3 tools/playtest_runner.py --all --summary-only
+python3 tools/playtest_runner.py --commands-file path/to/route.txt
 ```
 
 The tests do not require an API key. Model behavior is covered with fake-client
 tests so the suite stays fast and local.
+
+Developer-only terminal diagnostics use a colon prefix:
+
+```bash
+:debug
+:metrics
+:help
+```
 
 ---
 
@@ -90,6 +103,7 @@ tests so the suite stays fast and local.
 - **Natural language arka layer** - free text becomes a structured `Intent`
 - **Deterministic fallback** - the game remains playable without credentials
 - **Diegetic boot sequence** - the prototype now opens as an in-world shell
+- **Event refreshes** - interactive terminals clear on launch and major pressure beats
 - **Coolant HUD** - telemetry is shown separately from arka's summary
 - **Run debrief** - endings reflect manual practice, delegation, and raw checks
 - **Diegetic command handling** - no invalid-command voice
@@ -98,6 +112,7 @@ tests so the suite stays fast and local.
 - **Manual practice** - hidden familiarity improves hand control under pressure
 - **Authored crisis beats** - pressure points and arka drift are designed, not improvised
 - **Transcript playtests** - deterministic routes report delegation, raw checks, drift, and outcome
+- **Ad-hoc route files** - pasted command files can become playtest reports
 - **AI hardening** - model replies are sanitised before they reach the terminal
 
 ---
@@ -171,7 +186,7 @@ Environment variables:
 - `OPENAI_REASONING_EFFORT` - Default: `none`
 - `CUSTODIAN_AI=off` - Force deterministic fallback
 - `CUSTODIAN_DEBUG=1` - Print AI fallback diagnostics to stderr
-- `CUSTODIAN_CLEAR=off` - Disable the interactive launch screen clear
+- `CUSTODIAN_CLEAR=off` - Disable interactive launch and event screen clears
 
 The Cabin used `gpt-5.4-mini` for this kind of diegetic parser/voice work.
 Custodian keeps that default because arka needs fast structured interpretation

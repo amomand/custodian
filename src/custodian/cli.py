@@ -26,6 +26,8 @@ def main() -> None:
 
         result = engine.handle(state, command)
         state = result.state
+        if result.presentation_break:
+            _clear_screen()
         for line in result.messages:
             print(line)
         if state.is_finished:
