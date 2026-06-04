@@ -12,14 +12,12 @@ def main() -> None:
     state = engine.initial_state()
 
     _clear_screen()
-    for line in opening_lines():
-        print(line)
-    for line in engine.handle(state, "status").messages:
-        print(line)
+    _print_lines(opening_lines())
+    _print_lines(engine.handle(state, "status").messages)
 
     while not state.is_finished:
         try:
-            command = input("> ")
+            command = _read_command()
         except (EOFError, KeyboardInterrupt):
             print()
             command = "quit"
@@ -33,13 +31,36 @@ def main() -> None:
             cleared = _clear_screen()
             if cleared:
                 print(f"> {command}")
-            elif not sys.stdout.isatty():
-                print(command)
-        for line in result.messages:
-            print(line)
+        _print_lines(result.messages)
         if state.is_finished:
-            for line in closing_lines(state):
-                print(line)
+            _print_lines(closing_lines(state))
+
+
+def _print_lines(lines: tuple[str, ...]) -> None:
+    for line in _lines_with_arka_spacing(lines):
+        print(line)
+
+
+def _lines_with_arka_spacing(lines: tuple[str, ...]) -> tuple[str, ...]:
+    spaced: list[str] = []
+    for line in lines:
+        arka_line = line.startswith("arka:")
+        if arka_line and spaced and spaced[-1] != "":
+            spaced.append("")
+        if line == "" and spaced and spaced[-1] == "":
+            continue
+        spaced.append(line)
+        if arka_line:
+            spaced.append("")
+    return tuple(spaced)
+
+
+def _read_command() -> str:
+    if sys.stdin.isatty():
+        return input("> ")
+    command = input()
+    print(f"> {command}")
+    return command
 
 
 def _clear_screen() -> bool:
