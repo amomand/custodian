@@ -106,8 +106,9 @@ The CLI only prints messages and feeds input back into the engine. The arka
 interpreter returns an `Intent`, but the engine remains the only authority that
 can advance time, change telemetry, resolve crises, or record familiarity.
 
-`custodian.telemetry` owns the compact terminal HUDs. arka's summaries should
-not read out current numbers; the HUDs and raw panels own telemetry display.
+`custodian.telemetry` owns the terminal HUDs and their threshold bars. arka's
+summaries should not read out current numbers; the HUDs and raw panels own
+telemetry display.
 
 Opening and closing text lives in `custodian.narrative`. The debrief can read
 hidden state, but it must translate habits into fiction rather than showing

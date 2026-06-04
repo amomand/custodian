@@ -211,7 +211,7 @@ much ship for one waking custodian.
 
 ### Phase 1C.5: Maintainer-Friendly Playtest Surface
 
-Status: proposed as a mid-phase ergonomics step.
+Status: first terminal-readout pass in progress.
 
 The terminal remains the canonical engine surface for now, but the current
 two-system transcript is already hard to playtest by eye. Before adding more
@@ -223,12 +223,13 @@ goal is to make playtest feedback readable while preserving the terminal engine.
 
 Possible approaches:
 
-- a clearer terminal status layout with separated system blocks
+- a clearer terminal status layout with separated system blocks (started)
 - compact threshold bars or banded indicators for high/low/nominal telemetry
+  (started)
 - a curses-style or browser-lite maintainer console that reads the same engine
   state
 - transcript folding or a pinned current-state panel so repeated HUD output does
-  not bury the play
+  not bury the play (started in interactive terminal refresh)
 
 Design constraint:
 

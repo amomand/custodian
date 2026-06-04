@@ -24,6 +24,8 @@ class TelemetryTests(unittest.TestCase):
         self.assertIn("HIGH", hud)
         self.assertIn("68 L/s", hud)
         self.assertIn("LOW", hud)
+        self.assertIn("[", hud)
+        self.assertIn("nominal 560-620", hud)
         self.assertNotIn("arka:", hud)
 
     def test_cryo_hud_carries_sleepers_without_arka_voice(self) -> None:
@@ -44,6 +46,8 @@ class TelemetryTests(unittest.TestCase):
         self.assertIn("71%", hud)
         self.assertIn("23 sleepers", hud)
         self.assertIn("HIGH", hud)
+        self.assertIn("[", hud)
+        self.assertIn("nominal -196 to -170", hud)
         self.assertNotIn("arka:", hud)
 
 

@@ -194,6 +194,8 @@ Environment variables:
 - `CUSTODIAN_AI=off` - Force deterministic fallback
 - `CUSTODIAN_DEBUG=1` - Print AI fallback diagnostics to stderr
 - `CUSTODIAN_CLEAR=off` - Disable interactive launch and event screen clears
+- `CUSTODIAN_REFRESH=off` - Keep appending every turn instead of refreshing the
+  interactive screen after advancing commands
 
 The Cabin used `gpt-5.4-mini` for this kind of diegetic parser/voice work.
 Custodian keeps that default because arka needs fast structured interpretation

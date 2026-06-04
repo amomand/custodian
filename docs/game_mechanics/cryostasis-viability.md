@@ -18,8 +18,9 @@ Cryostasis is fragile sleeping people represented by cold telemetry.
 - pod fault load, nominal 0-12
 - sleepers at risk, nominal 0
 
-The compact cryostasis HUD shows the current telemetry outside arka's voice. The
-raw cryo panel prints literal field names and nominal bands.
+The cryostasis HUD shows the current telemetry outside arka's voice, with
+threshold bars for maintainers/playtesters. The raw cryo panel prints literal
+field names and nominal bands.
 
 ## Manual Actions
 
