@@ -209,6 +209,33 @@ Current examples:
 This is where delegation becomes attractive for a better reason: there is too
 much ship for one waking custodian.
 
+### Phase 1C.5: Maintainer-Friendly Playtest Surface
+
+Status: proposed as a mid-phase ergonomics step.
+
+The terminal remains the canonical engine surface for now, but the current
+two-system transcript is already hard to playtest by eye. Before adding more
+systems or deeper mission pressure, consider a small human-friendly operating
+surface for maintainers.
+
+This is not the final GUI and should not pull Phase 4 forward wholesale. The
+goal is to make playtest feedback readable while preserving the terminal engine.
+
+Possible approaches:
+
+- a clearer terminal status layout with separated system blocks
+- compact threshold bars or banded indicators for high/low/nominal telemetry
+- a curses-style or browser-lite maintainer console that reads the same engine
+  state
+- transcript folding or a pinned current-state panel so repeated HUD output does
+  not bury the play
+
+Design constraint:
+
+Do not make raw telemetry emotionally cosy too early. The surface should reduce
+maintainer fatigue and make system state scannable, but the game should still
+preserve the tension between arka's reassurance and the colder raw layer.
+
 ### Phase 1D: Save/Load And Command History
 
 Goal: add game spine once there is enough state to preserve.
@@ -501,9 +528,9 @@ crew status: asleep
 custodian roster: 1 responsive
 
 arka: Good. You're awake.
-arka: Reactor coolant is drifting. Nothing dramatic.
-arka: I can take it, if you like. Raw panel and manual controls are live.
-arka: Pumps, vent, flush, balance. Unglamorous verbs, but they work.
+arka: Reactor coolant is drifting. Cryostasis is colder than you are.
+arka: I can take coolant or cryo, if you like. Raw panels and manual controls are live.
+arka: Pumps, vent, flush, balance. Banks, chill, pods, triage. Unglamorous verbs, but they work.
 ```
 
 The opening should not over-teach. It should give the player enough to act and
@@ -625,7 +652,8 @@ still teaching us what it is.
 
 1. Playtest the Phase 1A-C terminal slice and tune whether two systems create
    enough attention pressure.
-2. Phase 1D: add save/load and structured command history.
-3. Decide whether Phase 1E needs a third system.
-4. Start the first web surface only after the terminal loop has enough shape to
+2. Consider Phase 1C.5 if the maintainer surface is slowing playtest feedback.
+3. Phase 1D: add save/load and structured command history.
+4. Decide whether Phase 1E needs a third system.
+5. Start the first web surface only after the terminal loop has enough shape to
     be worth preserving.
