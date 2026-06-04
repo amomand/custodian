@@ -13,7 +13,8 @@ def opening_lines() -> tuple[str, ...]:
         "",
         "arka: Good. You're awake.",
         "arka: Reactor coolant is drifting. Nothing dramatic.",
-        "arka: I can take it, if you like. Raw panel is live if you want it.",
+        "arka: I can take it, if you like. Raw panel and manual controls are live.",
+        "arka: Pumps, vent, flush, balance. Unglamorous verbs, but they work.",
         "Type help for commands.",
         "",
     )

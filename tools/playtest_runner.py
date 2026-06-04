@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from custodian.playtest import SCENARIOS, run_scenario, write_report
+from custodian.playtest import SCENARIOS, run_scenario, scenario_from_file, write_report
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -35,6 +35,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Run every scenario.",
     )
     parser.add_argument(
+        "--commands-file",
+        type=Path,
+        help="Run an ad-hoc command file, one command per line.",
+    )
+    parser.add_argument(
         "--summary-only",
         action="store_true",
         help="Print only the summary report.",
@@ -51,7 +56,18 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{scenario.name}: {scenario.description}")
         return 0
 
-    scenarios = SCENARIOS.values() if args.all else (SCENARIOS[args.scenario],)
+    if args.all and args.commands_file is not None:
+        parser.error("--all cannot be combined with --commands-file")
+
+    if args.commands_file is not None:
+        try:
+            scenarios = (scenario_from_file(args.commands_file),)
+        except OSError as exc:
+            parser.error(str(exc))
+        except ValueError as exc:
+            parser.error(str(exc))
+    else:
+        scenarios = SCENARIOS.values() if args.all else (SCENARIOS[args.scenario],)
     for index, scenario in enumerate(scenarios):
         if index:
             print()

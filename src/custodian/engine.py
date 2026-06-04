@@ -14,6 +14,7 @@ class StepResult:
     state: ShipState
     messages: tuple[str, ...]
     advanced: bool = False
+    presentation_break: bool = False
 
 
 class GameEngine:
@@ -24,6 +25,10 @@ class GameEngine:
         return ShipState()
 
     def handle(self, state: ShipState, command_text: str) -> StepResult:
+        dev_result = _handle_dev_command(state, command_text)
+        if dev_result is not None:
+            return dev_result
+
         intent = self.interpreter.interpret(command_text, state)
         correction = _correction_line(intent)
         if state.is_finished:
@@ -96,20 +101,29 @@ class GameEngine:
         reactor = _ambient_coolant_drift(state).clamped()
         next_state = replace(state, turn=state.turn + 1, reactor=reactor)
         next_messages = list(messages)
+        presentation_break = False
 
         if had_crisis:
             next_state, crisis_messages = self._tick_crisis(next_state)
             next_messages.extend(crisis_messages)
+            presentation_break = presentation_break or bool(crisis_messages)
 
         next_state, event_messages = self._apply_scheduled_events(next_state)
         next_messages.extend(event_messages)
+        presentation_break = presentation_break or bool(event_messages)
 
         next_state, outcome_messages = self._check_outcome(next_state)
         next_messages.extend(outcome_messages)
+        presentation_break = presentation_break or bool(outcome_messages)
 
         if next_state.outcome is None:
             next_messages.extend(self._status_messages(next_state))
-        return StepResult(next_state, tuple(next_messages), advanced=True)
+        return StepResult(
+            next_state,
+            tuple(next_messages),
+            advanced=True,
+            presentation_break=presentation_break,
+        )
 
     def _delegate_to_arka(self, state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
         stage = drift_stage(state)
@@ -546,25 +560,111 @@ def _manual_action_legacy(command_text: str) -> str | None:
     mapping = {
         "pump up": "pump_up",
         "pump": "pump_up",
+        "increase pump": "pump_up",
         "increase flow": "pump_up",
+        "raise flow": "pump_up",
+        "raise pump": "pump_up",
         "flow up": "pump_up",
+        "cool it": "pump_up",
+        "cool it down": "pump_up",
+        "cool reactor": "pump_up",
+        "lower temperature": "pump_up",
+        "reduce temperature": "pump_up",
         "pump down": "pump_down",
+        "slow pump": "pump_down",
+        "lower pump": "pump_down",
         "decrease flow": "pump_down",
+        "reduce flow": "pump_down",
+        "lower flow": "pump_down",
         "flow down": "pump_down",
         "vent": "vent",
         "bleed": "vent",
+        "open vent": "vent",
+        "dump pressure": "vent",
+        "lower pressure": "vent",
+        "reduce pressure": "vent",
+        "relieve pressure": "vent",
         "flush": "flush",
         "purge": "flush",
+        "flush coolant": "flush",
+        "purge coolant": "flush",
+        "clean filter": "flush",
+        "clean filters": "flush",
+        "clear impurity": "flush",
+        "clear impurities": "flush",
+        "filter": "flush",
         "balance": "balance",
         "rebalance": "balance",
         "valves": "balance",
+        "balance valves": "balance",
+        "align valves": "balance",
+        "adjust valves": "balance",
+        "correct skew": "balance",
+        "equalise": "balance",
+        "equalize": "balance",
     }
     return mapping.get(command)
+
+
+def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | None:
+    command = _normalise(command_text)
+    if not command.startswith(":"):
+        return None
+
+    if command in {":help", ":dev", ":debug help"}:
+        return StepResult(
+            state,
+            (
+                "DEV CONSOLE",
+                ":debug     internal state snapshot",
+                ":metrics   habit counters",
+            ),
+        )
+    if command in {":debug", ":state"}:
+        crisis = state.crisis
+        crisis_line_text = "none"
+        if crisis is not None:
+            crisis_line_text = (
+                f"{crisis.kind} progress {crisis.progress}/{crisis.required_progress}, "
+                f"window {crisis.turns_left}"
+            )
+        return StepResult(
+            state,
+            (
+                "DEV STATE",
+                f"internal beat: {state.turn}",
+                f"drift: {drift_stage(state).value}",
+                f"manual familiarity: {state.manual_familiarity}",
+                f"delegated interventions: {state.delegated_controls}",
+                f"raw inspections: {state.raw_inspections}",
+                f"sleepers lost: {state.sleepers_lost}",
+                f"crisis: {crisis_line_text}",
+                f"outcome: {state.outcome or 'none'}",
+            ),
+        )
+    if command in {":metrics", ":habits"}:
+        return StepResult(
+            state,
+            (
+                "DEV METRICS",
+                f"manual familiarity: {state.manual_familiarity}",
+                f"delegated interventions: {state.delegated_controls}",
+                f"raw inspections: {state.raw_inspections}",
+            ),
+        )
+    return StepResult(
+        state,
+        (
+            "DEV CONSOLE",
+            "unknown dev command. Try :help.",
+        ),
+    )
 
 
 def _help_lines() -> tuple[str, ...]:
     return (
         "COOLANT CONSOLE COMMANDS",
+        "arka can handle routine trims. The manual panel remains live.",
         "status      refresh coolant panel and arka summary",
         "raw         detailed coolant telemetry",
         "delegate    ask arka to adjust coolant",

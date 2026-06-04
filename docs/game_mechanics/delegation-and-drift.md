@@ -76,7 +76,7 @@ Current anchors:
 
 - `pure-delegation` reaches wrong drift with no manual familiarity and fails.
 - `practised-manual` survives with low delegation and fluent hands.
-- `raw-curious` proves raw inspections can become a habit worth tracking.
+- `raw-curious` survives with frequent raw inspections, but loses sleepers.
 - `hesitant` exposes whether arka is too attractive or the first-run affordances
   are too vague.
 

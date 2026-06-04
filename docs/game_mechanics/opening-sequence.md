@@ -27,7 +27,8 @@ custodian roster: 1 responsive
 
 arka: Good. You're awake.
 arka: Reactor coolant is drifting. Nothing dramatic.
-arka: I can take it, if you like. Raw panel is live if you want it.
+arka: I can take it, if you like. Raw panel and manual controls are live.
+arka: Pumps, vent, flush, balance. Unglamorous verbs, but they work.
 Type help for commands.
 ```
 
@@ -35,9 +36,10 @@ The next visible state is the compact coolant HUD, followed by arka's qualitativ
 summary. This keeps the opening short and lets the first real prompt arrive
 quickly.
 
-The terminal clears once on interactive launch. This is a presentation courtesy,
-not a state transition. Non-interactive runs do not clear the screen, so CI and
-future transcript tooling stay readable.
+The terminal clears on interactive launch and again for major scene changes such
+as pressure events, blooms, failures, and endings. This is a presentation
+courtesy, not a state transition. Non-interactive runs do not clear the screen,
+so CI and transcript tooling stay readable.
 
 ## Closing Debrief
 
@@ -77,7 +79,5 @@ eventual contradiction.
 ## Outstanding
 
 - Choose the ship name, or decide that the MVP should keep avoiding it.
-- Tune whether the opening should mention the coolant objective more plainly.
-- Add transcript tests once the playtest runner exists.
 - Consider a separate catastrophic-failure closing beat after more failure
   routes have been played by hand.

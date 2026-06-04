@@ -79,23 +79,21 @@ contracts, voice, mechanics, architecture, and open questions.
 
 Goal: make the current MVP worth replaying and worth studying.
 
+Status: concluded. Phase 0 is now a playable, testable coolant slice.
+
 Done:
 
 - Opening screen and boot sequence.
 - A short debrief or end screen that reflects delegation and manual practice.
-- Interactive launch screen clear.
+- Interactive launch and event screen clears.
 - Transcript playtest runner with seeded routes.
 - Coolant, manual familiarity, and delegation/drift mechanic docs.
-
-Build Next:
-
 - Better first-run affordances without tutorialising the trap away.
-- Better refresh rules for later scene changes.
 - More natural-language synonyms for manual and delegation actions.
 - Debug/status commands for development that are clearly non-player-facing.
 - Ad-hoc command-file support for the playtest runner.
 
-Tune:
+Tuned/Evidenced:
 
 - Delegation should solve early problems cleanly.
 - Manual should feel a little slow, not useless.
@@ -103,19 +101,20 @@ Tune:
 - The final crisis should be hard for a pure delegator and fair for a practised player.
 - arka drift should be catchable, but only if the player keeps looking.
 
-Document:
+Documents:
 
 - `docs/game_mechanics/reactor-coolant.md` (started)
 - `docs/game_mechanics/manual-familiarity.md` (started)
 - `docs/game_mechanics/delegation-and-drift.md` (started)
 - `docs/game_mechanics/opening-sequence.md` (started)
 
-Exit criteria:
+Exit Evidence:
 
-- Three or more playtest transcripts show different player habits.
-- The pure delegation path is tempting and later costly.
-- A practised manual path can survive without feeling like a secret solution.
-- Tests cover the important state transitions.
+- `pure-delegation`: fails late with wrong drift, no raw inspections, no manual familiarity.
+- `practised-manual`: survives cleanly with fluent hands and low delegation.
+- `raw-curious`: survives with frequent raw inspections but cryostasis losses.
+- `hesitant`: exposes a partial, uncertain route for affordance testing.
+- Tests cover important state transitions and the playtest runner.
 
 ## Phase 1: Terminal Game Spine
 
@@ -125,7 +124,7 @@ Add:
 
 - Save/load.
 - Seed saves for known story/mechanic moments.
-- More scenario-runner affordances, especially ad-hoc command files.
+- More scenario-runner affordances, especially seed-start routes and transcript comparison.
 - Structured command history for debugging and balancing.
 - A small mission timeline beyond one maintenance window.
 - A real intro, midpoint pressure beat, and ending summary.
@@ -384,7 +383,8 @@ custodian roster: 1 responsive
 
 arka: Good. You're awake.
 arka: Reactor coolant is drifting. Nothing dramatic.
-arka: I can take it, if you like. Raw panel is live if you want it.
+arka: I can take it, if you like. Raw panel and manual controls are live.
+arka: Pumps, vent, flush, balance. Unglamorous verbs, but they work.
 ```
 
 The opening should not over-teach. It should give the player enough to act and
@@ -505,9 +505,8 @@ still teaching us what it is.
 ## Near-Term Suggested Order
 
 1. Improve arka natural-language coverage now that `.env` is live.
-2. Add ad-hoc command-file support to the playtest runner.
-3. Tune the coolant MVP from transcripts.
-4. Add save/load.
-5. Decide whether the second system is cryostasis or route plotting.
-6. Start the first web surface only after the terminal loop has enough shape to
+2. Add save/load.
+3. Add structured command history for debugging and balancing.
+4. Decide whether the second system is cryostasis or route plotting.
+5. Start the first web surface only after the terminal loop has enough shape to
     be worth preserving.
