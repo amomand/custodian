@@ -65,7 +65,7 @@ playtest report should show:
 
 - the command transcript
 - final outcome
-- delegated turn count
+- delegated intervention count
 - raw inspection count
 - manual familiarity label
 - sleeper losses
@@ -79,7 +79,7 @@ This will help detect whether players really stop reading raw telemetry.
 Seed states become useful once the coolant arc is stable enough to compare
 against itself:
 
-- turn 1 clean start
+- clean start
 - post-filter fouling
 - pressure surge
 - silicate bloom

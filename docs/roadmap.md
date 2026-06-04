@@ -25,6 +25,7 @@ The repo currently has a narrow terminal MVP:
 
 - One system: reactor coolant.
 - Deterministic `ShipState` and coolant state transitions.
+- A compact coolant HUD that carries telemetry outside arka's voice.
 - arka summary drift: accurate, interpretive, selective, wrong.
 - Optional model-backed arka interpreter for natural-language input.
 - Diegetic opening screen and closing debrief.
@@ -81,10 +82,12 @@ Done:
 
 - Opening screen and boot sequence.
 - A short debrief or end screen that reflects delegation and manual practice.
+- Interactive launch screen clear.
 
 Build Next:
 
 - Better first-run affordances without tutorialising the trap away.
+- Better refresh rules for later scene changes.
 - More natural-language synonyms for manual and delegation actions.
 - Debug/status commands for development that are clearly non-player-facing.
 - A transcript playtest runner like The Cabin's local scenarios.
@@ -122,7 +125,7 @@ Add:
 - A scenario runner that can drive the terminal game and capture transcripts.
 - Structured command history for debugging and balancing.
 - A small mission timeline beyond one maintenance window.
-- A real intro, midpoint pressure turn, and ending summary.
+- A real intro, midpoint pressure beat, and ending summary.
 
 Expand ship systems carefully:
 
@@ -161,7 +164,7 @@ Possible loop:
 2. Choose or delegate route plotting.
 3. Prepare ship systems for a jump.
 4. Execute jump.
-5. Resolve consequences over several turns.
+5. Resolve consequences over several internal beats.
 6. Decide what to repair, seal, ignore, or delegate.
 
 Route planning should include:
@@ -403,7 +406,7 @@ Second web milestone:
 
 - Side panel for raw telemetry.
 - arka advisory panel.
-- Turn/crisis indicators.
+- Pressure/crisis indicators.
 - Save/load.
 
 Third web milestone:
@@ -463,7 +466,7 @@ like paranoia, not genre literacy.
 We will need debug tools. Keep them clearly separate from player commands:
 
 - Seed state.
-- Set turn.
+- Set internal beat.
 - Set drift stage.
 - Print hidden familiarity.
 - Run scripted route.
@@ -501,7 +504,7 @@ still teaching us what it is.
 1. Add transcript playtest runner.
 2. Improve arka natural-language coverage now that `.env` is live.
 3. Write coolant mechanic docs.
-4. Add seed states for key turns.
+4. Add seed states for key beats.
 5. Tune the coolant MVP from transcripts.
 6. Add save/load.
 7. Decide whether the second system is cryostasis or route plotting.

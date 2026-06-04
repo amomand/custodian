@@ -10,6 +10,7 @@ starts asking for decisions. It should establish:
 - arka is already present, useful, and calm
 - the reactor coolant loop is the immediate job
 - raw telemetry exists, but arka is easier
+- current telemetry is visible as ship readout, not arka speech
 
 It should not become a tutorial. The player should have enough footing to act
 and enough ambiguity to ask arka for help.
@@ -30,8 +31,13 @@ arka: I can take it, if you like. Raw panel is live if you want it.
 Type help for commands.
 ```
 
-The next line is the ordinary turn-one arka coolant summary. This keeps the
-opening short and lets the first real prompt arrive quickly.
+The next visible state is the compact coolant HUD, followed by arka's qualitative
+summary. This keeps the opening short and lets the first real prompt arrive
+quickly.
+
+The terminal clears once on interactive launch. This is a presentation courtesy,
+not a state transition. Non-interactive runs do not clear the screen, so CI and
+future transcript tooling stay readable.
 
 ## Closing Debrief
 
@@ -63,6 +69,10 @@ player's trust before the drift matters.
 
 The raw-panel mention is intentionally mild. It gives the player a route toward
 truth without making raw telemetry sound like the "correct" tutorial answer.
+
+arka should not read out telemetry numbers in ordinary summaries. The HUD and
+raw panel own numbers; arka owns interpretation, reassurance, omission, and
+eventual contradiction.
 
 ## Outstanding
 

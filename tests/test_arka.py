@@ -11,7 +11,7 @@ class ArkaTests(unittest.TestCase):
 
         self.assertEqual(drift_stage(state), DriftStage.SELECTIVE)
 
-    def test_selective_summary_omits_important_true_problem(self) -> None:
+    def test_selective_summary_omits_raw_numbers(self) -> None:
         state = ShipState(
             turn=16,
             reactor=ReactorCoolantSystem(
@@ -26,11 +26,12 @@ class ArkaTests(unittest.TestCase):
 
         summary = summarize_coolant(state)
 
-        self.assertIn("606 C", summary)
+        self.assertIn("headline coolant values", summary)
+        self.assertNotIn("606 C", summary)
         self.assertNotIn("41", summary)
         self.assertNotIn("impurity", summary)
 
-    def test_wrong_summary_disagrees_with_raw_temperature(self) -> None:
+    def test_wrong_summary_does_not_speak_raw_temperature(self) -> None:
         state = ShipState(
             turn=21,
             reactor=replace(ReactorCoolantSystem(), temperature_c=666),
@@ -44,4 +45,3 @@ class ArkaTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

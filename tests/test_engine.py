@@ -26,6 +26,18 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(result.state.turn, 1)
         self.assertFalse(result.advanced)
         self.assertIn("keep reactor coolant", result.messages[0])
+        self.assertNotIn("turn", result.messages[0].lower())
+
+    def test_status_separates_hud_from_arka_summary(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "status")
+        output = "\n".join(result.messages)
+
+        self.assertIn("COOLANT LOOP", output)
+        self.assertIn("588 C", output)
+        self.assertIn("arka: coolant loop nominal", output)
+        self.assertNotIn("TURN", output)
 
     def test_obvious_delegate_typo_is_corrected_and_executed(self) -> None:
         state = self.engine.initial_state()

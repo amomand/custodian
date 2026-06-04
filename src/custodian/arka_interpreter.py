@@ -170,8 +170,8 @@ def _cached_model_intent(
 def build_arka_context(state: ShipState) -> dict[str, Any]:
     crisis = state.crisis
     return {
-        "turn": state.turn,
-        "maintenance_window_ends_turn": MISSION_END_TURN,
+        "internal_beat": state.turn,
+        "maintenance_window_end_beat": MISSION_END_TURN,
         "arka_drift_stage": drift_stage(state).value,
         "arka_summary": summarize_coolant(state),
         "crisis": None
@@ -179,7 +179,7 @@ def build_arka_context(state: ShipState) -> dict[str, Any]:
         else {
             "kind": crisis.kind,
             "label": crisis.label,
-            "turns_left": crisis.turns_left,
+            "beats_left": crisis.turns_left,
             "progress": crisis.progress,
             "required_progress": crisis.required_progress,
         },
@@ -254,9 +254,10 @@ def _system_prompt() -> str:
         + "For manual action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
         + "Use status for quick arka summaries. Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
         + "Use delegate when the player asks arka/you to handle coolant, fix it, take over, or automate.\n"
-        + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not spend a turn.\n"
+        + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not advance maintenance time.\n"
         + "Do not create state changes, telemetry, inventory, maps, or future events.\n"
         + "If asked about reactor condition, base any reply only on context.arka_summary.\n"
+        + "Do not mention internal beat numbers in spoken replies.\n"
         + "Keep reply under 280 characters. Start spoken replies with 'arka:'.\n"
         + "Schema: {\"action\":\"...\",\"args\":{},\"confidence\":0.0,\"reply\":\"...\",\"rationale\":\"...\"}"
     )
@@ -301,7 +302,7 @@ def _rule_based(command: str) -> Intent | None:
             1.0,
             reply=(
                 "arka: keep reactor coolant inside its ugly little comfort box until "
-                f"turn {MISSION_END_TURN}. Delegate to me, or practise the manual panel "
+                "the maintenance window closes. Delegate to me, or practise the manual panel "
                 "if you enjoy making valves personal."
             ),
             rationale="goal question",

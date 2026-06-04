@@ -19,8 +19,8 @@ allowed to own the reactor.
 3. Obvious commands use a deterministic rule path and do not call the model.
 4. Ambiguous or conversational input can call the configured OpenAI model.
 5. The engine executes only known `Intent.action` values.
-6. Reactor telemetry, turn advancement, crises, sleeper losses, arka drift, and
-   manual familiarity remain owned by `ShipState` transitions.
+6. Reactor telemetry, internal clock advancement, crises, sleeper losses, arka
+   drift, and manual familiarity remain owned by `ShipState` transitions.
 
 ## Intent Shape
 

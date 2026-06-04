@@ -28,7 +28,7 @@ Core ideas:
 - Raw telemetry as truth-adjacent, slower than reassurance
 - arka summaries that move from accurate to interpretive, selective, and wrong
 - Hidden manual familiarity gained only by manual work
-- A short 20-30 turn coolant maintenance arc
+- A short coolant maintenance arc
 
 ---
 
@@ -61,6 +61,7 @@ OPENAI_API_KEY=your_key_here
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_REASONING_EFFORT=none
 CUSTODIAN_AI=on
+CUSTODIAN_CLEAR=on
 ```
 
 To see why arka has fallen back to deterministic mode:
@@ -88,12 +89,13 @@ tests so the suite stays fast and local.
 - **Natural language arka layer** - free text becomes a structured `Intent`
 - **Deterministic fallback** - the game remains playable without credentials
 - **Diegetic boot sequence** - the prototype now opens as an in-world shell
+- **Coolant HUD** - telemetry is shown separately from arka's summary
 - **Run debrief** - endings reflect manual practice, delegation, and raw checks
 - **Diegetic command handling** - no invalid-command voice
 - **Reactor coolant model** - temperature, pressure, flow, impurity, valve skew, reserve
 - **Delegation tracking** - arka control affects drift, not a visible trust meter
 - **Manual practice** - hidden familiarity improves hand control under pressure
-- **Authored crisis beats** - key turns and arka drift are designed, not improvised
+- **Authored crisis beats** - pressure points and arka drift are designed, not improvised
 - **AI hardening** - model replies are sanitised before they reach the terminal
 
 ---
@@ -104,7 +106,7 @@ The original project note is preserved in `docs/original-idea.md`.
 
 Current working docs:
 
-- `design.md` - MVP thesis, loop, systems, and turn arc
+- `design.md` - MVP thesis, loop, systems, and maintenance arc
 - `docs/roadmap.md` - path from MVP to larger realisation
 - `docs/game_mechanics/opening-sequence.md` - boot text and run debrief notes
 - `docs/lore/arka.md` - arka character and runtime voice capsule
@@ -139,6 +141,7 @@ custodian/
 │   ├── config.py                   # .env loading
 │   ├── models.py                   # ShipState and reactor telemetry
 │   ├── narrative.py                # Opening and closing terminal text
+│   ├── telemetry.py                # Compact terminal coolant HUD
 │   └── cli.py                      # Terminal loop
 └── tests/                          # Unit tests and AI boundary tests
 ```
@@ -154,6 +157,7 @@ Environment variables:
 - `OPENAI_REASONING_EFFORT` - Default: `none`
 - `CUSTODIAN_AI=off` - Force deterministic fallback
 - `CUSTODIAN_DEBUG=1` - Print AI fallback diagnostics to stderr
+- `CUSTODIAN_CLEAR=off` - Disable the interactive launch screen clear
 
 The Cabin used `gpt-5.4-mini` for this kind of diegetic parser/voice work.
 Custodian keeps that default because arka needs fast structured interpretation
@@ -167,7 +171,7 @@ and tone, while the ship simulation does the actual reasoning.
 only see the arka-facing summary and context the engine chooses to provide.
 
 **The model interprets; the ship decides.** Player text becomes an intent. Only
-the deterministic engine advances turns, mutates coolant, resolves crises,
+the deterministic engine advances internal time, mutates coolant, resolves crises,
 records familiarity, or kills sleepers.
 
 **Delegation must be genuinely attractive.** arka should be useful and pleasant

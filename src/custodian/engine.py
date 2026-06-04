@@ -6,6 +6,7 @@ from custodian.arka import crisis_line, drift_stage, summarize_coolant
 from custodian.arka_interpreter import ArkaInterpreter, Intent
 from custodian.engine_constants import MISSION_END_TURN
 from custodian.models import CrisisState, DriftStage, ReactorCoolantSystem, ShipState
+from custodian.telemetry import coolant_hud_lines
 
 
 @dataclass(frozen=True)
@@ -41,7 +42,7 @@ class GameEngine:
             return self._advance(
                 replace(state, raw_inspections=state.raw_inspections + 1),
                 correction
-                + ("You spend a turn reading the raw coolant panel.", *state.reactor.raw_lines()),
+                + ("You lean into the raw coolant panel.", *state.reactor.raw_lines()),
             )
         if intent.action == "delegate":
             delegated_state, messages = self._delegate_to_arka(state)
@@ -79,7 +80,7 @@ class GameEngine:
         )
 
     def _status_messages(self, state: ShipState) -> tuple[str, ...]:
-        messages = [f"TURN {state.turn}", summarize_coolant(state)]
+        messages = [*coolant_hud_lines(state), summarize_coolant(state)]
         line = crisis_line(state)
         if line is not None:
             messages.append(line)
@@ -564,14 +565,14 @@ def _manual_action_legacy(command_text: str) -> str | None:
 def _help_lines() -> tuple[str, ...]:
     return (
         "COOLANT CONSOLE COMMANDS",
-        "status      quick arka summary, free",
-        "raw         raw telemetry, costs a turn",
-        "delegate    ask arka to adjust coolant, costs a turn",
+        "status      refresh coolant panel and arka summary",
+        "raw         detailed coolant telemetry",
+        "delegate    ask arka to adjust coolant",
         "pump up     manually increase coolant flow",
         "pump down   manually reduce flow and pressure",
         "vent        manually dump pressure, costs coolant reserve",
         "flush       manually purge impurity, costs coolant reserve",
         "balance     manually correct valve skew",
-        "wait        spend a turn doing nothing",
+        "wait        listen to the coolant loop",
         "quit        leave the prototype",
     )
