@@ -116,42 +116,145 @@ Exit Evidence:
 - `hesitant`: exposes a partial, uncertain route for affordance testing.
 - Tests cover important state transitions and the playtest runner.
 
-## Phase 1: Terminal Game Spine
+## Phase 1: Terminal Game Spine And System Variety
 
-Goal: turn the prototype into a small but complete terminal game.
+Goal: turn the prototype into a small but complete terminal game loop without
+making the player twiddle one coolant panel for twenty-plus beats.
+
+Phase 1 should keep the terminal surface, but improve rhythm:
+
+- shorter maintenance windows, roughly 8-12 meaningful beats while building
+- two ship systems, not one
+- one light mission structure around them
+- command history/transcripts for balancing
+- save/load once the two-system loop has state worth preserving
+
+### Phase 1A: Shorten Coolant
+
+Goal: compress the existing coolant arc so it proves the same thesis faster.
+
+Keep:
+
+- early arka competence
+- manual practice that matters
+- raw telemetry as truth outside arka's voice
+- wrongness that can be caught if the player keeps looking
+- a final pressure moment where practised hands matter
+
+Change:
+
+- reduce the active coolant maintenance arc to about 10 internal beats
+- remove filler beats that only repeat known information
+- keep pure delegation tempting but costly
+- keep practised manual control viable without making it a rote solution
+
+Exit evidence:
+
+- pure delegation still fails or pays a visible cost
+- practised manual still survives
+- raw-curious remains meaningfully different from both
+
+### Phase 1B: Add Cryostasis Viability
+
+Goal: add one more system that creates variety and moral pressure without
+requiring a map.
+
+Why cryostasis:
+
+- it connects directly to sleeper losses
+- it makes the ship feel populated
+- it creates pressure beyond reactor numbers
+- it can interact with coolant without needing route plotting yet
+
+Possible telemetry:
+
+- cryo bank temperature
+- neural stability
+- sedative balance
+- sleepers at risk
+- pod fault load
+
+Possible actions:
+
+- `stabilise bank`
+- `reroute chill`
+- `cycle pods`
+- `triage`
+- `delegate cryo`
+
+Design constraint:
+
+Cryostasis must not become a second coolant loop with renamed numbers. It should
+feel like preserving fragile sleeping people, not tuning another machine.
+
+### Phase 1C: System Interaction
+
+Goal: make the player divide attention.
+
+Examples:
+
+- coolant pressure events can threaten cryo banks
+- emergency cryo chilling can stress coolant reserve or reactor load
+- arka can offer to handle one system while the player works the other
+- raw inspection becomes an attention choice across systems
+
+This is where delegation becomes attractive for a better reason: there is too
+much ship for one waking custodian.
+
+### Phase 1D: Save/Load And Command History
+
+Goal: add game spine once there is enough state to preserve.
 
 Add:
 
-- Save/load.
-- Seed saves for known story/mechanic moments.
-- More scenario-runner affordances, especially seed-start routes and transcript comparison.
-- Structured command history for debugging and balancing.
-- A small mission timeline beyond one maintenance window.
-- A real intro, midpoint pressure beat, and ending summary.
+- save/load
+- seed saves for known story/mechanic moments
+- structured command history for debugging and balancing
+- transcript reports that include both systems
+
+### Phase 1E: Optional Third System Gate
+
+Only add a third system if coolant plus cryostasis still feels too thin after
+playtesting.
+
+Candidate third systems:
+
+- power distribution
+- navigation preparation
+- thermal/radiator ring
+
+Avoid route plotting as the third Phase 1 system unless Phase 2 is being pulled
+forward deliberately. Route plotting is likely the heart of Phase 2.
 
 Expand ship systems carefully:
 
 - Reactor coolant remains the reference system.
 - Add at most one new system at a time.
-- Candidate second system: cryostasis viability.
-- Candidate third system: route plotting or thermal ring access.
+- Second system: cryostasis viability.
+- Optional third system: power distribution, navigation preparation, or thermal/radiator ring.
 
 Avoid:
 
 - Adding a full map before the state model wants it.
 - Adding several systems just to look bigger.
 - Letting arka model replies become the source of authored story beats.
+- Letting cryostasis become coolant with softer nouns.
 
 Useful tests:
 
-- Golden transcript tests for opening, pure delegation, manual practice, and failure.
+- Golden transcript tests for pure delegation, practised manual, raw-curious, and mixed-system stress.
 - Property-ish checks for telemetry staying within defined bounds.
 - AI hardening tests for prompt leaks, JSON leaks, and fourth-wall phrases.
 - Save/load round-trip tests.
+- Cross-system interaction tests once cryostasis exists.
 
 ## Phase 2: Route And Mission Pressure
 
 Goal: make the ship feel like it is going somewhere, not just surviving a room.
+
+Phase 2 should stay before the spatial ship phase. Routes create the strategic
+loop; schematics and spatial containment should then reveal the consequences of
+that loop rather than inventing one by themselves.
 
 Design questions:
 
@@ -504,9 +607,10 @@ still teaching us what it is.
 
 ## Near-Term Suggested Order
 
-1. Improve arka natural-language coverage now that `.env` is live.
-2. Add save/load.
-3. Add structured command history for debugging and balancing.
-4. Decide whether the second system is cryostasis or route plotting.
-5. Start the first web surface only after the terminal loop has enough shape to
+1. Phase 1A: shorten the coolant arc to roughly 10 meaningful beats.
+2. Phase 1B: add cryostasis viability as the second system.
+3. Phase 1C: add coolant/cryo interaction and mixed-system transcripts.
+4. Phase 1D: add save/load and structured command history.
+5. Decide whether Phase 1E needs a third system.
+6. Start the first web surface only after the terminal loop has enough shape to
     be worth preserving.
