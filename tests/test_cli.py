@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import patch
 
-from custodian.cli import _lines_with_arka_spacing
+from custodian.cli import _complete_command, _configure_completion, _lines_with_arka_spacing
 
 
 class CliTests(unittest.TestCase):
@@ -34,6 +35,16 @@ class CliTests(unittest.TestCase):
                 "done",
             ),
         )
+
+    def test_command_completion_matches_multi_word_controls(self) -> None:
+        self.assertEqual(_complete_command("rer", 0), "reroute chill")
+        self.assertEqual(_complete_command("delegate c", 0), "delegate cryo")
+        self.assertEqual(_complete_command("delegate c", 1), None)
+
+    def test_completion_can_be_disabled(self) -> None:
+        with patch("custodian.cli.sys.stdin.isatty", return_value=True):
+            with patch.dict("custodian.cli.os.environ", {"CUSTODIAN_COMPLETE": "off"}):
+                self.assertFalse(_configure_completion())
 
 
 if __name__ == "__main__":

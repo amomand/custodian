@@ -7,9 +7,32 @@ from custodian.engine import GameEngine
 from custodian.narrative import closing_lines, opening_lines
 
 
+COMMAND_COMPLETIONS = (
+    "status",
+    "raw",
+    "raw cryo",
+    "delegate",
+    "delegate cryo",
+    "pump up",
+    "pump down",
+    "vent",
+    "flush",
+    "balance",
+    "stabilise bank",
+    "stabilize bank",
+    "reroute chill",
+    "cycle pods",
+    "triage",
+    "wait",
+    "help",
+    "quit",
+)
+
+
 def main() -> None:
     engine = GameEngine()
     state = engine.initial_state()
+    _configure_completion()
 
     _clear_screen()
     _print_lines(opening_lines())
@@ -61,6 +84,39 @@ def _read_command() -> str:
     command = input()
     print(f"> {command}")
     return command
+
+
+def _configure_completion() -> bool:
+    if not sys.stdin.isatty():
+        return False
+    if os.getenv("CUSTODIAN_COMPLETE", "on").strip().lower() in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }:
+        return False
+
+    try:
+        import readline
+    except ImportError:
+        return False
+
+    delimiters = readline.get_completer_delims()
+    readline.set_completer_delims(delimiters.replace(" ", ""))
+    readline.set_completer(_complete_command)
+    if "libedit" in (getattr(readline, "__doc__", "") or ""):
+        readline.parse_and_bind("bind ^I rl_complete")
+    else:
+        readline.parse_and_bind("tab: complete")
+    return True
+
+
+def _complete_command(text: str, state: int) -> str | None:
+    matches = tuple(command for command in COMMAND_COMPLETIONS if command.startswith(text))
+    if state >= len(matches):
+        return None
+    return matches[state]
 
 
 def _clear_screen() -> bool:
