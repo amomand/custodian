@@ -37,6 +37,7 @@ The current CI should stay small:
 - run unit tests
 - compile sources
 - run a deterministic terminal smoke test
+- run deterministic playtest scenario summaries
 
 No deployment yet. No web checks until a web surface exists. No heavy lint stack
 until style drift becomes a problem.
@@ -57,8 +58,8 @@ concerns, not block every experiment.
 
 ### Transcript Playtest Runner
 
-This should probably be the next infrastructure lift now that the terminal
-opening and debrief exist.
+The first version exists in `custodian.playtest` and
+`tools/playtest_runner.py`.
 
 Custodian needs transcripts because the design is about player habits. A good
 playtest report should show:
@@ -74,10 +75,15 @@ playtest report should show:
 
 This will help detect whether players really stop reading raw telemetry.
 
+Current local command:
+
+```bash
+python3 tools/playtest_runner.py --all --summary-only
+```
+
 ### Seed States
 
-Seed states become useful once the coolant arc is stable enough to compare
-against itself:
+The first named seed states exist in `custodian.seeds`:
 
 - clean start
 - post-filter fouling
@@ -91,9 +97,9 @@ against itself:
 The Cabin's docs are numerous because they make maintenance easier. Custodian
 should add docs only as mechanics become real:
 
-- `docs/game_mechanics/reactor-coolant.md`
-- `docs/game_mechanics/manual-familiarity.md`
-- `docs/game_mechanics/delegation-and-drift.md`
+- `docs/game_mechanics/reactor-coolant.md` (started)
+- `docs/game_mechanics/manual-familiarity.md` (started)
+- `docs/game_mechanics/delegation-and-drift.md` (started)
 - `docs/game_mechanics/opening-sequence.md` (started)
 
 ## Borrow Later
@@ -155,7 +161,7 @@ For ordinary changes:
 
 For playtest-driven changes:
 
-1. Capture transcript.
+1. Capture transcript with `tools/playtest_runner.py`.
 2. Mark when the player delegates, reads raw, or practises manual control.
 3. Tune mechanics.
 4. Keep arka attractive early.

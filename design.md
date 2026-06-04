@@ -26,6 +26,7 @@ Included:
 - Hidden manual familiarity gained only through manual coolant actions.
 - Summary drift from accurate to interpretive, selective, and wrong.
 - Scripted time pressure events where practised manual control matters.
+- Deterministic playtest scenarios and named seed states for tuning.
 
 Still excluded:
 
@@ -95,6 +96,10 @@ read out current numbers; the HUD and raw panel own telemetry display.
 Opening and closing text lives in `custodian.narrative`. The debrief can read
 hidden state, but it must translate habits into fiction rather than showing
 hidden numbers.
+
+`custodian.playtest` runs deterministic command routes through the same engine
+and reports habits. `custodian.seeds` provides named state factories for
+targeted tests and future dev tooling.
 
 ## Arka Interpreter
 
@@ -169,7 +174,8 @@ docs, not in the text shown to the player.
 2. Add focused tests for manual familiarity, delegation, drift, and crisis
    resolution. Done.
 3. Add diegetic opening and habit-sensitive debrief. Done.
-4. Play the arc by hand and tune numbers until delegation feels genuinely useful
+4. Add transcript playtest runner, seeded routes, and mechanic docs. Done.
+5. Play the arc by hand and tune numbers until delegation feels genuinely useful
    early.
-5. Keep future expansion behind the same state-transition shape: more systems
+6. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.

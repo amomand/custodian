@@ -28,6 +28,7 @@ The repo currently has a narrow terminal MVP:
 - A compact coolant HUD that carries telemetry outside arka's voice.
 - arka summary drift: accurate, interpretive, selective, wrong.
 - Optional model-backed arka interpreter for natural-language input.
+- Deterministic transcript playtest runner and seed routes.
 - Diegetic opening screen and closing debrief.
 - Hidden manual familiarity.
 - A short scripted maintenance arc.
@@ -83,6 +84,8 @@ Done:
 - Opening screen and boot sequence.
 - A short debrief or end screen that reflects delegation and manual practice.
 - Interactive launch screen clear.
+- Transcript playtest runner with seeded routes.
+- Coolant, manual familiarity, and delegation/drift mechanic docs.
 
 Build Next:
 
@@ -90,7 +93,7 @@ Build Next:
 - Better refresh rules for later scene changes.
 - More natural-language synonyms for manual and delegation actions.
 - Debug/status commands for development that are clearly non-player-facing.
-- A transcript playtest runner like The Cabin's local scenarios.
+- Ad-hoc command-file support for the playtest runner.
 
 Tune:
 
@@ -102,9 +105,9 @@ Tune:
 
 Document:
 
-- `docs/game_mechanics/reactor-coolant.md`
-- `docs/game_mechanics/manual-familiarity.md`
-- `docs/game_mechanics/delegation-and-drift.md`
+- `docs/game_mechanics/reactor-coolant.md` (started)
+- `docs/game_mechanics/manual-familiarity.md` (started)
+- `docs/game_mechanics/delegation-and-drift.md` (started)
 - `docs/game_mechanics/opening-sequence.md` (started)
 
 Exit criteria:
@@ -122,7 +125,7 @@ Add:
 
 - Save/load.
 - Seed saves for known story/mechanic moments.
-- A scenario runner that can drive the terminal game and capture transcripts.
+- More scenario-runner affordances, especially ad-hoc command files.
 - Structured command history for debugging and balancing.
 - A small mission timeline beyond one maintenance window.
 - A real intro, midpoint pressure beat, and ending summary.
@@ -501,12 +504,10 @@ still teaching us what it is.
 
 ## Near-Term Suggested Order
 
-1. Add transcript playtest runner.
-2. Improve arka natural-language coverage now that `.env` is live.
-3. Write coolant mechanic docs.
-4. Add seed states for key beats.
-5. Tune the coolant MVP from transcripts.
-6. Add save/load.
-7. Decide whether the second system is cryostasis or route plotting.
-8. Start the first web surface only after the terminal loop has enough shape to
+1. Improve arka natural-language coverage now that `.env` is live.
+2. Add ad-hoc command-file support to the playtest runner.
+3. Tune the coolant MVP from transcripts.
+4. Add save/load.
+5. Decide whether the second system is cryostasis or route plotting.
+6. Start the first web surface only after the terminal loop has enough shape to
     be worth preserving.
