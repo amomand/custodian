@@ -25,10 +25,10 @@ reference system for manual effort, arka drift, and final crisis pressure.
 - valve skew percent, nominal 0-16
 - coolant reserve percent, caution below 35
 
-The compact terminal HUD shows the current telemetry with `OK`, `LOW`, or
-`HIGH` bands. arka's ordinary summary should not recite the numbers. If the
-player asks for `raw`, the detailed panel prints the literal field names and
-nominal bands.
+The terminal HUD shows the current telemetry with `OK`, `LOW`, or `HIGH` bands
+and threshold bars for maintainers/playtesters. arka's ordinary summary should
+not recite the numbers. If the player asks for `raw`, the detailed panel prints
+the literal field names and nominal bands.
 
 ## Manual Actions
 

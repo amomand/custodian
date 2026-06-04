@@ -32,7 +32,7 @@ arka: Pumps, vent, flush, balance. Unglamorous verbs, but they work.
 Type help for commands.
 ```
 
-The next visible state is the compact coolant HUD, followed by arka's qualitative
+The next visible state is the terminal HUD, followed by arka's qualitative
 summary. This keeps the opening short and lets the first real prompt arrive
 quickly.
 
