@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from custodian.cli import _complete_command, _configure_completion, _lines_with_arka_spacing
@@ -42,7 +43,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(_complete_command("delegate c", 1), None)
 
     def test_completion_can_be_disabled(self) -> None:
-        with patch("custodian.cli.sys.stdin.isatty", return_value=True):
+        tty_stdin = SimpleNamespace(isatty=lambda: True)
+        with patch("custodian.cli.sys.stdin", tty_stdin):
             with patch.dict("custodian.cli.os.environ", {"CUSTODIAN_COMPLETE": "off"}):
                 self.assertFalse(_configure_completion())
 
