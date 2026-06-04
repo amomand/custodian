@@ -11,8 +11,8 @@ class SeedTests(unittest.TestCase):
             {
                 "clean-start",
                 "post-filter-fouling",
+                "cryo-bank-shiver",
                 "pressure-surge",
-                "silicate-bloom",
                 "thermal-runaway-unpractised",
                 "thermal-runaway-practised",
             },

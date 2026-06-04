@@ -8,8 +8,9 @@ and early mistakes. `arka` is quicker and better early on. Later, when
 arka's account of the ship begins to drift, players who delegated too much have
 fewer practised manual habits to fall back on.
 
-This prototype is not the full game. It proves the thesis with one system, one
-terminal loop, and one short maintenance arc.
+This prototype is not the full game. It now proves the thesis with two terminal
+systems, one short maintenance window, and enough cross-pressure to make
+delegation attractive for attention, not just convenience.
 
 ## Scope
 
@@ -18,19 +19,20 @@ Included:
 - Terminal command loop with deterministic state transitions.
 - Pure state transitions around `ShipState`.
 - One `ReactorCoolantSystem` with raw telemetry.
-- An `arka` layer that summarises the same system.
-- A compact coolant HUD that carries current telemetry outside arka's voice.
+- One `CryostasisSystem` with raw telemetry and sleeper viability pressure.
+- An `arka` layer that summarises the same deterministic systems.
+- Compact coolant and cryostasis HUDs that carry current telemetry outside
+  arka's voice.
 - Optional arka interpreter for natural-language input and off-script replies.
 - Diegetic opening screen and closing debrief.
 - Manual actions and delegation as competing ways to spend attention.
-- Hidden manual familiarity gained only through manual coolant actions.
+- Hidden coolant and cryostasis familiarity gained only through manual actions.
 - Summary drift from accurate to interpretive, selective, and wrong.
 - Scripted time pressure events where practised manual control matters.
 - Deterministic playtest scenarios and named seed states for tuning.
 
 Still excluded:
 
-- Multiple systems.
 - Map movement.
 - Random generation.
 - Rich UI.
@@ -42,17 +44,23 @@ The player sees `arka` first because it is the path of least resistance.
 
 Core commands:
 
-- `status`: refresh coolant HUD and arka summary.
+- `status`: refresh coolant and cryostasis HUDs plus arka summaries.
 - `raw`: read detailed coolant telemetry.
+- `raw cryo`: read detailed cryostasis telemetry.
 - `delegate`: let arka adjust coolant.
+- `delegate cryo`: let arka tend cryostasis.
 - `pump up`: manual increase to coolant flow.
 - `pump down`: manual pressure relief through lower flow.
 - `vent`: manual pressure venting, costs coolant reserve.
 - `flush`: manual impurity purge, costs coolant reserve.
 - `balance`: manual valve balancing.
+- `stabilise bank`: manual cryo neural stabilisation.
+- `reroute chill`: cool cryo banks, stressing coolant reserve and reactor load.
+- `cycle pods`: clear pod fault load.
+- `triage`: prioritise sleepers at risk.
 - `wait`: listen to the coolant loop.
 - `help`: command list.
-- `quit`: leave the prototype.
+- `quit`: step away from the console.
 
 Manual actions are intentionally a little awkward. Low familiarity still moves
 the system, but with weaker effects and more side effects. Familiarity is never
@@ -64,12 +72,20 @@ shown as a number.
 
 - Internal maintenance beat.
 - Reactor coolant telemetry.
-- Hidden manual familiarity.
-- Number of delegated coolant interventions.
+- Hidden coolant and cryostasis familiarity.
+- Number of delegated interventions, including cryostasis delegation.
 - Raw inspection count.
 - Active crisis, if any.
 - Sleeper losses.
 - Terminal outcome.
+
+`CryostasisSystem` owns telemetry:
+
+- Bank temperature C.
+- Neural stability percent.
+- Sedative balance percent.
+- Pod fault load.
+- Sleepers at risk.
 
 `ReactorCoolantSystem` owns telemetry:
 
@@ -90,8 +106,8 @@ The CLI only prints messages and feeds input back into the engine. The arka
 interpreter returns an `Intent`, but the engine remains the only authority that
 can advance time, change telemetry, resolve crises, or record familiarity.
 
-`custodian.telemetry` owns the compact terminal HUD. arka's summaries should not
-read out current numbers; the HUD and raw panel own telemetry display.
+`custodian.telemetry` owns the compact terminal HUDs. arka's summaries should
+not read out current numbers; the HUDs and raw panels own telemetry display.
 
 Opening and closing text lives in `custodian.narrative`. The debrief can read
 hidden state, but it must translate habits into fiction rather than showing
@@ -140,25 +156,28 @@ trap is that truth is slower and colder than reassurance.
 
 ## Scripted Arc
 
-Target length: 24 internal beats.
+Target length: 12 internal beats.
 
-- Beat 5: filter fouling introduces impurity and skew.
-- Beat 11: pressure surge creates a short crisis that arka can still solve well.
-- Beat 16: silicate bloom makes impurity and valve skew the real problem.
-- Beat 21: thermal runaway creates a final crisis. It requires practised manual
+- Beat 3: filter fouling introduces impurity and skew.
+- Beat 6: a cryostasis bank shiver raises pod faults and sleeper risk.
+- Beat 8: pressure surge creates a short crisis that arka can still solve well,
+  while cryostasis absorbs some thermal risk.
+- Beat 10: thermal runaway creates a final crisis. It requires practised manual
   `balance` and `flush` actions to resolve reliably.
 
 The player can survive by delegating early, but a player who delegates every
-coolant decision reaches the final crisis with little manual familiarity and a
-bad information channel.
+coolant decision reaches the final crisis with little manual familiarity, a bad
+information channel, and unattended sleepers.
 
 ## Success And Failure
 
 Success: survive past the maintenance window with the coolant loop contained.
+Cryostasis losses can still mark the run.
 
 Failure:
 
 - Temperature, pressure, or coolant reserve crosses hard limits.
+- Cryostasis neural stability collapses.
 - The final thermal runaway crisis expires unresolved.
 - The player quits.
 
@@ -175,7 +194,7 @@ docs, not in the text shown to the player.
    resolution. Done.
 3. Add diegetic opening and habit-sensitive debrief. Done.
 4. Add transcript playtest runner, seeded routes, and mechanic docs. Done.
-5. Play the arc by hand and tune numbers until delegation feels genuinely useful
-   early.
+5. Phase 1A-C terminal pass: shorter coolant, cryostasis, and first system
+   interaction. Done.
 6. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.

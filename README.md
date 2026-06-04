@@ -4,6 +4,7 @@ You are the only waking custodian aboard a colony ship.
 The reactor is warm.
 The sleepers are not.
 arka says it can handle the coolant loop.
+It says the sleepers are quiet.
 
 It usually can.
 
@@ -12,27 +13,29 @@ It usually can.
 ## What Is This?
 
 **Custodian** is a terminal sci-fi horror prototype about the cost of
-delegation. The first MVP proves the thesis with one ship system: reactor
-coolant.
+delegation. The current terminal slice proves the thesis with reactor coolant
+and cryostasis viability.
 
-Phase 0 is concluded: the coolant slice is playable, documented, and covered by
-deterministic playtest transcripts. Phase 1 starts with terminal game spine work
-such as save/load, command history, and the next system decision.
+Phase 0 is concluded. Phase 1A-C is now represented in the terminal loop:
+coolant is shorter, cryostasis is live, and the systems can pressure each other.
+Next spine work is save/load, structured command history, and deciding whether a
+third system is worth it after playtesting.
 
-The player can work the coolant panel by hand. It is real, useful, and a
-little fiddly. Or the player can ask `arka` to handle it. Early on, arka is
-better. Later, arka's account of the ship starts to drift, and the player may
-discover that the manual skill they need is the skill they chose not to build.
+The player can work the coolant and cryostasis panels by hand. They are real,
+useful, and a little fiddly. Or the player can ask `arka` to handle one panel
+while they work the other. Early on, arka is better. Later, arka's account of
+the ship starts to drift, and the player may discover that the manual skill they
+need is the skill they chose not to build.
 
 Core ideas:
 
 - Terminal-first play, no map, no UI chrome
 - Optional AI-powered natural language input for arka
-- Deterministic reactor state and crisis logic
+- Deterministic reactor and cryostasis state
 - Raw telemetry as truth-adjacent, slower than reassurance
 - arka summaries that move from accurate to interpretive, selective, and wrong
 - Hidden manual familiarity gained only by manual work
-- A short coolant maintenance arc
+- A short two-system maintenance arc
 
 ---
 
@@ -105,9 +108,11 @@ Developer-only terminal diagnostics use a colon prefix:
 - **Diegetic boot sequence** - the prototype now opens as an in-world shell
 - **Event refreshes** - interactive terminals clear on launch and major pressure beats
 - **Coolant HUD** - telemetry is shown separately from arka's summary
+- **Cryostasis HUD** - sleeper viability is visible outside arka's voice
 - **Run debrief** - endings reflect manual practice, delegation, and raw checks
 - **Diegetic command handling** - no invalid-command voice
 - **Reactor coolant model** - temperature, pressure, flow, impurity, valve skew, reserve
+- **Cryostasis model** - bank temperature, neural stability, sedative balance, pod faults, sleepers at risk
 - **Delegation tracking** - arka control affects drift, not a visible trust meter
 - **Manual practice** - hidden familiarity improves hand control under pressure
 - **Authored crisis beats** - pressure points and arka drift are designed, not improvised
@@ -127,6 +132,7 @@ Current working docs:
 - `docs/roadmap.md` - path from MVP to larger realisation
 - `docs/game_mechanics/opening-sequence.md` - boot text and run debrief notes
 - `docs/game_mechanics/reactor-coolant.md` - coolant telemetry, actions, and pressure beats
+- `docs/game_mechanics/cryostasis-viability.md` - cryostasis telemetry, actions, and sleeper pressure
 - `docs/game_mechanics/manual-familiarity.md` - hidden practice mechanic
 - `docs/game_mechanics/delegation-and-drift.md` - arka dependence and summary drift
 - `docs/lore/arka.md` - arka character and runtime voice capsule
@@ -155,7 +161,8 @@ custodian/
 │   │   ├── delegation-and-drift.md # arka dependence and drift notes
 │   │   ├── manual-familiarity.md   # Hidden practice mechanic
 │   │   ├── opening-sequence.md     # Boot/debrief design notes
-│   │   └── reactor-coolant.md      # Coolant telemetry and pressure beats
+│   │   ├── reactor-coolant.md      # Coolant telemetry and pressure beats
+│   │   └── cryostasis-viability.md # Cryostasis telemetry and sleeper pressure
 │   ├── lore/
 │   │   └── arka.md                 # arka voice and character notes
 │   └── original-idea.md            # Copied seed idea
@@ -164,7 +171,7 @@ custodian/
 │   ├── arka.py                     # arka summary drift
 │   ├── arka_interpreter.py         # Intent parser and optional model call
 │   ├── config.py                   # .env loading
-│   ├── models.py                   # ShipState and reactor telemetry
+│   ├── models.py                   # ShipState and system telemetry
 │   ├── narrative.py                # Opening and closing terminal text
 │   ├── playtest.py                 # Deterministic scenario runner core
 │   ├── seeds.py                    # Named simulation entry states

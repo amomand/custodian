@@ -13,7 +13,7 @@ class ArkaTests(unittest.TestCase):
 
     def test_selective_summary_omits_raw_numbers(self) -> None:
         state = ShipState(
-            turn=16,
+            turn=9,
             reactor=ReactorCoolantSystem(
                 temperature_c=606,
                 pressure_kpa=244,
@@ -33,7 +33,7 @@ class ArkaTests(unittest.TestCase):
 
     def test_wrong_summary_does_not_speak_raw_temperature(self) -> None:
         state = ShipState(
-            turn=21,
+            turn=11,
             reactor=replace(ReactorCoolantSystem(), temperature_c=666),
         )
 

@@ -47,6 +47,8 @@ Everything else is allowed to move.
 
 ## Working Style
 
+- Start substantial implementation work on a branch and aim to publish it as a
+  PR, even while the project is young.
 - Keep changes narrow enough that playtest feedback remains readable.
 - Update docs when a change creates a new rule, mechanic, or strong direction.
 - For docs that also live in Obsidian, sync the vault copy too.

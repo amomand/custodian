@@ -26,15 +26,23 @@ class PlaytestTests(unittest.TestCase):
 
         self.assertGreaterEqual(report.final_state.delegated_controls, 9)
         self.assertEqual(report.final_state.manual_familiarity, 0)
+        self.assertGreater(report.final_state.sleepers_lost, 0)
         self.assertIn("arka drift: wrong", "\n".join(report.summary_lines()))
 
     def test_raw_curious_scenario_completes_with_a_different_cost_profile(self) -> None:
         report = run_scenario(SCENARIOS["raw-curious"])
 
         self.assertTrue(report.completed)
-        self.assertEqual(report.final_state.raw_inspections, 5)
+        self.assertEqual(report.final_state.raw_inspections, 4)
         self.assertEqual(report.final_state.sleepers_lost, 42)
         self.assertIn("survives the maintenance window", report.final_outcome)
+
+    def test_mixed_system_stress_tracks_cryo_delegation(self) -> None:
+        report = run_scenario(SCENARIOS["mixed-system-stress"])
+
+        self.assertTrue(report.completed)
+        self.assertGreaterEqual(report.final_state.delegated_cryo_controls, 2)
+        self.assertIn("delegated cryo interventions", "\n".join(report.summary_lines()))
 
     def test_transcript_includes_opening_commands_and_closing(self) -> None:
         report = run_commands(("status", "quit"))

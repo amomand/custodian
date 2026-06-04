@@ -126,6 +126,23 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(interpreter.interpret("run automatic", ShipState()).action, "delegate")
         self.assertEqual(interpreter.interpret("stand by", ShipState()).action, "wait")
 
+    def test_cryo_commands_are_rule_based(self) -> None:
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        raw = interpreter.interpret("raw cryo", ShipState())
+        delegated = interpreter.interpret("delegate cryo", ShipState())
+        manual = interpreter.interpret("reroute chill", ShipState())
+
+        self.assertEqual(raw.action, "raw")
+        self.assertEqual(raw.args["target"], "cryo")
+        self.assertEqual(delegated.action, "delegate")
+        self.assertEqual(delegated.args["target"], "cryo")
+        self.assertEqual(manual.action, "manual")
+        self.assertEqual(manual.args["operation"], "reroute_chill")
+        self.assertEqual(manual.args["target"], "cryo")
+
     def test_context_exposes_arka_summary_not_raw_panel(self) -> None:
         state = ShipState(
             turn=21,

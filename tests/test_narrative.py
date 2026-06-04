@@ -10,18 +10,19 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("A.R.K.A MAINTENANCE SHELL", opening)
         self.assertIn("arka: Good. You're awake.", opening)
-        self.assertIn("Raw panel and manual controls are live", opening)
-        self.assertIn("Pumps, vent, flush, balance", opening)
+        self.assertIn("Raw panels and manual controls are live", opening)
+        self.assertIn("Banks, chill, pods, triage", opening)
 
     def test_quit_has_no_debrief(self) -> None:
-        state = ShipState(outcome="You step away from the coolant console.")
+        state = ShipState(outcome="You step away from the maintenance console.")
 
         self.assertEqual(closing_lines(state), ())
 
     def test_debrief_reflects_habits_without_printing_hidden_numbers(self) -> None:
         state = ShipState(
-            turn=25,
+            turn=13,
             manual_familiarity=6,
+            cryo_familiarity=3,
             delegated_controls=8,
             raw_inspections=3,
             outcome=(
@@ -34,6 +35,7 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("MAINTENANCE WINDOW CLOSED", debrief)
         self.assertIn("your hands knew where to go", debrief)
+        self.assertIn("held cold enough", debrief)
         self.assertIn("held the loop for most of the window", debrief)
         self.assertIn("make arka work for your trust", debrief)
         self.assertNotIn("manual_familiarity", debrief)

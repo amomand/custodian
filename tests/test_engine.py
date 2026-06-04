@@ -35,6 +35,7 @@ class EngineTests(unittest.TestCase):
         output = "\n".join(result.messages)
 
         self.assertIn("COOLANT LOOP", output)
+        self.assertIn("CRYOSTASIS", output)
         self.assertIn("588 C", output)
         self.assertIn("arka: coolant loop nominal", output)
         self.assertNotIn("TURN", output)
@@ -52,7 +53,7 @@ class EngineTests(unittest.TestCase):
     def test_scheduled_event_requests_presentation_break(self) -> None:
         state = self.engine.initial_state()
 
-        for command in ("wait", "wait", "wait"):
+        for command in ("wait",):
             state = self.engine.handle(state, command).state
         result = self.engine.handle(state, "wait")
 
@@ -94,7 +95,8 @@ class EngineTests(unittest.TestCase):
 
     def test_pressure_surge_can_be_delegated_early(self) -> None:
         state = ShipState(
-            turn=11,
+            turn=8,
+            delegated_controls=3,
             crisis=CrisisState(
                 kind="pressure_surge",
                 label="Pressure surge",
@@ -115,7 +117,7 @@ class EngineTests(unittest.TestCase):
             turns_left=4,
             required_progress=2,
         )
-        novice = ShipState(turn=21, manual_familiarity=0, crisis=crisis)
+        novice = ShipState(turn=10, manual_familiarity=0, crisis=crisis)
         practised = replace(novice, manual_familiarity=5)
 
         novice = self.engine.handle(novice, "balance").state
@@ -133,26 +135,14 @@ class EngineTests(unittest.TestCase):
             "flush",
             "pump up",
             "vent",
-            "balance",
-            "flush",
+            "stabilise bank",
+            "triage",
+            "reroute chill",
             "delegate",
-            "pump up",
-            "vent",
-            "balance",
-            "delegate",
-            "flush",
-            "pump up",
+            "cycle pods",
             "balance",
             "flush",
-            "pump up",
-            "vent",
-            "balance",
-            "flush",
-            "pump up",
-            "balance",
-            "flush",
-            "vent",
-            "pump up",
+            "triage",
         ]
 
         for command in route:
@@ -162,6 +152,30 @@ class EngineTests(unittest.TestCase):
 
         self.assertIsNotNone(state.outcome)
         self.assertIn("survives the maintenance window", state.outcome)
+        self.assertEqual(state.sleepers_lost, 0)
+
+    def test_reroute_chill_stresses_coolant_reserve(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "reroute chill")
+
+        self.assertLess(
+            result.state.reactor.coolant_reserve_pct,
+            state.reactor.coolant_reserve_pct,
+        )
+        self.assertLess(
+            result.state.cryostasis.bank_temperature_c,
+            state.cryostasis.bank_temperature_c,
+        )
+
+    def test_delegate_cryo_uses_cryo_target(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "delegate cryo")
+
+        self.assertEqual(result.state.delegated_controls, 1)
+        self.assertEqual(result.state.delegated_cryo_controls, 1)
+        self.assertTrue(any("cryostasis" in message for message in result.messages))
 
 
 if __name__ == "__main__":

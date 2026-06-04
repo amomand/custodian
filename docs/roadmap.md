@@ -23,15 +23,17 @@ The finished game should make the player feel this in their hands:
 
 The repo currently has a narrow terminal MVP:
 
-- One system: reactor coolant.
+- Two systems: reactor coolant and cryostasis viability.
 - Deterministic `ShipState` and coolant state transitions.
-- A compact coolant HUD that carries telemetry outside arka's voice.
+- Compact coolant and cryostasis HUDs that carry telemetry outside arka's voice.
 - arka summary drift: accurate, interpretive, selective, wrong.
 - Optional model-backed arka interpreter for natural-language input.
 - Deterministic transcript playtest runner and seed routes.
 - Diegetic opening screen and closing debrief.
 - Hidden manual familiarity.
-- A short scripted maintenance arc.
+- A short scripted two-system maintenance arc.
+- First coolant/cryostasis interactions: pressure events threaten sleepers, and
+  emergency cryo chilling stresses coolant reserve.
 - Tests around state transitions and AI boundary.
 - Markdown docs for the MVP, arka, and the interpreter.
 
@@ -131,6 +133,8 @@ Phase 1 should keep the terminal surface, but improve rhythm:
 
 ### Phase 1A: Shorten Coolant
 
+Status: implemented in the current terminal slice.
+
 Goal: compress the existing coolant arc so it proves the same thesis faster.
 
 Keep:
@@ -156,6 +160,8 @@ Exit evidence:
 
 ### Phase 1B: Add Cryostasis Viability
 
+Status: implemented in the current terminal slice.
+
 Goal: add one more system that creates variety and moral pressure without
 requiring a map.
 
@@ -166,7 +172,7 @@ Why cryostasis:
 - it creates pressure beyond reactor numbers
 - it can interact with coolant without needing route plotting yet
 
-Possible telemetry:
+Current telemetry:
 
 - cryo bank temperature
 - neural stability
@@ -174,7 +180,7 @@ Possible telemetry:
 - sleepers at risk
 - pod fault load
 
-Possible actions:
+Current actions:
 
 - `stabilise bank`
 - `reroute chill`
@@ -189,13 +195,15 @@ feel like preserving fragile sleeping people, not tuning another machine.
 
 ### Phase 1C: System Interaction
 
+Status: first pass implemented in the current terminal slice.
+
 Goal: make the player divide attention.
 
-Examples:
+Current examples:
 
 - coolant pressure events can threaten cryo banks
 - emergency cryo chilling can stress coolant reserve or reactor load
-- arka can offer to handle one system while the player works the other
+- arka can handle one system while the player works the other
 - raw inspection becomes an attention choice across systems
 
 This is where delegation becomes attractive for a better reason: there is too
@@ -607,10 +615,9 @@ still teaching us what it is.
 
 ## Near-Term Suggested Order
 
-1. Phase 1A: shorten the coolant arc to roughly 10 meaningful beats.
-2. Phase 1B: add cryostasis viability as the second system.
-3. Phase 1C: add coolant/cryo interaction and mixed-system transcripts.
-4. Phase 1D: add save/load and structured command history.
-5. Decide whether Phase 1E needs a third system.
-6. Start the first web surface only after the terminal loop has enough shape to
+1. Playtest the Phase 1A-C terminal slice and tune whether two systems create
+   enough attention pressure.
+2. Phase 1D: add save/load and structured command history.
+3. Decide whether Phase 1E needs a third system.
+4. Start the first web surface only after the terminal loop has enough shape to
     be worth preserving.

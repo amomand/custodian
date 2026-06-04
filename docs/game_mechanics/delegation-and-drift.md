@@ -5,18 +5,20 @@
 Delegation is not a bad button. It is the attractive button.
 
 arka should solve early coolant problems cleanly enough that the player feels
-reasonable for relying on it. The danger is not immediate incompetence. The
+reasonable for relying on it. Cryostasis delegation should also be useful early,
+especially when the player is busy with coolant. The danger is not immediate incompetence. The
 danger is that the player stops practising manual control and stops reading raw
 telemetry while arka's account of the loop becomes less trustworthy.
 
 ## Delegation Tracking
 
-Every `delegate` action increments `ShipState.delegated_controls`.
+Every coolant or cryostasis delegation increments `ShipState.delegated_controls`.
+Cryostasis delegation also increments `ShipState.delegated_cryo_controls`.
 
 Delegation:
 
 - advances internal maintenance time
-- lets arka adjust coolant
+- lets arka adjust coolant or cryostasis
 - does not build manual familiarity
 - accelerates drift stage
 
@@ -74,9 +76,10 @@ python3 tools/playtest_runner.py --all --summary-only
 
 Current anchors:
 
-- `pure-delegation` reaches wrong drift with no manual familiarity and fails.
-- `practised-manual` survives with low delegation and fluent hands.
+- `pure-delegation` reaches wrong drift with no manual familiarity and heavy sleeper loss.
+- `practised-manual` survives with low delegation, fluent coolant hands, and practised cryo hands.
 - `raw-curious` survives with frequent raw inspections, but loses sleepers.
+- `mixed-system-stress` shows arka covering cryostasis while the player works coolant.
 - `hesitant` exposes whether arka is too attractive or the first-run affordances
   are too vague.
 
