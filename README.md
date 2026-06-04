@@ -77,6 +77,7 @@ CUSTODIAN_DEBUG=1 python3 main.py
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests
 printf 'can you handle it?\nquit\n' | python3 main.py
+python3 tools/playtest_runner.py --all --summary-only
 ```
 
 The tests do not require an API key. Model behavior is covered with fake-client
@@ -96,6 +97,7 @@ tests so the suite stays fast and local.
 - **Delegation tracking** - arka control affects drift, not a visible trust meter
 - **Manual practice** - hidden familiarity improves hand control under pressure
 - **Authored crisis beats** - pressure points and arka drift are designed, not improvised
+- **Transcript playtests** - deterministic routes report delegation, raw checks, drift, and outcome
 - **AI hardening** - model replies are sanitised before they reach the terminal
 
 ---
@@ -109,8 +111,12 @@ Current working docs:
 - `design.md` - MVP thesis, loop, systems, and maintenance arc
 - `docs/roadmap.md` - path from MVP to larger realisation
 - `docs/game_mechanics/opening-sequence.md` - boot text and run debrief notes
+- `docs/game_mechanics/reactor-coolant.md` - coolant telemetry, actions, and pressure beats
+- `docs/game_mechanics/manual-familiarity.md` - hidden practice mechanic
+- `docs/game_mechanics/delegation-and-drift.md` - arka dependence and summary drift
 - `docs/lore/arka.md` - arka character and runtime voice capsule
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
+- `docs/architecture/playtest-runner.md` - deterministic transcript workflow
 - `docs/architecture/project-operating-system.md` - CI, local skills, and repo rules
 
 Change arka's character in markdown first. The interpreter reads the runtime
@@ -128,9 +134,13 @@ custodian/
 ├── design.md                       # MVP design source
 ├── docs/
 │   ├── architecture/
-│   │   └── ai-interpreter.md       # AI/parser/simulation boundary
+│   │   ├── ai-interpreter.md       # AI/parser/simulation boundary
+│   │   └── playtest-runner.md      # Deterministic transcript workflow
 │   ├── game_mechanics/
-│   │   └── opening-sequence.md     # Boot/debrief design notes
+│   │   ├── delegation-and-drift.md # arka dependence and drift notes
+│   │   ├── manual-familiarity.md   # Hidden practice mechanic
+│   │   ├── opening-sequence.md     # Boot/debrief design notes
+│   │   └── reactor-coolant.md      # Coolant telemetry and pressure beats
 │   ├── lore/
 │   │   └── arka.md                 # arka voice and character notes
 │   └── original-idea.md            # Copied seed idea
@@ -141,9 +151,13 @@ custodian/
 │   ├── config.py                   # .env loading
 │   ├── models.py                   # ShipState and reactor telemetry
 │   ├── narrative.py                # Opening and closing terminal text
+│   ├── playtest.py                 # Deterministic scenario runner core
+│   ├── seeds.py                    # Named simulation entry states
 │   ├── telemetry.py                # Compact terminal coolant HUD
 │   └── cli.py                      # Terminal loop
-└── tests/                          # Unit tests and AI boundary tests
+├── tests/                          # Unit tests and AI boundary tests
+└── tools/
+    └── playtest_runner.py          # Scenario transcript CLI
 ```
 
 ---

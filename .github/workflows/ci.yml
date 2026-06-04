@@ -32,6 +32,8 @@ jobs:
       - name: Run tests
         run: PYTHONPATH=src python -m unittest discover -s tests
       - name: Compile sources
-        run: python -m compileall src tests main.py
+        run: python -m compileall src tests tools main.py
       - name: Terminal smoke test
         run: printf 'can you handle it?\nquit\n' | CUSTODIAN_AI=off python main.py
+      - name: Playtest scenario smoke test
+        run: python tools/playtest_runner.py --all --summary-only
