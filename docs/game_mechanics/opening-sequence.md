@@ -8,7 +8,8 @@ starts asking for decisions. It should establish:
 - the custodian woke outside the normal cycle
 - the crew is still asleep
 - arka is already present, useful, and calm
-- the reactor coolant loop is the immediate job
+- the reactor coolant loop and cryostasis are the immediate job
+- the goal is stated plainly: keep both panels nominal until the watch ends
 - raw telemetry exists, but arka is easier
 - current telemetry is visible as ship readout, not arka speech
 
@@ -26,15 +27,18 @@ crew status: asleep
 custodian roster: 1 responsive
 
 arka: Good. You're awake.
-arka: Reactor coolant is drifting. Nothing dramatic.
-arka: I can take it, if you like. Raw panel and manual controls are live.
-arka: Pumps, vent, flush, balance. Unglamorous verbs, but they work.
+arka: Reactor coolant is drifting. Cryostasis is colder than you are.
+arka: The job is simple to say: keep both panels inside nominal until the watch ends.
+arka: You can steady one system by hand each beat. I can take a whole panel at once.
+arka: I can take coolant or cryo, if you like. Raw panels and manual controls are live.
+arka: Pumps, vent, flush, balance. Banks, chill, pods, triage. Unglamorous verbs, but they work.
 Type help for commands.
 ```
 
-The next visible state is the terminal HUD, followed by arka's qualitative
-summary. This keeps the opening short and lets the first real prompt arrive
-quickly.
+The goal and the throughput asymmetry are now stated in the opening so the player
+is never left wondering what they are for. The next visible state is the
+objective block (OBJECTIVE / WATCH / PRIORITY / CAPACITY) followed by the
+terminal HUD and arka's qualitative summary.
 
 The terminal clears on interactive launch and again for major scene changes such
 as pressure events, blooms, failures, and endings. This is a presentation

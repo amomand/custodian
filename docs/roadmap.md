@@ -34,6 +34,12 @@ The repo currently has a narrow terminal MVP:
 - A short scripted two-system maintenance arc.
 - First coolant/cryostasis interactions: pressure events threaten sleepers, and
   emergency cryo chilling stresses coolant reserve.
+- A legible objective block (goal, horizon, per-beat priority) and trend-aware
+  HUD so the player always knows what they are trying to achieve.
+- Delegation framed as a throughput choice: one system by hand per beat versus a
+  whole panel via arka, with drift weighted toward delegation and mitigated by
+  raw-reading vigilance.
+- Save/load of `ShipState` and structured command history (Phase 1D).
 - Tests around state transitions and AI boundary.
 - Markdown docs for the MVP, arka, and the interpreter.
 
@@ -211,45 +217,49 @@ much ship for one waking custodian.
 
 ### Phase 1C.5: Maintainer-Friendly Playtest Surface
 
-Status: first terminal-readout pass in progress.
+Status: terminal-readout pass implemented, with a course correction.
 
-The terminal remains the canonical engine surface for now, but the current
-two-system transcript is already hard to playtest by eye. Before adding more
-systems or deeper mission pressure, consider a small human-friendly operating
-surface for maintainers.
+Playtesting the two-system transcript surfaced a deeper problem than maintainer
+fatigue: the *player* could not tell what they were trying to achieve. The course
+correction addresses both at once.
 
-This is not the final GUI and should not pull Phase 4 forward wholesale. The
-goal is to make playtest feedback readable while preserving the terminal engine.
+Implemented:
 
-Possible approaches:
+- a legible objective block on every status readout: OBJECTIVE (goal), WATCH
+  (horizon in beats), PRIORITY (the metric failing fastest this beat), and
+  CAPACITY (one system by hand per beat vs a whole panel via arka)
+- per-metric trend arrows on the HUD so the fastest-failing thing is scannable
+- separated system blocks and threshold bars (already started)
+- tab completion for multi-word controls (already started)
+- interactive refresh of the current-state panel (already started)
 
-- a clearer terminal status layout with separated system blocks (started)
-- compact threshold bars or banded indicators for high/low/nominal telemetry
-  (started)
-- tab completion for common terminal commands, via `readline`, so
-  multi-word controls like `delegate cryo` and `reroute chill` are less tedious
-  during repeated playtests (started)
-- a curses-style or browser-lite maintainer console that reads the same engine
-  state
-- transcript folding or a pinned current-state panel so repeated HUD output does
-  not bury the play (started in interactive terminal refresh)
+Design constraint, resolved rather than dodged:
 
-Design constraint:
+Trend arrows make raw telemetry more scannable, which on its own risks sanding
+off the "delegating your eyes" friction. The resolution is that legibility of the
+*goal* is high while capacity to *act manually* stays scarce: the player can see
+the whole ship slipping and still be tempted to let arka take it all. Reading
+stays useful; reading stops being sufficient. See
+`docs/game_mechanics/objectives-and-priority.md`.
 
-Do not make raw telemetry emotionally cosy too early. The surface should reduce
-maintainer fatigue and make system state scannable, but the game should still
-preserve the tension between arka's reassurance and the colder raw layer.
+Drift was also reweighted toward delegation (with raw-reading vigilance as a
+mitigation) so the cost of delegation is causal, not merely a timed cutscene. See
+`docs/game_mechanics/delegation-and-drift.md`.
 
 ### Phase 1D: Save/Load And Command History
 
-Goal: add game spine once there is enough state to preserve.
+Status: implemented in the current terminal slice.
 
 Add:
 
-- save/load
+- save/load (`custodian.persistence`, `:save` / `:load`)
 - seed saves for known story/mechanic moments
-- structured command history for debugging and balancing
+- structured command history (`ShipState.history`) for debugging and balancing
 - transcript reports that include both systems
+
+See `docs/architecture/save-load.md`. The engine stays pure: persistence only
+serialises and deserialises `ShipState`, and history is recorded centrally in
+`GameEngine.handle`.
 
 ### Phase 1E: Optional Third System Gate
 

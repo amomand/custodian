@@ -16,10 +16,12 @@ It usually can.
 delegation. The current terminal slice proves the thesis with reactor coolant
 and cryostasis viability.
 
-Phase 0 is concluded. Phase 1A-C is now represented in the terminal loop:
-coolant is shorter, cryostasis is live, and the systems can pressure each other.
-Next spine work is save/load, structured command history, and deciding whether a
-third system is worth it after playtesting.
+Phase 0 is concluded. Phase 1A-D is now represented in the terminal loop:
+coolant is shorter, cryostasis is live, the systems can pressure each other, and
+runs can be saved and resumed. A course correction makes the goal legible: every
+status readout opens with an objective block (goal, horizon, the metric failing
+fastest this beat) and the HUD carries trend arrows. Next spine work is deciding
+whether a third system is worth it after playtesting.
 
 The player can work the coolant and cryostasis panels by hand. They are real,
 useful, and a little fiddly. Or the player can ask `arka` to handle one panel
@@ -107,15 +109,19 @@ Developer-only terminal diagnostics use a colon prefix:
 - **Deterministic fallback** - the game remains playable without credentials
 - **Diegetic boot sequence** - the prototype now opens as an in-world shell
 - **Event refreshes** - interactive terminals clear on launch and major pressure beats
+- **Legible objective block** - every status opens with goal, horizon, and the metric failing fastest
+- **Trend-aware HUD** - per-metric arrows show what is moving toward danger this beat
+- **Delegation as throughput** - one system by hand per beat, or a whole panel via arka
 - **Coolant HUD** - telemetry is shown separately from arka's summary
 - **Cryostasis HUD** - sleeper viability is visible outside arka's voice
 - **Run debrief** - endings reflect manual practice, delegation, and raw checks
 - **Diegetic command handling** - no invalid-command voice
 - **Reactor coolant model** - temperature, pressure, flow, impurity, valve skew, reserve
 - **Cryostasis model** - bank temperature, neural stability, sedative balance, pod faults, sleepers at risk
-- **Delegation tracking** - arka control affects drift, not a visible trust meter
+- **Delegation tracking** - arka control drives drift, mitigated by raw-reading vigilance, not a visible trust meter
 - **Manual practice** - hidden familiarity improves hand control under pressure
 - **Authored crisis beats** - pressure points and arka drift are designed, not improvised
+- **Save and resume** - `:save` / `:load` serialise the run; command history is recorded
 - **Transcript playtests** - deterministic routes report delegation, raw checks, drift, and outcome
 - **Ad-hoc route files** - pasted command files can become playtest reports
 - **AI hardening** - model replies are sanitised before they reach the terminal
@@ -135,6 +141,8 @@ Current working docs:
 - `docs/game_mechanics/cryostasis-viability.md` - cryostasis telemetry, actions, and sleeper pressure
 - `docs/game_mechanics/manual-familiarity.md` - hidden practice mechanic
 - `docs/game_mechanics/delegation-and-drift.md` - arka dependence and summary drift
+- `docs/game_mechanics/objectives-and-priority.md` - objective block, horizon, and per-beat priority
+- `docs/architecture/save-load.md` - run serialisation and command history
 - `docs/lore/arka.md` - arka character and runtime voice capsule
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
 - `docs/architecture/playtest-runner.md` - deterministic transcript workflow
