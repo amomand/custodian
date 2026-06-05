@@ -50,6 +50,18 @@ class TelemetryTests(unittest.TestCase):
         self.assertIn("nominal -196 to -170", hud)
         self.assertNotIn("arka:", hud)
 
+    def test_coolant_hud_marks_worsening_trend_against_previous(self) -> None:
+        state = ShipState(
+            reactor=ReactorCoolantSystem(temperature_c=600),
+            previous_reactor=ReactorCoolantSystem(temperature_c=580),
+        )
+
+        temp_line = next(
+            line for line in coolant_hud_lines(state) if line.startswith("TEMP")
+        )
+
+        self.assertIn("^!", temp_line)
+
 
 if __name__ == "__main__":
     unittest.main()

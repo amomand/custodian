@@ -10,6 +10,24 @@ especially when the player is busy with coolant. The danger is not immediate inc
 danger is that the player stops practising manual control and stops reading raw
 telemetry while arka's account of the loop becomes less trustworthy.
 
+## Delegation As A Throughput Choice
+
+Delegation is not just "arka is higher quality." It is a capacity decision.
+
+- Manual control answers **one control per beat**. The player picks the single
+  intervention they can afford and spends the beat on it.
+- arka takes a **whole panel at once**. When it handles coolant or cryostasis, it
+  addresses several metrics in a single beat.
+
+Because telemetry degrades on several axes at once (see the trend arrows and the
+`ATTENTION` line in the objective block), a hands-on player constantly falls
+behind on everything they did not touch. That is the honest, structural reason
+delegation is seductive: there is too much ship for one waking custodian.
+
+The trap is wired to the same mechanic. When arka takes the whole panel, the
+player stops reading *which* knob moved, which is exactly how selective and wrong
+drift slip past them.
+
 ## Delegation Tracking
 
 Every coolant or cryostasis delegation increments `ShipState.delegated_controls`.
@@ -18,18 +36,32 @@ Cryostasis delegation also increments `ShipState.delegated_cryo_controls`.
 Delegation:
 
 - advances internal maintenance time
-- lets arka adjust coolant or cryostasis
+- lets arka adjust a whole panel of coolant or cryostasis metrics
 - does not build manual familiarity
-- accelerates drift stage
+- is the primary driver of drift stage
 
 There is no visible trust meter. Reports can show the count because they are
 developer tools, not the fiction.
 
+## Drift Weighting
+
+Drift is deterministic. Its inputs, in order of weight:
+
+1. **Delegation (primary).** `delegated_controls >= 3 / 5 / 7` pushes arka to
+   interpretive / selective / wrong. Handing arka the panels is what lets its
+   account of the ship rot, regardless of how early it happens.
+2. **Time (weak backstop).** Late in the watch, arka drifts even for a careful
+   player, so the finale still bites. `wrong` overlaps the final crisis beat so
+   the "calmly contradicting the raw feed" moment actually lands.
+3. **Vigilance (mitigation).** Reading the raw layer buys honest beats: every two
+   `raw` inspections delay the time-based backstop by one beat (capped). A player
+   who keeps looking keeps arka honest longer; a player who delegated their eyes
+   gets blindsided. Vigilance never offsets delegation-driven drift.
+
+This is the thesis as difficulty, not as a cutscene: the player who stopped
+looking pays for it; the player who kept checking has a fighting chance.
+
 ## Drift Stages
-
-Drift is deterministic and based on internal time plus delegated interventions.
-
-Accurate:
 
 - arka reports the coolant state plainly
 - adjustments are genuinely helpful

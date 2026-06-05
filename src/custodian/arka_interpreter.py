@@ -328,9 +328,9 @@ def _rule_based(command: str) -> Intent | None:
             {},
             1.0,
             reply=(
-                "arka: keep reactor coolant inside its ugly little comfort box until "
-                "the maintenance window closes. Delegate to me, or practise the manual panel "
-                "if you enjoy making valves personal."
+                "arka: hold reactor coolant and the cryostasis banks inside their ugly "
+                "little comfort boxes until the watch closes. Your hands can answer one "
+                "control at a time; I can take a whole panel. Sensible arrangement, until it isn't."
             ),
             rationale="goal question",
         )

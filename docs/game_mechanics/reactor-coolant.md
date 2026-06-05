@@ -25,10 +25,20 @@ reference system for manual effort, arka drift, and final crisis pressure.
 - valve skew percent, nominal 0-16
 - coolant reserve percent, caution below 35
 
-The terminal HUD shows the current telemetry with `OK`, `LOW`, or `HIGH` bands
-and threshold bars for maintainers/playtesters. arka's ordinary summary should
-not recite the numbers. If the player asks for `raw`, the detailed panel prints
-the literal field names and nominal bands.
+The terminal HUD shows the current telemetry with `OK`, `LOW`, or `HIGH` bands,
+a per-metric **trend token**, and threshold bars for maintainers/playtesters.
+arka's ordinary summary should not recite the numbers. If the player asks for
+`raw`, the detailed panel prints the literal field names and nominal bands.
+
+The trend token shows direction since the previous beat and marks worsening:
+
+- `^!` / `v!` — moving toward danger (rising into a high limit, falling toward a floor)
+- `^ ` / `v ` — moving, but back toward nominal
+- `->` — steady, or no prior reading yet
+
+Trends are what make the one-action-per-beat triage playable: the player can see
+which metric is failing fastest and spend their single manual action on it. The
+`ATTENTION` line in the objective block names that metric explicitly.
 
 ## Manual Actions
 

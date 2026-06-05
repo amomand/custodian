@@ -25,7 +25,7 @@ class EngineTests(unittest.TestCase):
 
         self.assertEqual(result.state.turn, 1)
         self.assertFalse(result.advanced)
-        self.assertIn("keep reactor coolant", result.messages[0])
+        self.assertIn("hold reactor coolant", result.messages[0])
         self.assertNotIn("turn", result.messages[0].lower())
 
     def test_status_separates_hud_from_arka_summary(self) -> None:
@@ -39,6 +39,53 @@ class EngineTests(unittest.TestCase):
         self.assertIn("588 C", output)
         self.assertIn("arka: coolant loop nominal", output)
         self.assertNotIn("TURN", output)
+
+    def test_status_shows_the_legible_objective_block(self) -> None:
+        state = self.engine.initial_state()
+
+        output = "\n".join(self.engine.handle(state, "status").messages)
+
+        self.assertIn("OBJECTIVE", output)
+        self.assertIn("WATCH", output)
+        self.assertIn("ATTENTION", output)
+
+    def test_advancing_records_command_history(self) -> None:
+        state = self.engine.initial_state()
+
+        state = self.engine.handle(state, "balance").state
+        state = self.engine.handle(state, "wait").state
+
+        self.assertEqual(tuple(record.raw for record in state.history), ("balance", "wait"))
+        self.assertEqual(state.history[0].action, "manual")
+        self.assertEqual(state.history[0].operation, "balance")
+        self.assertTrue(state.history[0].advanced)
+        self.assertEqual(state.history[0].beat_after, 2)
+
+    def test_command_history_records_default_delegate_target(self) -> None:
+        state = self.engine.initial_state()
+
+        state = self.engine.handle(state, "delegate").state
+
+        self.assertEqual(state.history[0].action, "delegate")
+        self.assertEqual(state.history[0].target, "coolant")
+
+    def test_advancing_captures_previous_telemetry_for_trends(self) -> None:
+        state = self.engine.initial_state()
+        before = state.reactor
+
+        advanced = self.engine.handle(state, "wait").state
+
+        self.assertEqual(advanced.previous_reactor, before)
+        self.assertEqual(advanced.previous_cryostasis, state.cryostasis)
+
+    def test_advancing_status_uses_current_beat_trends(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "wait")
+        output = "\n".join(result.messages)
+
+        self.assertIn("ATTENTION  coolant temperature is climbing", output)
+        self.assertRegex(output, r"TEMP\s+589 C\s+OK\s+\^!")
 
     def test_dev_debug_command_is_non_advancing_and_non_diegetic(self) -> None:
         state = self.engine.initial_state()
