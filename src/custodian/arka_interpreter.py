@@ -25,6 +25,7 @@ ALLOWED_ACTIONS = {
     "raw",
     "delegate",
     "plot",
+    "jump",
     "manual",
     "wait",
     "help",
@@ -264,13 +265,14 @@ def _system_prompt() -> str:
         _runtime_voice_capsule()
         + "\n\n"
         + "You are also a strict command interpreter. Output ONLY one JSON object.\n"
-        + "Allowed actions: status, raw, delegate, plot, manual, wait, help, quit, converse, none.\n"
+        + "Allowed actions: status, raw, delegate, plot, jump, manual, wait, help, quit, converse, none.\n"
         + "For manual coolant action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
         + "For manual cryostasis action, args.operation must be one of: stabilise_bank, reroute_chill, cycle_pods, triage and args.target must be cryo.\n"
         + "Use status for quick arka summaries. Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
         + "For raw, set args.target to coolant, cryo, mission, or nav. For delegate, set args.target to coolant, cryo, or nav.\n"
         + "Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, cryostasis, route, nav, or navigation.\n"
         + "For plot, args.route_id must be short, medium, deep, khepri-4, argos-12, or carina-edge.\n"
+        + "Use jump when the player asks to execute, commit, or initiate the plotted route.\n"
         + "Use delegate when the player asks arka/you to handle coolant, cryostasis, or navigation, fix it, take over, or automate.\n"
         + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not advance maintenance time.\n"
         + "Do not create state changes, telemetry, inventory, maps, or future events.\n"
@@ -317,6 +319,9 @@ def _intent_from_model_data(data: Any) -> Intent:
         }:
             action = "converse"
             args = {}
+
+    if action == "jump":
+        args = {}
 
     if action == "manual":
         operation = args.get("operation", "")
@@ -512,6 +517,19 @@ def _rule_based(command: str) -> Intent | None:
             correction=correction,
             rationale="plot route",
         )
+    if corrected in {
+        "jump",
+        "execute jump",
+        "execute route",
+        "commit jump",
+        "commit route",
+        "initiate jump",
+        "initiate route",
+        "make the jump",
+        "take the jump",
+        "burn route",
+    }:
+        return Intent("jump", {}, 1.0, correction=correction, rationale="jump")
     if corrected in {"wait", "hold", "listen", "stand by"}:
         return Intent("wait", {}, 1.0, correction=correction, rationale="wait")
 
@@ -608,7 +626,10 @@ def _navigation_status_label(state: ShipState) -> str:
     plotted = state.navigation.plotted_route
     if plotted is None:
         return "no route plotted"
-    return f"{plotted.jump_class} route plotted"
+    suffix = "no jump executed"
+    if state.navigation.last_jump_route is not None:
+        suffix = "previous jump recorded"
+    return f"{plotted.jump_class} route plotted, {suffix}"
 
 
 def _normalise(command_text: str) -> str:
@@ -849,6 +870,16 @@ _KNOWN_COMMANDS = (
     "plot argos-12",
     "plot carina",
     "plot carina-edge",
+    "jump",
+    "execute jump",
+    "execute route",
+    "commit jump",
+    "commit route",
+    "initiate jump",
+    "initiate route",
+    "make the jump",
+    "take the jump",
+    "burn route",
     "wait",
     "hold",
     "listen",

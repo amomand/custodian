@@ -82,6 +82,12 @@ commands work.
 - waits, asks, and reacts late
 - useful for first-run affordance testing
 
+`route-jump`
+
+- reads raw navigation, delegates route plotting, then executes a jump
+- useful for watching whether jump consequences feel legible and survivable
+- currently survives the maintenance window with sleeper losses
+
 ## Report Fields
 
 Each report includes:
@@ -90,6 +96,8 @@ Each report includes:
 - completed yes/no
 - final outcome
 - internal beat
+- mission elapsed and distance remaining
+- plotted route, last jump route, jump count, and Dark exposure
 - delegated interventions
 - raw inspections
 - manual familiarity label

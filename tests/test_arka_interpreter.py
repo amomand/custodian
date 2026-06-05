@@ -161,6 +161,7 @@ class ArkaInterpreterTests(unittest.TestCase):
         raw = interpreter.interpret("raw nav", ShipState())
         delegated = interpreter.interpret("delegate nav", ShipState())
         plotted = interpreter.interpret("plot deep", ShipState())
+        jump = interpreter.interpret("execute jump", ShipState())
 
         self.assertEqual(raw.action, "raw")
         self.assertEqual(raw.args["target"], "nav")
@@ -168,6 +169,7 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(delegated.args["target"], "nav")
         self.assertEqual(plotted.action, "plot")
         self.assertEqual(plotted.args["route_id"], "deep")
+        self.assertEqual(jump.action, "jump")
 
     def test_context_exposes_arka_summary_not_raw_panel(self) -> None:
         state = ShipState(

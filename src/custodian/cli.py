@@ -21,6 +21,7 @@ COMMAND_COMPLETIONS = (
     "plot short",
     "plot medium",
     "plot deep",
+    "jump",
     "pump up",
     "pump down",
     "vent",

@@ -78,8 +78,11 @@ class PlaytestReport:
             f"ship wear: {self.final_state.mission.ship_wear_pct}%",
             f"cryo decay: {self.final_state.mission.cryo_decay_pct}%",
             f"plotted route: {_plotted_route_label(self.final_state)}",
+            f"last jump route: {_last_jump_route_label(self.final_state)}",
             f"manual route plots: {self.final_state.navigation.manual_plots}",
             f"delegated route plots: {self.final_state.navigation.delegated_plots}",
+            f"jumps executed: {self.final_state.navigation.jumps_executed}",
+            f"dark exposure: {self.final_state.navigation.total_dark_exposure}",
             f"delegated interventions: {self.final_state.delegated_controls}",
             f"delegated cryo interventions: {self.final_state.delegated_cryo_controls}",
             f"raw inspections: {self.final_state.raw_inspections}",
@@ -185,6 +188,26 @@ SCENARIOS: dict[str, Scenario] = {
             "wait",
             "balance",
             "flush",
+        ),
+    ),
+    "route-jump": Scenario(
+        name="route-jump",
+        description="Inspect, delegate a route, execute it, then fight the consequences.",
+        commands=(
+            "raw nav",
+            "delegate nav",
+            "jump",
+            "pump up",
+            "balance",
+            "flush",
+            "vent",
+            "stabilise bank",
+            "triage",
+            "delegate",
+            "reroute chill",
+            "balance",
+            "flush",
+            "triage",
         ),
     ),
 }
@@ -304,6 +327,11 @@ def _distance_label(state: ShipState) -> str:
 def _plotted_route_label(state: ShipState) -> str:
     plotted = state.navigation.plotted_route
     return "none" if plotted is None else f"{plotted.label} ({plotted.jump_class})"
+
+
+def _last_jump_route_label(state: ShipState) -> str:
+    last_jump = state.navigation.last_jump_route
+    return "none" if last_jump is None else f"{last_jump.label} ({last_jump.jump_class})"
 
 
 def _familiarity_label(familiarity: int) -> str:
