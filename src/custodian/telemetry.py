@@ -60,11 +60,13 @@ def navigation_hud_lines(state: ShipState) -> tuple[str, ...]:
 
     options = ", ".join(option.jump_class for option in state.navigation.options)
     return (
+        "",
         "NAVIGATION",
         fix_line,
         plot_line,
         jump_line,
         f"OPTIONS   {options} routes available; plot or delegate nav",
+        "",
     )
 
 
