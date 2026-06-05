@@ -208,6 +208,7 @@ Environment variables:
 - `CUSTODIAN_AI=off` - Force deterministic fallback
 - `CUSTODIAN_DEBUG=1` - Print AI fallback diagnostics to stderr
 - `CUSTODIAN_CLEAR=off` - Disable interactive launch and event screen clears
+- `CUSTODIAN_BOOT=off` - Skip the interactive A.R.K.A boot screen
 - `CUSTODIAN_REFRESH=off` - Keep appending every turn instead of refreshing the
   interactive screen after advancing commands
 - `CUSTODIAN_COMPLETE=off` - Disable interactive tab completion

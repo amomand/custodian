@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from custodian.engine import GameEngine
-from custodian.narrative import closing_lines, opening_lines
+from custodian.narrative import boot_lines, closing_lines, opening_lines
 from custodian.persistence import DEFAULT_SAVE_PATH, load_state, save_state
 
 
@@ -37,6 +37,7 @@ def main() -> None:
     state = engine.initial_state()
     _configure_completion()
 
+    _show_boot_screen()
     _clear_screen()
     _print_lines(opening_lines())
     _print_lines(engine.handle(state, "status").messages)
@@ -147,6 +148,55 @@ def _complete_command(text: str, state: int) -> str | None:
     if state >= len(matches):
         return None
     return matches[state]
+
+
+def _show_boot_screen() -> bool:
+    if not _should_show_boot_screen():
+        return False
+    _clear_screen()
+    _print_lines(boot_lines())
+    _wait_for_key()
+    return True
+
+
+def _should_show_boot_screen() -> bool:
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return False
+    return os.getenv("CUSTODIAN_BOOT", "on").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _wait_for_key() -> None:
+    if not sys.stdin.isatty():
+        return
+    try:
+        import termios
+        import tty
+    except ImportError:
+        _wait_for_enter()
+        return
+
+    try:
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    except (termios.error, OSError, EOFError):
+        _wait_for_enter()
+
+
+def _wait_for_enter() -> None:
+    try:
+        input("")
+    except EOFError:
+        pass
 
 
 def _clear_screen() -> bool:

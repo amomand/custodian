@@ -10,6 +10,7 @@ def mission_hud_lines(state: ShipState) -> tuple[str, ...]:
         "MISSION CLOCK",
         f"ELAPSED   {_elapsed_label(mission):<13} mission time awake is not mission time kind",
         f"RANGE     {_distance_label(mission):<13} destination solution unresolved",
+        "",
         _metric_line(
             "WEAR",
             mission.ship_wear_pct,

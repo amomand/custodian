@@ -4,6 +4,27 @@ from custodian.arka import drift_stage
 from custodian.models import DriftStage, ShipState
 
 
+def boot_lines() -> tuple[str, ...]:
+    return (
+        "A.R.K.A OPERATIONS KERNEL",
+        "cold-start recovery image",
+        "",
+        "wake signal ............ unscheduled",
+        "operator biometric ..... 1 responsive",
+        "crew census ............ asleep",
+        "reactor watch .......... variance detected",
+        "cryostasis watch ....... viable / drifting",
+        "",
+        "loading maintenance shell",
+        "[#######.................] memory lattice",
+        "[#############...........] telemetry buses",
+        "[###################.....] advisory channel",
+        "[########################] arka runtime",
+        "",
+        "press any key to open maintenance shell",
+    )
+
+
 def opening_lines() -> tuple[str, ...]:
     return (
         "A.R.K.A MAINTENANCE SHELL",

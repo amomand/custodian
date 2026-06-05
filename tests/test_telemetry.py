@@ -25,6 +25,16 @@ class TelemetryTests(unittest.TestCase):
         self.assertIn("HIGH", hud)
         self.assertNotIn("arka:", hud)
 
+    def test_mission_hud_adds_breathing_room_after_range(self) -> None:
+        lines = mission_hud_lines(ShipState())
+
+        range_index = lines.index(
+            "RANGE     11.8 ly       destination solution unresolved"
+        )
+
+        self.assertEqual(lines[range_index + 1], "")
+        self.assertTrue(lines[range_index + 2].startswith("WEAR"))
+
     def test_coolant_hud_carries_raw_readings_outside_arka_voice(self) -> None:
         state = ShipState(
             reactor=ReactorCoolantSystem(
