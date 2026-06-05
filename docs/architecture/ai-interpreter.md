@@ -19,7 +19,7 @@ allowed to own the reactor.
 3. Obvious commands use a deterministic rule path and do not call the model.
 4. Ambiguous or conversational input can call the configured OpenAI model.
 5. The engine executes only known `Intent.action` values.
-6. Reactor telemetry, route plotting, internal clock advancement, crises,
+6. Reactor telemetry, route plotting, jump execution, internal clock advancement, crises,
    sleeper losses, arka drift, and manual familiarity remain owned by
    `ShipState` transitions.
 
@@ -27,7 +27,7 @@ allowed to own the reactor.
 
 ```python
 Intent(
-    action="status|raw|delegate|plot|manual|wait|help|quit|converse|none",
+    action="status|raw|delegate|plot|jump|manual|wait|help|quit|converse|none",
     args={
         "operation": "pump_up|pump_down|vent|flush|balance",
         "target": "coolant|cryo|mission|nav",
@@ -41,14 +41,15 @@ Intent(
 ```
 
 `manual` and `plot` require arguments. `raw` and `delegate` can carry a target.
-The engine ignores model state-change suggestions because there are none.
+`jump` carries no arguments; the engine executes only the currently plotted
+route. The engine ignores model state-change suggestions because there are none.
 
 ## Authority Boundary
 
 Deterministic and authored:
 
 - Raw telemetry.
-- Route options and plotted route state.
+- Route options, plotted route state, and jump consequences.
 - arka summary drift stages.
 - Coolant physics.
 - Crisis timers and resolution.
@@ -74,8 +75,8 @@ for raw telemetry, the interpreter should return `action="raw"` and let the
 engine print the raw panel.
 
 Route handling follows the same rule. The model may classify a route command as
-`raw`, `plot`, or `delegate`, but route options and plotted route state come from
-the deterministic engine.
+`raw`, `plot`, `delegate`, or `jump`, but route options, plotted route state,
+and jump consequences come from the deterministic engine.
 
 This preserves the central split:
 

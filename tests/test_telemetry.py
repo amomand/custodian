@@ -47,13 +47,21 @@ class TelemetryTests(unittest.TestCase):
         self.assertTrue(lines[range_index + 2].startswith("WEAR"))
 
     def test_navigation_hud_shows_plot_without_arka_voice(self) -> None:
-        state = ShipState(navigation=NavigationState(plotted_route_id="argos-12"))
+        state = ShipState(
+            navigation=NavigationState(
+                plotted_route_id="argos-12",
+                last_jump_route_id="khepri-4",
+                jumps_executed=1,
+                total_dark_exposure=4,
+            )
+        )
 
         hud = "\n".join(navigation_hud_lines(state))
 
         self.assertIn("NAVIGATION", hud)
         self.assertIn("ARGOS-12", hud)
         self.assertIn("medium solution held", hud)
+        self.assertIn("last KHEPRI-4, dark 4", hud)
         self.assertIn("short, medium, deep", hud)
         self.assertNotIn("arka:", hud)
 

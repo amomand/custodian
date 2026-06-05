@@ -2,16 +2,17 @@
 
 ## Purpose
 
-Phase 2B gives the mission clock candidate routes without executing jumps yet.
-The ship now has somewhere it might go next, but the consequences of actually
-jumping remain Phase 2C.
+Phase 2B gave the mission clock candidate routes. Phase 2C/D makes those
+routes executable and gives arka's route advice the same drift problem as its
+system summaries.
 
-This keeps the slice narrow:
+The slice stays narrow:
 
 - inspect raw navigation data
 - manually plot one route
 - ask arka to plot a route
-- preserve the plotted route in saves and playtest reports
+- execute the plotted route
+- preserve plotted route, last jump, and Dark exposure in saves and playtest reports
 
 ## Route Options
 
@@ -33,8 +34,8 @@ Each option carries:
 - projected ship wear
 - projected cryostasis ageing
 
-These numbers are not applied yet. They are route facts for plotting and future
-jump execution.
+These numbers are route facts. Plotting records a choice. `jump` commits the
+choice and applies the consequences.
 
 ## Player Surface
 
@@ -43,6 +44,7 @@ The normal `status` readout includes a compact `NAVIGATION` block:
 ```text
 NAVIGATION
 PLOT      none          raw nav for candidate routes
+JUMP      none          plot a route, then jump
 OPTIONS   short, medium, deep routes available; plot or delegate nav
 ```
 
@@ -67,19 +69,59 @@ delegate nav
 ```
 
 Manual and delegated plotting advance the watch because attention was spent.
-They do not execute a jump, apply route distance, apply Dark exposure, or resolve
-route consequences.
+They do not execute a jump by themselves.
+
+Jump execution:
+
+```text
+jump
+```
+
+`jump` requires a plotted route. If no route is plotted, arka says so and the
+watch does not advance. If a route is plotted, the engine:
+
+- clears `plotted_route_id`
+- records `last_jump_route_id`
+- increments `jumps_executed`
+- adds to `total_dark_exposure`
+- closes the route distance
+- spends the route elapsed mission days
+- applies projected ship wear and cryostasis age
+- shocks coolant and cryostasis according to route instability and Dark exposure
+
+The normal per-beat mission clock and ambient system drift then run as usual.
+This means a jump is not just a ledger update; the route can push the current
+maintenance watch into worse coolant or sleeper conditions.
+
+## Navigation Context Gap
+
+The first executable jump works mechanically, but it does not yet answer the
+player's obvious spatial questions:
+
+- where the ship is now
+- what place, waypoint, or solution the ship just jumped to
+- why that place matters
+- why another route should be plotted from here
+- what arka gains by making the route feel settled or uninteresting
+
+This is intentionally left out of Phase 2C/D, but it should not be forgotten.
+Future work needs a light "current fix" layer before route planning can feel
+like travel rather than abstract number conversion. That layer does not need to
+be a full map. It might be a destination solution, waypoint label, local signal,
+or mission constraint that changes after a jump.
 
 ## arka Recommendation
 
-For now, arka plots `ARGOS-12`, the medium route. That gives delegation a useful
-default without making Phase 2B responsible for route-risk drift.
+Early, arka plots `ARGOS-12`, the medium route, and names the route cost plainly.
+At interpretive drift it still chooses that compromise but softens the framing.
+At selective or wrong drift it plots `CARINA-EDGE`, the deep route, and makes the
+fast arrival sound cleaner than the raw table says.
 
-Future Phase 2D work should decide how arka route advice changes under drift:
+This gives route delegation the same structure as coolant delegation:
 
 - accurate early recommendation
 - interpretive reframing of risk
-- selective omission of an important route cost
+- selective omission of important route cost
 - late contradiction between arka route advice and raw nav data
 
 ## Boundaries
@@ -87,5 +129,6 @@ Future Phase 2D work should decide how arka route advice changes under drift:
 - Route options are deterministic state, not generated prose.
 - The model may classify route commands, but the engine owns plotted route state.
 - `raw nav` is raw telemetry and should remain available outside arka's voice.
-- Jump execution, route consequence application, and post-jump pressure beats are
-  not implemented in Phase 2B.
+- Jump execution and route consequence application are deterministic engine
+  transitions.
+- Post-jump balance and aftermath pacing remain Phase 2E work.

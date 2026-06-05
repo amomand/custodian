@@ -40,6 +40,8 @@ The repo currently has a narrow terminal MVP:
   whole panel via arka, with drift weighted toward delegation and mitigated by
   raw-reading vigilance.
 - Save/load of `ShipState` and structured command history records (Phase 1D).
+- Mission clock, route options, first jump execution, and route-advice drift
+  (Phase 2A-D).
 - Tests around state transitions and AI boundary.
 - Markdown docs for the MVP, arka, and the interpreter.
 
@@ -301,10 +303,12 @@ Useful tests:
 
 Goal: make the ship feel like it is going somewhere, not just surviving a room.
 
-Status: started. Phase 2A adds a passive deterministic mission clock to the
-terminal slice: elapsed mission time, distance remaining, ship wear, and
-long-duration cryostasis decay. Phase 2B adds route options and plotting. Jump
-execution remains next.
+Status: nearing closeout. Phase 2A adds a passive deterministic mission clock to
+the terminal slice: elapsed mission time, distance remaining, ship wear, and
+long-duration cryostasis decay. Phase 2B adds route options and plotting. Phase
+2C/D adds jump execution, route consequences, and drift-sensitive arka route
+advice. Phase 2E should be the final balance and closeout pass before spatial
+ship work.
 
 Phase 2 should stay before the spatial ship phase. Routes create the strategic
 loop; schematics and spatial containment should then reveal the consequences of
@@ -398,7 +402,62 @@ Exit evidence:
 - Manual route plotting and delegated route plotting produce different habit
   records.
 - arka can plot a useful route without owning navigation truth.
-- Jump execution remains unimplemented and explicit.
+- At the Phase 2B boundary, jump execution remained unimplemented and explicit.
+
+### Phase 2C/D: Jump Execution And Route Advice
+
+Status: implemented in the current terminal slice.
+
+Goal: make plotted routes materially affect the run, and let arka's route advice
+begin to drift without giving the model ownership of navigation truth.
+
+Implemented:
+
+- `jump` / `execute jump` commits the currently plotted route.
+- Jump execution clears the plotted route and records the last jump.
+- Route distance, elapsed mission days, projected wear, cryostasis age, and Dark
+  exposure are applied deterministically.
+- Route instability and Dark exposure shock coolant and cryostasis state.
+- `NavigationState` records jump count and total Dark exposure.
+- Save/load support with migration for Phase 2B saves.
+- Playtest summaries report last jump, jump count, and Dark exposure.
+- arka's early navigation delegation selects the medium route and names the cost.
+- under selective or wrong drift, arka delegates toward the deep route while
+  omitting or contradicting the raw navigation risk.
+
+Design stance:
+
+Jumping is still one maintenance-watch action, not a new chapter of the game.
+It should make route choice matter without becoming a full spatial or event
+system. Raw navigation data remains the audit path; arka's advice is useful
+early and less trustworthy under drift.
+
+Exit evidence:
+
+- A plotted route can be executed and has visible consequences.
+- `raw nav` remains true before and after arka route advice.
+- Jump consequences are deterministic engine state.
+- arka can misframe route risk without inventing route facts.
+
+### Phase 2E: Balance And Closeout
+
+Status: next.
+
+Goal: decide whether Phase 2's route loop is fun, legible, and dangerous enough
+to support Phase 3.
+
+Likely work:
+
+- Tune short/medium/deep route costs.
+- Add or adjust seeded playtest routes around manual plotting, delegated
+  plotting, and jump execution.
+- Add a light navigation-context layer so the player knows where the ship is
+  after a jump, what kind of waypoint or solution it reached, and why plotting
+  another route matters.
+- Decide whether post-jump pressure needs one more authored beat or whether the
+  existing coolant/cryo drift is enough for now.
+- Review arka route advice for usefulness, omission, and late contradiction.
+- Close or rewrite Phase 2 docs before moving into spatial ship work.
 
 ## Phase 3: Spatial Ship And Containment
 

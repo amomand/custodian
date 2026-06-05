@@ -16,8 +16,8 @@ from custodian.models import (
 )
 
 
-SAVE_VERSION = 3
-SUPPORTED_SAVE_VERSIONS = {1, 2, SAVE_VERSION}
+SAVE_VERSION = 4
+SUPPORTED_SAVE_VERSIONS = {1, 2, 3, SAVE_VERSION}
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -118,8 +118,11 @@ def _navigation_from_data(data: object) -> NavigationState:
     return NavigationState(
         options=tuple(options) or NavigationState().options,
         plotted_route_id=_optional_str(data.get("plotted_route_id")),
+        last_jump_route_id=_optional_str(data.get("last_jump_route_id")),
         manual_plots=int(data.get("manual_plots", 0)),
         delegated_plots=int(data.get("delegated_plots", 0)),
+        jumps_executed=int(data.get("jumps_executed", 0)),
+        total_dark_exposure=int(data.get("total_dark_exposure", 0)),
     )
 
 

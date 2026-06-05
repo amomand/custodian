@@ -193,14 +193,23 @@ def default_route_options() -> tuple[RouteOption, ...]:
 class NavigationState:
     options: tuple[RouteOption, ...] = field(default_factory=default_route_options)
     plotted_route_id: str | None = None
+    last_jump_route_id: str | None = None
     manual_plots: int = 0
     delegated_plots: int = 0
+    jumps_executed: int = 0
+    total_dark_exposure: int = 0
 
     @property
     def plotted_route(self) -> RouteOption | None:
         if self.plotted_route_id is None:
             return None
         return self.option_by_id(self.plotted_route_id)
+
+    @property
+    def last_jump_route(self) -> RouteOption | None:
+        if self.last_jump_route_id is None:
+            return None
+        return self.option_by_id(self.last_jump_route_id)
 
     def option_by_id(self, route_id: str) -> RouteOption | None:
         for option in self.options:
@@ -211,9 +220,14 @@ class NavigationState:
     def raw_lines(self) -> tuple[str, ...]:
         plotted = self.plotted_route
         plotted_label = "none" if plotted is None else plotted.label
+        last_jump = self.last_jump_route
+        last_jump_label = "none" if last_jump is None else last_jump.label
         lines = [
             "RAW NAVIGATION SOLUTIONS",
             f"plotted_route        {plotted_label}",
+            f"last_jump_route      {last_jump_label}",
+            f"jumps_executed       {self.jumps_executed}",
+            f"dark_exposure_total  {self.total_dark_exposure}",
             "id                  class   dist     elapsed  dark  instab  wear  cryo-age",
         ]
         for option in self.options:

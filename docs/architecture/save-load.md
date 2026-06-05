@@ -27,9 +27,11 @@ with a path to intentional seed fixtures once key story or mechanic moments sett
 Saves carry a `version` field. Version 2 adds `MissionStatus`; version 1 saves
 load with a default mission clock so Phase 1D local saves can still be opened.
 Version 3 adds `NavigationState`; version 2 saves load with default route
-options and no plotted route. Loading an unknown version raises `ValueError`
-rather than silently importing an incompatible save. Round-trip equality is
-covered by `tests/test_persistence.py`.
+options and no plotted route. Version 4 adds jump execution state: last jump
+route, jump count, and total Dark exposure. Version 3 saves load with those
+fields empty or zero. Loading an unknown version raises `ValueError` rather than
+silently importing an incompatible save. Round-trip equality is covered by
+`tests/test_persistence.py`.
 
 ## Command History
 

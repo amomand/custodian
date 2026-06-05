@@ -39,7 +39,7 @@ Still excluded:
 - Map movement.
 - Random generation.
 - Rich UI.
-- Jump execution.
+- Multi-beat post-jump aftermath.
 - Deep lore.
 
 ## Player Loop
@@ -70,6 +70,7 @@ Core commands:
 - `plot short`: manually plot the short route.
 - `plot medium`: manually plot the medium route.
 - `plot deep`: manually plot the deep route.
+- `jump`: execute the plotted route.
 - `delegate`: let arka adjust the whole coolant panel.
 - `delegate cryo`: let arka tend the whole cryostasis panel.
 - `delegate nav`: let arka plot the next route.
@@ -100,6 +101,7 @@ shown as a number.
 - Internal maintenance beat.
 - Mission clock: elapsed time, distance remaining, ship wear, and cryostasis decay.
 - Navigation options and plotted route.
+- Last executed jump, jump count, and total Dark exposure.
 - Reactor coolant telemetry.
 - Hidden coolant and cryostasis familiarity.
 - Number of delegated interventions, including cryostasis delegation.
@@ -129,8 +131,11 @@ shown as a number.
 
 - Candidate route options.
 - Currently plotted route.
+- Last executed jump.
 - Manual route plot count.
 - Delegated route plot count.
+- Executed jump count.
+- Total Dark exposure.
 
 `ReactorCoolantSystem` owns telemetry:
 
@@ -178,6 +183,7 @@ The supported intent actions are:
 - `raw`
 - `delegate`
 - `plot`
+- `jump`
 - `manual`
 - `wait`
 - `help`
@@ -231,8 +237,14 @@ gentle; future jump execution should push these same fields harder.
 
 Phase 2B adds route options and plotting. `raw nav` exposes dense navigation
 solutions, `plot short|medium|deep` lets the player choose one by hand, and
-`delegate nav` lets arka plot a medium recommendation. Plotting costs attention
-but does not execute a jump yet.
+`delegate nav` lets arka plot a route. Plotting costs attention but does not
+execute a jump by itself.
+
+Phase 2C/D adds `jump`. Jumping requires a plotted route, clears the plot,
+records the last jump, closes distance, spends the route's mission time, applies
+wear and cryostasis age, and shocks coolant and cryostasis according to route
+instability and Dark exposure. arka's early route advice is useful; under drift,
+it starts to reframe or omit the cost of the faster deep route.
 
 ## Success And Failure
 
@@ -267,5 +279,7 @@ docs, not in the text shown to the player.
 7. Phase 1D: save/load of `ShipState` and structured command history records. Done.
 8. Phase 2A: passive mission clock, distance, ship wear, and cryostasis decay. Done.
 9. Phase 2B: route options, raw navigation, manual plotting, and delegated plotting. Done.
-10. Keep future expansion behind the same state-transition shape: more systems
+10. Phase 2C/D: jump execution, route consequences, and drifted arka route advice. Done.
+11. Phase 2E: post-jump balance, seeded-route review, and Phase 2 closeout.
+12. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.

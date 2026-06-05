@@ -5,11 +5,11 @@
 Phase 2A makes the ship feel like it is travelling through a long mission, not
 only surviving a local maintenance watch.
 
-This is still before jump execution. The clock is passive for now: every
-advancing command moves mission time forward, closes a small amount of distance,
-and adds long-duration pressure through ship wear and cryostasis decay. Phase 2B
-adds route options and plotting; Phase 2C should turn plotted routes into
-consequences.
+The clock began as passive mission pressure: every advancing command moves
+mission time forward, closes a small amount of distance, and adds long-duration
+pressure through ship wear and cryostasis decay. Phase 2B adds route options and
+plotting. Phase 2C/D lets a plotted route execute and push those same mission
+fields harder.
 
 ## State
 
@@ -50,12 +50,13 @@ and cryostasis playtest anchors remain readable.
 - unstable coolant can increase ship wear
 - unstable cryostasis can increase cryostasis decay
 
-This gives future jump execution real pressure fields to manipulate without
-making Phase 2A a route system by stealth.
+Jump execution now manipulates these fields directly. Phase 2E should tune how
+harshly those jumps disturb the rest of the maintenance watch.
 
 ## Boundaries
 
 - arka may interpret or comment on mission pressure from constrained context
 - raw mission telemetry comes from `MissionStatus`, never generated prose
 - route plotting, jump cost, and route-risk drift belong to Phase 2B-D
+- post-jump balance and pacing belong to Phase 2E
 - final destination and endings remain intentionally vague

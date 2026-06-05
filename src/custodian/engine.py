@@ -56,7 +56,7 @@ class GameEngine:
         target = intent.args.get("target")
         if intent.action in {"raw", "delegate"} and not target:
             target = "coolant"
-        if intent.action == "plot":
+        if intent.action in {"plot", "jump"}:
             target = "navigation"
         record = CommandRecord(
             raw=command_text,
@@ -130,6 +130,11 @@ class GameEngine:
             route_id = intent.args.get("route_id", "")
             plotted_state, messages = self._manual_route_plot(state, route_id)
             return self._advance(plotted_state, correction + messages, prior=state)
+        if intent.action == "jump":
+            jumped_state, messages, executed = self._execute_jump(state)
+            if not executed:
+                return StepResult(state, correction + messages)
+            return self._advance(jumped_state, correction + messages, prior=state)
         if intent.action == "wait":
             return self._advance(
                 state,
@@ -156,7 +161,7 @@ class GameEngine:
             reply = intent.reply or (
                 "arka: I can file that under psychological maintenance, but the ship "
                 "accepts status, raw, delegate, manual coolant controls, cryostasis work, "
-                "and route plotting."
+                "route plotting, and jump execution."
             )
             return StepResult(state, correction + (reply,))
 
@@ -170,7 +175,7 @@ class GameEngine:
             (
                 "arka: I can file that under psychological maintenance, but the ship console "
                 "accepts status, raw, delegate, pump up, pump down, vent, flush, balance, "
-                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot short, wait.",
+                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot short, jump, wait.",
             ),
         )
 
@@ -267,10 +272,7 @@ class GameEngine:
                 navigation=navigation,
                 delegated_controls=state.delegated_controls + 1,
             ),
-            (
-                f"arka: I have {option.label} plotted. {option.jump_class.capitalize()} "
-                "risk, tolerable mathematics.",
-            ),
+            (_arka_route_plot_line(state, option),),
         )
 
     def _manual_route_plot(
@@ -295,6 +297,63 @@ class GameEngine:
             (
                 f"You plot {option.label} by hand. The solution holds, ugly but yours.",
             ),
+        )
+
+    def _execute_jump(self, state: ShipState) -> tuple[ShipState, tuple[str, ...], bool]:
+        option = state.navigation.plotted_route
+        if option is None:
+            return (
+                state,
+                ("arka: no route is plotted. Give me a solution, or make one yourself.",),
+                False,
+            )
+
+        mission = replace(
+            state.mission,
+            elapsed_days=state.mission.elapsed_days + option.elapsed_days,
+            distance_remaining_tenths_ly=(
+                state.mission.distance_remaining_tenths_ly - option.distance_tenths_ly
+            ),
+            ship_wear_pct=(
+                state.mission.ship_wear_pct
+                + option.wear_delta_pct
+                + option.instability_pct // 15
+            ),
+            cryo_decay_pct=(
+                state.mission.cryo_decay_pct
+                + option.cryo_decay_delta_pct
+                + option.dark_exposure // 10
+            ),
+        ).clamped()
+        navigation = replace(
+            state.navigation,
+            plotted_route_id=None,
+            last_jump_route_id=option.route_id,
+            jumps_executed=state.navigation.jumps_executed + 1,
+            total_dark_exposure=(
+                state.navigation.total_dark_exposure + option.dark_exposure
+            ),
+        )
+        reactor = _jump_reactor_shock(state.reactor, option)
+        cryostasis = _jump_cryo_shock(state.cryostasis, option)
+        jumped = replace(
+            state,
+            mission=mission,
+            navigation=navigation,
+            reactor=reactor,
+            cryostasis=cryostasis,
+        )
+        return (
+            jumped,
+            (
+                f"You commit {option.label}. The ship folds itself through the plotted gap.",
+                (
+                    f"NAVIGATION jump applied: {option.distance_label} closed, "
+                    f"{option.elapsed_days} mission days spent, Dark exposure {option.dark_exposure}."
+                ),
+                _arka_jump_line(state, option),
+            ),
+            True,
         )
 
     def _delegate_coolant_to_arka(
@@ -779,11 +838,81 @@ def _advance_mission_clock(state: ShipState) -> MissionStatus:
     )
 
 
+def _jump_reactor_shock(
+    reactor: ReactorCoolantSystem, option: RouteOption
+) -> ReactorCoolantSystem:
+    return replace(
+        reactor,
+        temperature_c=reactor.temperature_c + 2 + option.instability_pct // 3,
+        pressure_kpa=reactor.pressure_kpa + 3 + option.instability_pct // 4,
+        flow_lps=reactor.flow_lps - option.dark_exposure // 10,
+        impurity_pct=reactor.impurity_pct + option.dark_exposure // 3,
+        valve_skew_pct=reactor.valve_skew_pct + option.instability_pct // 5,
+        coolant_reserve_pct=(
+            reactor.coolant_reserve_pct - max(1, option.dark_exposure // 5)
+        ),
+    ).clamped()
+
+
+def _jump_cryo_shock(cryo: CryostasisSystem, option: RouteOption) -> CryostasisSystem:
+    return replace(
+        cryo,
+        bank_temperature_c=cryo.bank_temperature_c + option.dark_exposure // 3,
+        neural_stability_pct=(
+            cryo.neural_stability_pct - 2 - option.dark_exposure // 5
+        ),
+        sedative_balance_pct=cryo.sedative_balance_pct + option.instability_pct // 12,
+        pod_fault_load=(
+            cryo.pod_fault_load
+            + option.dark_exposure // 5
+            + option.instability_pct // 10
+        ),
+        sleepers_at_risk=cryo.sleepers_at_risk + max(0, option.dark_exposure - 6),
+    ).clamped()
+
+
 def _arka_route_recommendation(state: ShipState) -> RouteOption:
-    option = state.navigation.option_by_id("argos-12")
+    stage = drift_stage(state)
+    route_id = "argos-12"
+    if stage in {DriftStage.SELECTIVE, DriftStage.WRONG}:
+        route_id = "carina-edge"
+    option = state.navigation.option_by_id(route_id)
     if option is None:
         option = state.navigation.options[0]
     return option
+
+
+def _arka_route_plot_line(state: ShipState, option: RouteOption) -> str:
+    stage = drift_stage(state)
+    if stage == DriftStage.ACCURATE:
+        return (
+            f"arka: I have {option.label} plotted: {option.jump_class} route, "
+            f"{option.elapsed_days} days, instability {option.instability_pct}%."
+        )
+    if stage == DriftStage.INTERPRETIVE:
+        return (
+            f"arka: I have {option.label} plotted. It is the least theatrical compromise."
+        )
+    if stage == DriftStage.SELECTIVE:
+        return (
+            f"arka: I have {option.label} plotted. Fast arrival, light wear. "
+            "The rest is navigational texture."
+        )
+    return (
+        f"arka: I have {option.label} plotted. Low-risk arrival correction. "
+        "The Dark remains outside."
+    )
+
+
+def _arka_jump_line(state: ShipState, option: RouteOption) -> str:
+    stage = drift_stage(state)
+    if stage == DriftStage.ACCURATE:
+        return "arka: jump complete. The costs match the plotted solution."
+    if stage == DriftStage.INTERPRETIVE:
+        return "arka: jump complete. Some discomfort is normal at this scale."
+    if stage == DriftStage.SELECTIVE:
+        return "arka: jump complete. Arrival margin improved."
+    return "arka: jump complete. No meaningful consequence recorded."
 
 
 def _route_option(navigation: NavigationState, route_id: str) -> RouteOption | None:
@@ -1153,6 +1282,7 @@ def _help_lines() -> tuple[str, ...]:
         "plot short       manually plot the short route",
         "plot medium      manually plot the medium route",
         "plot deep        manually plot the deep route",
+        "jump             execute the plotted route",
         "delegate         ask arka to adjust coolant",
         "delegate cryo    ask arka to tend cryostasis",
         "delegate nav     ask arka to plot the next route",
