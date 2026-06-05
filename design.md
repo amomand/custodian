@@ -20,8 +20,10 @@ Included:
 - Pure state transitions around `ShipState`.
 - One `ReactorCoolantSystem` with raw telemetry.
 - One `CryostasisSystem` with raw telemetry and sleeper viability pressure.
+- One `MissionStatus` clock with elapsed mission time, distance remaining, ship
+  wear, and long-duration cryostasis decay.
 - An `arka` layer that summarises the same deterministic systems.
-- Compact coolant and cryostasis HUDs that carry current telemetry outside
+- Compact mission, coolant, and cryostasis HUDs that carry current telemetry outside
   arka's voice.
 - Optional arka interpreter for natural-language input and off-script replies.
 - Diegetic opening screen and closing debrief.
@@ -36,6 +38,7 @@ Still excluded:
 - Map movement.
 - Random generation.
 - Rich UI.
+- Route choice and jump execution.
 - Deep lore.
 
 ## Player Loop
@@ -61,6 +64,7 @@ Core commands:
 - `status`: refresh the objective block, coolant and cryostasis HUDs, and arka summaries.
 - `raw`: read detailed coolant telemetry.
 - `raw cryo`: read detailed cryostasis telemetry.
+- `raw mission`: read detailed mission clock telemetry.
 - `delegate`: let arka adjust the whole coolant panel.
 - `delegate cryo`: let arka tend the whole cryostasis panel.
 - `pump up`: manual increase to coolant flow.
@@ -88,6 +92,7 @@ shown as a number.
 `ShipState` owns the simulation:
 
 - Internal maintenance beat.
+- Mission clock: elapsed time, distance remaining, ship wear, and cryostasis decay.
 - Reactor coolant telemetry.
 - Hidden coolant and cryostasis familiarity.
 - Number of delegated interventions, including cryostasis delegation.
@@ -105,6 +110,13 @@ shown as a number.
 - Sedative balance percent.
 - Pod fault load.
 - Sleepers at risk.
+
+`MissionStatus` owns route-pressure telemetry:
+
+- Elapsed mission days.
+- Distance remaining, stored in tenths of a light year.
+- Ship wear percentage.
+- Long-duration cryostasis decay percentage.
 
 `ReactorCoolantSystem` owns telemetry:
 
@@ -125,11 +137,11 @@ The CLI only prints messages and feeds input back into the engine. The arka
 interpreter returns an `Intent`, but the engine remains the only authority that
 can advance time, change telemetry, resolve crises, or record familiarity.
 
-`custodian.telemetry` owns the terminal HUDs, their threshold bars, and per-metric
-trend arrows. arka's summaries should not read out current numbers; the HUDs and
-raw panels own telemetry display. `custodian.objectives` owns the legible
-objective block (goal, horizon, per-beat priority) and reads only deterministic
-telemetry.
+`custodian.telemetry` owns the terminal HUDs, their threshold bars, and
+per-metric trend arrows. arka's summaries should not read out current numbers;
+the HUDs and raw panels own telemetry display. `custodian.objectives` owns the
+legible objective block (goal, horizon, per-beat priority) and reads only
+deterministic telemetry.
 
 Opening and closing text lives in `custodian.narrative`. The debrief can read
 hidden state, but it must translate habits into fiction rather than showing
@@ -197,6 +209,11 @@ The player can survive by delegating early, but a player who delegates every
 coolant decision reaches the final crisis with little manual familiarity, a bad
 information channel, and unattended sleepers.
 
+Phase 2A adds a passive mission clock to this arc. Each advancing command moves
+elapsed mission time forward, closes a small amount of distance, and accumulates
+ship wear or cryostasis decay. The current coolant slice keeps that pressure
+gentle; future route choices should push these same fields harder.
+
 ## Success And Failure
 
 Success: survive past the maintenance window with the coolant loop contained.
@@ -228,5 +245,6 @@ docs, not in the text shown to the player.
    trend-aware HUD, delegation framed as a throughput choice, and drift weighted
    toward delegation with vigilance mitigation. Done.
 7. Phase 1D: save/load of `ShipState` and structured command history records. Done.
-8. Keep future expansion behind the same state-transition shape: more systems
+8. Phase 2A: passive mission clock, distance, ship wear, and cryostasis decay. Done.
+9. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.

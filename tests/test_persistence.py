@@ -4,6 +4,7 @@ from custodian.models import (
     CommandRecord,
     CrisisState,
     CryostasisSystem,
+    MissionStatus,
     ReactorCoolantSystem,
     ShipState,
 )
@@ -16,6 +17,12 @@ class PersistenceTests(unittest.TestCase):
             turn=8,
             reactor=ReactorCoolantSystem(temperature_c=611, pressure_kpa=288),
             cryostasis=CryostasisSystem(neural_stability_pct=80, sleepers_at_risk=14),
+            mission=MissionStatus(
+                elapsed_days=15_000,
+                distance_remaining_tenths_ly=97,
+                ship_wear_pct=31,
+                cryo_decay_pct=19,
+            ),
             manual_familiarity=4,
             cryo_familiarity=2,
             delegated_controls=3,
@@ -107,6 +114,27 @@ class PersistenceTests(unittest.TestCase):
 
         self.assertEqual(restored.history[0].raw, "status")
         self.assertEqual(restored.history[0].action, "unknown")
+
+    def test_version_one_save_loads_with_default_mission_clock(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 1,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(restored.mission, MissionStatus())
 
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

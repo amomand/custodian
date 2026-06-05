@@ -2,7 +2,7 @@ import unittest
 from dataclasses import replace
 
 from custodian.engine import GameEngine
-from custodian.models import CrisisState, ReactorCoolantSystem, ShipState
+from custodian.models import CrisisState, MissionStatus, ReactorCoolantSystem, ShipState
 
 
 class EngineTests(unittest.TestCase):
@@ -48,6 +48,54 @@ class EngineTests(unittest.TestCase):
         self.assertIn("OBJECTIVE", output)
         self.assertIn("WATCH", output)
         self.assertIn("ATTENTION", output)
+
+    def test_status_shows_mission_clock_without_arka_owning_it(self) -> None:
+        state = self.engine.initial_state()
+
+        output = "\n".join(self.engine.handle(state, "status").messages)
+
+        self.assertIn("MISSION CLOCK", output)
+        self.assertIn("ELAPSED", output)
+        self.assertIn("RANGE", output)
+        self.assertNotIn("arka: mission", output)
+
+    def test_raw_mission_advances_time_and_shows_clock(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "raw mission")
+        output = "\n".join(result.messages)
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.raw_inspections, 1)
+        self.assertIn("RAW MISSION CLOCK", output)
+        self.assertEqual(result.state.history[0].target, "mission")
+
+    def test_mission_clock_advances_with_maintenance_time(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "wait")
+
+        self.assertGreater(result.state.mission.elapsed_days, state.mission.elapsed_days)
+        self.assertLess(
+            result.state.mission.distance_remaining_tenths_ly,
+            state.mission.distance_remaining_tenths_ly,
+        )
+
+    def test_mission_wear_and_cryo_decay_add_background_pressure(self) -> None:
+        baseline = ShipState()
+        worn = ShipState(mission=MissionStatus(ship_wear_pct=50, cryo_decay_pct=36))
+
+        baseline_after = self.engine.handle(baseline, "wait").state
+        worn_after = self.engine.handle(worn, "wait").state
+
+        self.assertGreater(
+            worn_after.reactor.temperature_c,
+            baseline_after.reactor.temperature_c,
+        )
+        self.assertLess(
+            worn_after.cryostasis.neural_stability_pct,
+            baseline_after.cryostasis.neural_stability_pct,
+        )
 
     def test_advancing_records_command_history(self) -> None:
         state = self.engine.initial_state()

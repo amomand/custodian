@@ -1,7 +1,40 @@
 from __future__ import annotations
 
-from custodian.models import CryostasisSystem, ReactorCoolantSystem, ShipState
+from custodian.models import CryostasisSystem, MissionStatus, ReactorCoolantSystem, ShipState
 from custodian.objectives import trend
+
+
+def mission_hud_lines(state: ShipState) -> tuple[str, ...]:
+    mission = state.mission
+    return (
+        "MISSION CLOCK",
+        f"ELAPSED   {_elapsed_label(mission):<13} mission time awake is not mission time kind",
+        f"RANGE     {_distance_label(mission):<13} destination solution unresolved",
+        _metric_line(
+            "WEAR",
+            mission.ship_wear_pct,
+            "%",
+            _high_caution(mission.ship_wear_pct, 35),
+            ".",
+            0,
+            100,
+            0,
+            35,
+            "caution above 35",
+        ),
+        _metric_line(
+            "CRYO AGE",
+            mission.cryo_decay_pct,
+            "%",
+            _high_caution(mission.cryo_decay_pct, 24),
+            ".",
+            0,
+            100,
+            0,
+            24,
+            "caution above 24",
+        ),
+    )
 
 
 def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
@@ -150,6 +183,18 @@ def cryostasis_hud_lines(state: ShipState) -> tuple[str, ...]:
             "nominal 0",
         ),
     )
+
+
+def _elapsed_label(mission: MissionStatus) -> str:
+    years = mission.elapsed_days // 365
+    days = mission.elapsed_days % 365
+    return f"{years}y {days}d"
+
+
+def _distance_label(mission: MissionStatus) -> str:
+    whole = mission.distance_remaining_tenths_ly // 10
+    decimal = mission.distance_remaining_tenths_ly % 10
+    return f"{whole}.{decimal} ly"
 
 
 def _trend(

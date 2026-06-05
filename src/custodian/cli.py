@@ -13,6 +13,7 @@ COMMAND_COMPLETIONS = (
     "status",
     "raw",
     "raw cryo",
+    "raw mission",
     "delegate",
     "delegate cryo",
     "pump up",

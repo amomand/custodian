@@ -301,6 +301,10 @@ Useful tests:
 
 Goal: make the ship feel like it is going somewhere, not just surviving a room.
 
+Status: started. Phase 2A adds a passive deterministic mission clock to the
+terminal slice: elapsed mission time, distance remaining, ship wear, and
+long-duration cryostasis decay. Route choices and jump execution remain next.
+
 Phase 2 should stay before the spatial ship phase. Routes create the strategic
 loop; schematics and spatial containment should then reveal the consequences of
 that loop rather than inventing one by themselves.
@@ -334,6 +338,35 @@ Keep vague for now:
 - What arrives with the ship.
 - How many jumps a full run contains.
 - Exact endings.
+
+### Phase 2A: Mission Clock
+
+Status: implemented in the current terminal slice.
+
+Goal: give the existing maintenance watch a mission-scale pressure layer before
+adding route choice.
+
+Implemented:
+
+- `MissionStatus` on `ShipState`.
+- Elapsed mission days and distance remaining.
+- Ship wear and cryostasis decay as deterministic pressure fields.
+- A `MISSION CLOCK` status block and `raw mission` panel.
+- Save/load support with migration for Phase 1D saves.
+- Playtest summaries that report mission elapsed time, distance, wear, and decay.
+
+Design stance:
+
+The clock is intentionally passive and gentle for now. It makes time visible and
+gives future route choices real state to push, but it should not become route
+planning by stealth.
+
+Exit evidence:
+
+- Advancing commands move mission time and distance.
+- High ship wear worsens coolant drift.
+- High cryostasis decay worsens sleeper pressure.
+- Mission telemetry remains raw deterministic state, outside arka's generated voice.
 
 ## Phase 3: Spatial Ship And Containment
 

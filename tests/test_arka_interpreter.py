@@ -143,6 +143,16 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(manual.args["operation"], "reroute_chill")
         self.assertEqual(manual.args["target"], "cryo")
 
+    def test_raw_mission_is_rule_based(self) -> None:
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        intent = interpreter.interpret("raw mission", ShipState())
+
+        self.assertEqual(intent.action, "raw")
+        self.assertEqual(intent.args["target"], "mission")
+
     def test_context_exposes_arka_summary_not_raw_panel(self) -> None:
         state = ShipState(
             turn=21,
