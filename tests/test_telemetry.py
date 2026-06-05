@@ -59,6 +59,7 @@ class TelemetryTests(unittest.TestCase):
         hud = "\n".join(navigation_hud_lines(state))
 
         self.assertIn("NAVIGATION", hud)
+        self.assertIn("WAKEFUL DRIFT", hud)
         self.assertIn("ARGOS-12", hud)
         self.assertIn("medium solution held", hud)
         self.assertIn("last KHEPRI-4, dark 4", hud)

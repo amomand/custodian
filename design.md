@@ -23,6 +23,8 @@ Included:
 - One `MissionStatus` clock with elapsed mission time, distance remaining, ship
   wear, and long-duration cryostasis decay.
 - One `NavigationState` with short, medium, and deep route options.
+- A lightweight current navigation fix, enough to say where the ship thinks it
+  is after a jump without becoming a map.
 - An `arka` layer that summarises the same deterministic systems.
 - Compact mission, navigation, coolant, and cryostasis HUDs that carry current
   telemetry outside arka's voice.
@@ -63,6 +65,7 @@ delegation is tempting.
 Core commands:
 
 - `status`: refresh the objective block, coolant and cryostasis HUDs, and arka summaries.
+- `where are we?`: natural status request that surfaces the current navigation fix.
 - `raw`: read detailed coolant telemetry.
 - `raw cryo`: read detailed cryostasis telemetry.
 - `raw mission`: read detailed mission clock telemetry.
@@ -101,6 +104,7 @@ shown as a number.
 - Internal maintenance beat.
 - Mission clock: elapsed time, distance remaining, ship wear, and cryostasis decay.
 - Navigation options and plotted route.
+- Current navigation fix.
 - Last executed jump, jump count, and total Dark exposure.
 - Reactor coolant telemetry.
 - Hidden coolant and cryostasis familiarity.
@@ -129,6 +133,7 @@ shown as a number.
 
 `NavigationState` owns route telemetry:
 
+- Current navigation fix.
 - Candidate route options.
 - Currently plotted route.
 - Last executed jump.
@@ -246,6 +251,11 @@ wear and cryostasis age, and shocks coolant and cryostasis according to route
 instability and Dark exposure. arka's early route advice is useful; under drift,
 it starts to reframe or omit the cost of the faster deep route.
 
+Phase 2E adds the current navigation fix and route comparison playtests. It does
+not make a map. It gives each jump a place-like arrival reference so the player
+can see where the ship is after a route commit, while leaving local spatial
+consequences for Phase 3.
+
 ## Success And Failure
 
 Success: survive past the maintenance window with the coolant loop contained.
@@ -280,6 +290,6 @@ docs, not in the text shown to the player.
 8. Phase 2A: passive mission clock, distance, ship wear, and cryostasis decay. Done.
 9. Phase 2B: route options, raw navigation, manual plotting, and delegated plotting. Done.
 10. Phase 2C/D: jump execution, route consequences, and drifted arka route advice. Done.
-11. Phase 2E: post-jump balance, seeded-route review, and Phase 2 closeout.
+11. Phase 2E: current navigation fix, seeded-route review, and Phase 2 closeout. Done.
 12. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.

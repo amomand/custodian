@@ -16,8 +16,8 @@ from custodian.models import (
 )
 
 
-SAVE_VERSION = 4
-SUPPORTED_SAVE_VERSIONS = {1, 2, 3, SAVE_VERSION}
+SAVE_VERSION = 5
+SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, SAVE_VERSION}
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -117,6 +117,7 @@ def _navigation_from_data(data: object) -> NavigationState:
 
     return NavigationState(
         options=tuple(options) or NavigationState().options,
+        current_fix_id=str(data.get("current_fix_id", "wakeful-drift")),
         plotted_route_id=_optional_str(data.get("plotted_route_id")),
         last_jump_route_id=_optional_str(data.get("last_jump_route_id")),
         manual_plots=int(data.get("manual_plots", 0)),

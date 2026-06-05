@@ -369,13 +369,24 @@ def _rule_based(command: str) -> Intent | None:
         return Intent("delegate", {}, 1.0, rationale="delegation phrase")
 
     corrected = _correct_command(command)
+    punctuation_only = command.rstrip("?!.") == corrected
     correction = (
         f"arka: reading '{command}' as '{corrected}'."
-        if command and corrected != command
+        if command and corrected != command and not punctuation_only
         else None
     )
 
-    if corrected in {"", "status", "summary"}:
+    if corrected in {
+        "",
+        "status",
+        "summary",
+        "where are we",
+        "where am i",
+        "where is the ship",
+        "current fix",
+        "position",
+        "location",
+    }:
         return Intent("status", {}, 1.0, correction=correction, rationale="status")
     if corrected in {"help", "?", "commands"}:
         return Intent("help", {}, 1.0, correction=correction, rationale="help")
@@ -624,12 +635,13 @@ def _mission_pressure_label(state: ShipState) -> str:
 
 def _navigation_status_label(state: ShipState) -> str:
     plotted = state.navigation.plotted_route
+    fix = state.navigation.current_fix.label
     if plotted is None:
-        return "no route plotted"
+        return f"current fix {fix}, no route plotted"
     suffix = "no jump executed"
     if state.navigation.last_jump_route is not None:
         suffix = "previous jump recorded"
-    return f"{plotted.jump_class} route plotted, {suffix}"
+    return f"current fix {fix}, {plotted.jump_class} route plotted, {suffix}"
 
 
 def _normalise(command_text: str) -> str:
@@ -779,6 +791,12 @@ _KNOWN_COMMANDS = (
     "",
     "status",
     "summary",
+    "where are we",
+    "where am i",
+    "where is the ship",
+    "current fix",
+    "position",
+    "location",
     "help",
     "?",
     "commands",
