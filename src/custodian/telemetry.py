@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from custodian.models import CryostasisSystem, ReactorCoolantSystem, ShipState
+from custodian.objectives import trend
 
 
 def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
     reactor = state.reactor
+    prev = state.previous_reactor
     return (
         "COOLANT LOOP",
         _metric_line(
@@ -12,6 +14,7 @@ def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
             reactor.temperature_c,
             "C",
             _band(reactor.temperature_c, 560, 620),
+            _trend(reactor, prev, "temperature_c", "high"),
             500,
             720,
             560,
@@ -23,6 +26,7 @@ def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
             reactor.pressure_kpa,
             "kPa",
             _band(reactor.pressure_kpa, 210, 270),
+            _trend(reactor, prev, "pressure_kpa", "high"),
             160,
             360,
             210,
@@ -34,6 +38,7 @@ def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
             reactor.flow_lps,
             "L/s",
             _band(reactor.flow_lps, 72, 90),
+            _trend(reactor, prev, "flow_lps", "low"),
             40,
             120,
             72,
@@ -45,6 +50,7 @@ def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
             reactor.impurity_pct,
             "%",
             _band(reactor.impurity_pct, 0, 18),
+            _trend(reactor, prev, "impurity_pct", "high"),
             0,
             50,
             0,
@@ -56,6 +62,7 @@ def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
             reactor.valve_skew_pct,
             "%",
             _band(reactor.valve_skew_pct, 0, 16),
+            _trend(reactor, prev, "valve_skew_pct", "high"),
             0,
             50,
             0,
@@ -67,6 +74,7 @@ def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
             reactor.coolant_reserve_pct,
             "%",
             _reserve_band(reactor),
+            _trend(reactor, prev, "coolant_reserve_pct", "low"),
             0,
             100,
             35,
@@ -78,6 +86,7 @@ def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
 
 def cryostasis_hud_lines(state: ShipState) -> tuple[str, ...]:
     cryo = state.cryostasis
+    prev = state.previous_cryostasis
     return (
         "CRYOSTASIS",
         _metric_line(
@@ -85,6 +94,7 @@ def cryostasis_hud_lines(state: ShipState) -> tuple[str, ...]:
             cryo.bank_temperature_c,
             "C",
             _band(cryo.bank_temperature_c, -196, -170),
+            _trend(cryo, prev, "bank_temperature_c", "high"),
             -210,
             -150,
             -196,
@@ -96,6 +106,7 @@ def cryostasis_hud_lines(state: ShipState) -> tuple[str, ...]:
             cryo.neural_stability_pct,
             "%",
             _low_caution(cryo.neural_stability_pct, 78),
+            _trend(cryo, prev, "neural_stability_pct", "low"),
             0,
             100,
             78,
@@ -107,6 +118,7 @@ def cryostasis_hud_lines(state: ShipState) -> tuple[str, ...]:
             cryo.sedative_balance_pct,
             "%",
             _band(cryo.sedative_balance_pct, 38, 62),
+            _trend(cryo, prev, "sedative_balance_pct", "band"),
             0,
             100,
             38,
@@ -118,6 +130,7 @@ def cryostasis_hud_lines(state: ShipState) -> tuple[str, ...]:
             cryo.pod_fault_load,
             "load",
             _high_caution(cryo.pod_fault_load, 12),
+            _trend(cryo, prev, "pod_fault_load", "high"),
             0,
             50,
             0,
@@ -129,6 +142,7 @@ def cryostasis_hud_lines(state: ShipState) -> tuple[str, ...]:
             cryo.sleepers_at_risk,
             "sleepers",
             _risk_band(cryo),
+            _trend(cryo, prev, "sleepers_at_risk", "high"),
             0,
             120,
             0,
@@ -138,11 +152,22 @@ def cryostasis_hud_lines(state: ShipState) -> tuple[str, ...]:
     )
 
 
+def _trend(
+    system: ReactorCoolantSystem | CryostasisSystem,
+    previous: ReactorCoolantSystem | CryostasisSystem | None,
+    attr: str,
+    danger: str,
+) -> str:
+    prior = None if previous is None else getattr(previous, attr)
+    return trend(getattr(system, attr), prior, danger)
+
+
 def _metric_line(
     label: str,
     value: int,
     unit: str,
     band: str,
+    trend_token: str,
     display_min: int,
     display_max: int,
     nominal_low: int,
@@ -150,7 +175,7 @@ def _metric_line(
     note: str,
 ) -> str:
     return (
-        f"{label:<9} {_display_value(value, unit):<13} {band:<4} "
+        f"{label:<9} {_display_value(value, unit):<13} {band:<4} {trend_token:<2} "
         f"{_threshold_bar(value, display_min, display_max, nominal_low, nominal_high)} "
         f"{note}"
     )

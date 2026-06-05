@@ -128,6 +128,9 @@ class ShipState:
     sleepers_lost: int = 0
     crisis: CrisisState | None = None
     outcome: str | None = None
+    previous_reactor: ReactorCoolantSystem | None = None
+    previous_cryostasis: CryostasisSystem | None = None
+    history: tuple[str, ...] = ()
 
     @property
     def is_finished(self) -> bool:

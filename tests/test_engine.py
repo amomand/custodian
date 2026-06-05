@@ -40,6 +40,32 @@ class EngineTests(unittest.TestCase):
         self.assertIn("arka: coolant loop nominal", output)
         self.assertNotIn("TURN", output)
 
+    def test_status_shows_the_legible_objective_block(self) -> None:
+        state = self.engine.initial_state()
+
+        output = "\n".join(self.engine.handle(state, "status").messages)
+
+        self.assertIn("OBJECTIVE", output)
+        self.assertIn("WATCH", output)
+        self.assertIn("PRIORITY", output)
+
+    def test_advancing_records_command_history(self) -> None:
+        state = self.engine.initial_state()
+
+        state = self.engine.handle(state, "balance").state
+        state = self.engine.handle(state, "wait").state
+
+        self.assertEqual(state.history, ("balance", "wait"))
+
+    def test_advancing_captures_previous_telemetry_for_trends(self) -> None:
+        state = self.engine.initial_state()
+        before = state.reactor
+
+        advanced = self.engine.handle(state, "wait").state
+
+        self.assertEqual(advanced.previous_reactor, before)
+        self.assertEqual(advanced.previous_cryostasis, state.cryostasis)
+
     def test_dev_debug_command_is_non_advancing_and_non_diegetic(self) -> None:
         state = self.engine.initial_state()
 

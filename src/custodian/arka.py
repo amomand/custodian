@@ -4,11 +4,18 @@ from custodian.models import CryostasisSystem, DriftStage, ReactorCoolantSystem,
 
 
 def drift_stage(state: ShipState) -> DriftStage:
-    if state.turn >= 11 or state.delegated_controls >= 7:
+    # Delegation is the primary driver: handing arka the panels is what lets its
+    # account of the ship rot. Time is only a weak backstop, and reading the raw
+    # layer (vigilance) buys the player a few honest beats before the clock bites.
+    vigilance = min(state.raw_inspections // 2, 3)
+    effective_turn = state.turn - vigilance
+    delegated = state.delegated_controls
+
+    if effective_turn >= 10 or delegated >= 7:
         return DriftStage.WRONG
-    if state.turn >= 9 or state.delegated_controls >= 5:
+    if effective_turn >= 9 or delegated >= 5:
         return DriftStage.SELECTIVE
-    if state.turn >= 5 or state.delegated_controls >= 3:
+    if effective_turn >= 5 or delegated >= 3:
         return DriftStage.INTERPRETIVE
     return DriftStage.ACCURATE
 

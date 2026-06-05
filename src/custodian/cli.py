@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 from custodian.engine import GameEngine
 from custodian.narrative import closing_lines, opening_lines
+from custodian.persistence import DEFAULT_SAVE_PATH, load_state, save_state
 
 
 COMMAND_COMPLETIONS = (
@@ -45,6 +47,12 @@ def main() -> None:
             print()
             command = "quit"
 
+        persistence = _handle_persistence(command, state)
+        if persistence is not None:
+            state, lines = persistence
+            _print_lines(lines)
+            continue
+
         result = engine.handle(state, command)
         state = result.state
         should_refresh = result.presentation_break or (
@@ -57,6 +65,27 @@ def main() -> None:
         _print_lines(result.messages)
         if state.is_finished:
             _print_lines(closing_lines(state))
+
+
+def _handle_persistence(command: str, state):
+    stripped = command.strip()
+    head = stripped.split(maxsplit=1)
+    if not head or head[0] not in {":save", ":load"}:
+        return None
+
+    path = Path(head[1].strip()) if len(head) > 1 and head[1].strip() else DEFAULT_SAVE_PATH
+    if head[0] == ":save":
+        try:
+            save_state(state, path)
+        except OSError as error:
+            return state, (f"SAVE FAILED: {error}",)
+        return state, (f"SAVED to {path}",)
+
+    try:
+        loaded = load_state(path)
+    except (OSError, ValueError, KeyError) as error:
+        return state, (f"LOAD FAILED: {error}",)
+    return loaded, (f"LOADED from {path}", f"internal beat restored: {loaded.turn}")
 
 
 def _print_lines(lines: tuple[str, ...]) -> None:

@@ -17,6 +17,7 @@ from custodian.models import (
     ReactorCoolantSystem,
     ShipState,
 )
+from custodian.objectives import objective_lines
 from custodian.telemetry import coolant_hud_lines, cryostasis_hud_lines
 
 
@@ -40,6 +41,18 @@ class GameEngine:
         if dev_result is not None:
             return dev_result
 
+        result = self._dispatch(state, command_text)
+        new_state = result.state
+        if result.advanced:
+            new_state = replace(
+                new_state,
+                previous_reactor=state.reactor,
+                previous_cryostasis=state.cryostasis,
+            )
+        new_state = replace(new_state, history=state.history + (command_text,))
+        return replace(result, state=new_state)
+
+    def _dispatch(self, state: ShipState, command_text: str) -> StepResult:
         intent = self.interpreter.interpret(command_text, state)
         correction = _correction_line(intent)
         if state.is_finished:
@@ -119,6 +132,7 @@ class GameEngine:
 
     def _status_messages(self, state: ShipState) -> tuple[str, ...]:
         messages = [
+            *objective_lines(state),
             *coolant_hud_lines(state),
             summarize_coolant(state),
             *cryostasis_hud_lines(state),
@@ -189,7 +203,7 @@ class GameEngine:
 
         if stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
             reactor, action = _arka_good_adjustment(reactor)
-            messages.append(f"arka: I have it. {action}")
+            messages.append(f"arka: I have the whole loop. {action}")
             state = _advance_crisis_progress(state, "delegate", state.manual_familiarity, stage)
         elif stage == DriftStage.SELECTIVE:
             reactor, action = _arka_selective_adjustment(reactor)
@@ -225,7 +239,7 @@ class GameEngine:
 
         if stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
             cryo, action = _arka_good_cryo_adjustment(cryo)
-            messages.append(f"arka: cryostasis acknowledged. {action}")
+            messages.append(f"arka: cryostasis acknowledged, whole bank. {action}")
         elif stage == DriftStage.SELECTIVE:
             cryo = replace(
                 cryo,
@@ -918,6 +932,8 @@ def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | Non
                 "DEV CONSOLE",
                 ":debug     internal state snapshot",
                 ":metrics   habit counters",
+                ":save      write the current watch to disk (:save [path])",
+                ":load      restore a saved watch (:load [path])",
             ),
         )
     if command in {":debug", ":state"}:
