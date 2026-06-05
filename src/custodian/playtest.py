@@ -77,6 +77,9 @@ class PlaytestReport:
             f"distance remaining: {_distance_label(self.final_state)}",
             f"ship wear: {self.final_state.mission.ship_wear_pct}%",
             f"cryo decay: {self.final_state.mission.cryo_decay_pct}%",
+            f"plotted route: {_plotted_route_label(self.final_state)}",
+            f"manual route plots: {self.final_state.navigation.manual_plots}",
+            f"delegated route plots: {self.final_state.navigation.delegated_plots}",
             f"delegated interventions: {self.final_state.delegated_controls}",
             f"delegated cryo interventions: {self.final_state.delegated_cryo_controls}",
             f"raw inspections: {self.final_state.raw_inspections}",
@@ -296,6 +299,11 @@ def _distance_label(state: ShipState) -> str:
     whole = state.mission.distance_remaining_tenths_ly // 10
     decimal = state.mission.distance_remaining_tenths_ly % 10
     return f"{whole}.{decimal} ly"
+
+
+def _plotted_route_label(state: ShipState) -> str:
+    plotted = state.navigation.plotted_route
+    return "none" if plotted is None else f"{plotted.label} ({plotted.jump_class})"
 
 
 def _familiarity_label(familiarity: int) -> str:

@@ -133,6 +133,100 @@ class MissionStatus:
 
 
 @dataclass(frozen=True)
+class RouteOption:
+    route_id: str
+    label: str
+    jump_class: str
+    distance_tenths_ly: int
+    elapsed_days: int
+    dark_exposure: int
+    instability_pct: int
+    wear_delta_pct: int
+    cryo_decay_delta_pct: int
+
+    @property
+    def distance_label(self) -> str:
+        whole = self.distance_tenths_ly // 10
+        decimal = self.distance_tenths_ly % 10
+        return f"{whole}.{decimal} ly"
+
+
+def default_route_options() -> tuple[RouteOption, ...]:
+    return (
+        RouteOption(
+            route_id="khepri-4",
+            label="KHEPRI-4",
+            jump_class="short",
+            distance_tenths_ly=18,
+            elapsed_days=126,
+            dark_exposure=4,
+            instability_pct=6,
+            wear_delta_pct=3,
+            cryo_decay_delta_pct=3,
+        ),
+        RouteOption(
+            route_id="argos-12",
+            label="ARGOS-12",
+            jump_class="medium",
+            distance_tenths_ly=36,
+            elapsed_days=84,
+            dark_exposure=9,
+            instability_pct=13,
+            wear_delta_pct=2,
+            cryo_decay_delta_pct=2,
+        ),
+        RouteOption(
+            route_id="carina-edge",
+            label="CARINA-EDGE",
+            jump_class="deep",
+            distance_tenths_ly=71,
+            elapsed_days=42,
+            dark_exposure=21,
+            instability_pct=31,
+            wear_delta_pct=1,
+            cryo_decay_delta_pct=1,
+        ),
+    )
+
+
+@dataclass(frozen=True)
+class NavigationState:
+    options: tuple[RouteOption, ...] = field(default_factory=default_route_options)
+    plotted_route_id: str | None = None
+    manual_plots: int = 0
+    delegated_plots: int = 0
+
+    @property
+    def plotted_route(self) -> RouteOption | None:
+        if self.plotted_route_id is None:
+            return None
+        return self.option_by_id(self.plotted_route_id)
+
+    def option_by_id(self, route_id: str) -> RouteOption | None:
+        for option in self.options:
+            if option.route_id == route_id:
+                return option
+        return None
+
+    def raw_lines(self) -> tuple[str, ...]:
+        plotted = self.plotted_route
+        plotted_label = "none" if plotted is None else plotted.label
+        lines = [
+            "RAW NAVIGATION SOLUTIONS",
+            f"plotted_route        {plotted_label}",
+            "id                  class   dist     elapsed  dark  instab  wear  cryo-age",
+        ]
+        for option in self.options:
+            lines.append(
+                f"{option.label:<19} {option.jump_class:<6} "
+                f"{option.distance_label:>6}  {option.elapsed_days:>4} d"
+                f"   {option.dark_exposure:>2}    {option.instability_pct:>3}%"
+                f"    +{option.wear_delta_pct:<2}   +{option.cryo_decay_delta_pct}"
+            )
+        return tuple(lines)
+
+
+@dataclass(frozen=True)
 class CrisisState:
     kind: str
     label: str
@@ -161,6 +255,7 @@ class ShipState:
     reactor: ReactorCoolantSystem = field(default_factory=ReactorCoolantSystem)
     cryostasis: CryostasisSystem = field(default_factory=CryostasisSystem)
     mission: MissionStatus = field(default_factory=MissionStatus)
+    navigation: NavigationState = field(default_factory=NavigationState)
     manual_familiarity: int = 0
     cryo_familiarity: int = 0
     delegated_controls: int = 0

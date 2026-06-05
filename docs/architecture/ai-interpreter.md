@@ -19,15 +19,20 @@ allowed to own the reactor.
 3. Obvious commands use a deterministic rule path and do not call the model.
 4. Ambiguous or conversational input can call the configured OpenAI model.
 5. The engine executes only known `Intent.action` values.
-6. Reactor telemetry, internal clock advancement, crises, sleeper losses, arka
-   drift, and manual familiarity remain owned by `ShipState` transitions.
+6. Reactor telemetry, route plotting, internal clock advancement, crises,
+   sleeper losses, arka drift, and manual familiarity remain owned by
+   `ShipState` transitions.
 
 ## Intent Shape
 
 ```python
 Intent(
-    action="status|raw|delegate|manual|wait|help|quit|converse|none",
-    args={"operation": "pump_up|pump_down|vent|flush|balance"},
+    action="status|raw|delegate|plot|manual|wait|help|quit|converse|none",
+    args={
+        "operation": "pump_up|pump_down|vent|flush|balance",
+        "target": "coolant|cryo|mission|nav",
+        "route_id": "short|medium|deep|khepri-4|argos-12|carina-edge",
+    },
     confidence=0.0,
     reply="optional arka line",
     rationale="debug note",
@@ -35,14 +40,15 @@ Intent(
 )
 ```
 
-`manual` is the only action that requires an argument. The engine ignores model
-state-change suggestions because there are none.
+`manual` and `plot` require arguments. `raw` and `delegate` can carry a target.
+The engine ignores model state-change suggestions because there are none.
 
 ## Authority Boundary
 
 Deterministic and authored:
 
 - Raw telemetry.
+- Route options and plotted route state.
 - arka summary drift stages.
 - Coolant physics.
 - Crisis timers and resolution.
@@ -66,6 +72,10 @@ ordinary chatbot unreliability.
 The model receives the arka-facing summary, not raw truth. If the player asks
 for raw telemetry, the interpreter should return `action="raw"` and let the
 engine print the raw panel.
+
+Route handling follows the same rule. The model may classify a route command as
+`raw`, `plot`, or `delegate`, but route options and plotted route state come from
+the deterministic engine.
 
 This preserves the central split:
 

@@ -5,6 +5,7 @@ from custodian.models import (
     CrisisState,
     CryostasisSystem,
     MissionStatus,
+    NavigationState,
     ReactorCoolantSystem,
     ShipState,
 )
@@ -23,6 +24,7 @@ class PersistenceTests(unittest.TestCase):
                 ship_wear_pct=31,
                 cryo_decay_pct=19,
             ),
+            navigation=NavigationState(plotted_route_id="argos-12", manual_plots=1),
             manual_familiarity=4,
             cryo_familiarity=2,
             delegated_controls=3,
@@ -135,6 +137,28 @@ class PersistenceTests(unittest.TestCase):
         )
 
         self.assertEqual(restored.mission, MissionStatus())
+
+    def test_version_two_save_loads_with_default_navigation(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 2,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(restored.navigation, NavigationState())
 
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

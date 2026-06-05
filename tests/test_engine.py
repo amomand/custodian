@@ -59,6 +59,15 @@ class EngineTests(unittest.TestCase):
         self.assertIn("RANGE", output)
         self.assertNotIn("arka: mission", output)
 
+    def test_status_shows_navigation_without_arka_owning_it(self) -> None:
+        state = self.engine.initial_state()
+
+        output = "\n".join(self.engine.handle(state, "status").messages)
+
+        self.assertIn("NAVIGATION", output)
+        self.assertIn("OPTIONS", output)
+        self.assertNotIn("arka: navigation", output)
+
     def test_raw_mission_advances_time_and_shows_clock(self) -> None:
         state = self.engine.initial_state()
 
@@ -69,6 +78,43 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(result.state.raw_inspections, 1)
         self.assertIn("RAW MISSION CLOCK", output)
         self.assertEqual(result.state.history[0].target, "mission")
+
+    def test_raw_nav_advances_time_and_shows_route_table(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "raw nav")
+        output = "\n".join(result.messages)
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.raw_inspections, 1)
+        self.assertIn("RAW NAVIGATION SOLUTIONS", output)
+        self.assertIn("KHEPRI-4", output)
+        self.assertIn("CARINA-EDGE", output)
+        self.assertEqual(result.state.history[0].target, "nav")
+
+    def test_manual_route_plot_selects_route_without_executing_jump(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "plot deep")
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.navigation.plotted_route_id, "carina-edge")
+        self.assertEqual(result.state.navigation.manual_plots, 1)
+        self.assertEqual(result.state.mission.distance_remaining_tenths_ly, 117)
+        self.assertTrue(any("CARINA-EDGE" in message for message in result.messages))
+        self.assertEqual(result.state.history[0].action, "plot")
+        self.assertEqual(result.state.history[0].target, "navigation")
+
+    def test_delegate_nav_plots_recommended_route_and_logs_delegation(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "delegate nav")
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.navigation.plotted_route_id, "argos-12")
+        self.assertEqual(result.state.navigation.delegated_plots, 1)
+        self.assertEqual(result.state.delegated_controls, 1)
+        self.assertTrue(any("ARGOS-12" in message for message in result.messages))
 
     def test_mission_clock_advances_with_maintenance_time(self) -> None:
         state = self.engine.initial_state()

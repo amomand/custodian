@@ -16,11 +16,18 @@ from custodian.models import (
     CryostasisSystem,
     DriftStage,
     MissionStatus,
+    NavigationState,
+    RouteOption,
     ReactorCoolantSystem,
     ShipState,
 )
 from custodian.objectives import objective_lines
-from custodian.telemetry import coolant_hud_lines, cryostasis_hud_lines, mission_hud_lines
+from custodian.telemetry import (
+    coolant_hud_lines,
+    cryostasis_hud_lines,
+    mission_hud_lines,
+    navigation_hud_lines,
+)
 
 
 @dataclass(frozen=True)
@@ -49,6 +56,8 @@ class GameEngine:
         target = intent.args.get("target")
         if intent.action in {"raw", "delegate"} and not target:
             target = "coolant"
+        if intent.action == "plot":
+            target = "navigation"
         record = CommandRecord(
             raw=command_text,
             action=intent.action,
@@ -76,6 +85,16 @@ class GameEngine:
             )
         if intent.action == "raw":
             target = intent.args.get("target", "coolant")
+            if target in {"nav", "navigation"}:
+                return self._advance(
+                    replace(state, raw_inspections=state.raw_inspections + 1),
+                    correction
+                    + (
+                        "You open the raw navigation solutions.",
+                        *state.navigation.raw_lines(),
+                    ),
+                    prior=state,
+                )
             if target == "cryo":
                 return self._advance(
                     replace(state, raw_inspections=state.raw_inspections + 1),
@@ -107,6 +126,10 @@ class GameEngine:
                 state, intent.args.get("target", "coolant")
             )
             return self._advance(delegated_state, correction + messages, prior=state)
+        if intent.action == "plot":
+            route_id = intent.args.get("route_id", "")
+            plotted_state, messages = self._manual_route_plot(state, route_id)
+            return self._advance(plotted_state, correction + messages, prior=state)
         if intent.action == "wait":
             return self._advance(
                 state,
@@ -132,7 +155,8 @@ class GameEngine:
         if intent.action in {"converse", "none"}:
             reply = intent.reply or (
                 "arka: I can file that under psychological maintenance, but the ship "
-                "accepts status, raw, delegate, manual coolant controls, and cryostasis work."
+                "accepts status, raw, delegate, manual coolant controls, cryostasis work, "
+                "and route plotting."
             )
             return StepResult(state, correction + (reply,))
 
@@ -146,7 +170,7 @@ class GameEngine:
             (
                 "arka: I can file that under psychological maintenance, but the ship console "
                 "accepts status, raw, delegate, pump up, pump down, vent, flush, balance, "
-                "stabilise bank, reroute chill, cycle pods, triage, wait.",
+                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot short, wait.",
             ),
         )
 
@@ -154,6 +178,7 @@ class GameEngine:
         messages = [
             *objective_lines(state),
             *mission_hud_lines(state),
+            *navigation_hud_lines(state),
             *coolant_hud_lines(state),
             summarize_coolant(state),
             *cryostasis_hud_lines(state),
@@ -221,9 +246,56 @@ class GameEngine:
     def _delegate_to_arka(
         self, state: ShipState, target: str
     ) -> tuple[ShipState, tuple[str, ...]]:
+        if target in {"nav", "navigation"}:
+            return self._delegate_navigation_to_arka(state)
         if target == "cryo":
             return self._delegate_cryo_to_arka(state)
         return self._delegate_coolant_to_arka(state)
+
+    def _delegate_navigation_to_arka(
+        self, state: ShipState
+    ) -> tuple[ShipState, tuple[str, ...]]:
+        option = _arka_route_recommendation(state)
+        navigation = replace(
+            state.navigation,
+            plotted_route_id=option.route_id,
+            delegated_plots=state.navigation.delegated_plots + 1,
+        )
+        return (
+            replace(
+                state,
+                navigation=navigation,
+                delegated_controls=state.delegated_controls + 1,
+            ),
+            (
+                f"arka: I have {option.label} plotted. {option.jump_class.capitalize()} "
+                "risk, tolerable mathematics.",
+            ),
+        )
+
+    def _manual_route_plot(
+        self, state: ShipState, route_id: str
+    ) -> tuple[ShipState, tuple[str, ...]]:
+        option = _route_option(state.navigation, route_id)
+        if option is None:
+            return (
+                state,
+                (
+                    "arka: route key not found. Available candidates are short, medium, and deep.",
+                ),
+            )
+
+        navigation = replace(
+            state.navigation,
+            plotted_route_id=option.route_id,
+            manual_plots=state.navigation.manual_plots + 1,
+        )
+        return (
+            replace(state, navigation=navigation),
+            (
+                f"You plot {option.label} by hand. The solution holds, ugly but yours.",
+            ),
+        )
 
     def _delegate_coolant_to_arka(
         self, state: ShipState
@@ -707,6 +779,30 @@ def _advance_mission_clock(state: ShipState) -> MissionStatus:
     )
 
 
+def _arka_route_recommendation(state: ShipState) -> RouteOption:
+    option = state.navigation.option_by_id("argos-12")
+    if option is None:
+        option = state.navigation.options[0]
+    return option
+
+
+def _route_option(navigation: NavigationState, route_id: str) -> RouteOption | None:
+    normalised = route_id.strip().lower()
+    aliases = {
+        "short": "khepri-4",
+        "khepri": "khepri-4",
+        "khepri-4": "khepri-4",
+        "medium": "argos-12",
+        "argos": "argos-12",
+        "argos-12": "argos-12",
+        "long": "carina-edge",
+        "deep": "carina-edge",
+        "carina": "carina-edge",
+        "carina-edge": "carina-edge",
+    }
+    return navigation.option_by_id(aliases.get(normalised, normalised))
+
+
 def _apply_cryo_losses(state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
     cryo = state.cryostasis
     if cryo.sleepers_at_risk < 36:
@@ -1011,6 +1107,9 @@ def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | Non
                 f"distance remaining tenths ly: {state.mission.distance_remaining_tenths_ly}",
                 f"ship wear pct: {state.mission.ship_wear_pct}",
                 f"cryo decay pct: {state.mission.cryo_decay_pct}",
+                f"plotted route: {state.navigation.plotted_route_id or 'none'}",
+                f"manual route plots: {state.navigation.manual_plots}",
+                f"delegated route plots: {state.navigation.delegated_plots}",
                 f"sleepers lost: {state.sleepers_lost}",
                 f"sleepers at risk: {state.cryostasis.sleepers_at_risk}",
                 f"crisis: {crisis_line_text}",
@@ -1029,6 +1128,8 @@ def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | Non
                 f"raw inspections: {state.raw_inspections}",
                 f"ship wear pct: {state.mission.ship_wear_pct}",
                 f"cryo decay pct: {state.mission.cryo_decay_pct}",
+                f"manual route plots: {state.navigation.manual_plots}",
+                f"delegated route plots: {state.navigation.delegated_plots}",
             ),
         )
     return StepResult(
@@ -1048,8 +1149,13 @@ def _help_lines() -> tuple[str, ...]:
         "raw              detailed coolant telemetry",
         "raw cryo         detailed cryostasis telemetry",
         "raw mission      detailed mission clock telemetry",
+        "raw nav          detailed route telemetry",
+        "plot short       manually plot the short route",
+        "plot medium      manually plot the medium route",
+        "plot deep        manually plot the deep route",
         "delegate         ask arka to adjust coolant",
         "delegate cryo    ask arka to tend cryostasis",
+        "delegate nav     ask arka to plot the next route",
         "pump up          manually increase coolant flow",
         "pump down        manually reduce flow and pressure",
         "vent             manually dump pressure, costs coolant reserve",

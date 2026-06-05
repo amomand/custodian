@@ -303,7 +303,8 @@ Goal: make the ship feel like it is going somewhere, not just surviving a room.
 
 Status: started. Phase 2A adds a passive deterministic mission clock to the
 terminal slice: elapsed mission time, distance remaining, ship wear, and
-long-duration cryostasis decay. Route choices and jump execution remain next.
+long-duration cryostasis decay. Phase 2B adds route options and plotting. Jump
+execution remains next.
 
 Phase 2 should stay before the spatial ship phase. Routes create the strategic
 loop; schematics and spatial containment should then reveal the consequences of
@@ -367,6 +368,37 @@ Exit evidence:
 - High ship wear worsens coolant drift.
 - High cryostasis decay worsens sleeper pressure.
 - Mission telemetry remains raw deterministic state, outside arka's generated voice.
+
+### Phase 2B: Route Options
+
+Status: implemented in the current terminal slice.
+
+Goal: let the player see and plot candidate routes before jumps exist.
+
+Implemented:
+
+- `NavigationState` on `ShipState`.
+- Three deterministic route options: short, medium, and deep.
+- A compact `NAVIGATION` status block.
+- `raw nav` for dense route telemetry.
+- `plot short`, `plot medium`, and `plot deep` for manual route plotting.
+- `delegate nav` for arka route plotting, currently choosing the medium route.
+- Save/load support with migration for Phase 2A saves.
+- Playtest summaries that report plotted route and manual/delegated route plots.
+
+Design stance:
+
+Route options are facts, not consequences. Plotting a route costs attention and
+records a choice, but it does not execute a jump, move the ship by the route
+distance, apply Dark exposure, or apply route risk yet.
+
+Exit evidence:
+
+- Raw navigation data is visible outside arka's voice.
+- Manual route plotting and delegated route plotting produce different habit
+  records.
+- arka can plot a useful route without owning navigation truth.
+- Jump execution remains unimplemented and explicit.
 
 ## Phase 3: Spatial Ship And Containment
 
