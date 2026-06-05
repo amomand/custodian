@@ -94,6 +94,8 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(result.state.turn, 2)
         self.assertEqual(result.state.raw_inspections, 1)
         self.assertIn("RAW NAVIGATION SOLUTIONS", output)
+        self.assertIn("current_fix", output)
+        self.assertIn("WAKEFUL DRIFT", output)
         self.assertIn("KHEPRI-4", output)
         self.assertIn("CARINA-EDGE", output)
         self.assertEqual(result.state.history[0].target, "nav")
@@ -151,6 +153,7 @@ class EngineTests(unittest.TestCase):
         self.assertTrue(result.advanced)
         self.assertEqual(result.state.turn, 2)
         self.assertIsNone(result.state.navigation.plotted_route_id)
+        self.assertEqual(result.state.navigation.current_fix_id, "argos-12")
         self.assertEqual(result.state.navigation.last_jump_route_id, "argos-12")
         self.assertEqual(result.state.navigation.jumps_executed, 1)
         self.assertEqual(result.state.navigation.total_dark_exposure, 9)
@@ -164,6 +167,7 @@ class EngineTests(unittest.TestCase):
             state.cryostasis.neural_stability_pct,
         )
         self.assertIn("Dark exposure 9", "\n".join(result.messages))
+        self.assertIn("ARRIVAL FIX ARGOS-12", "\n".join(result.messages))
         self.assertEqual(result.state.history[0].action, "jump")
         self.assertEqual(result.state.history[0].target, "navigation")
 

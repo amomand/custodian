@@ -12,7 +12,8 @@ The slice stays narrow:
 - manually plot one route
 - ask arka to plot a route
 - execute the plotted route
-- preserve plotted route, last jump, and Dark exposure in saves and playtest reports
+- preserve current fix, plotted route, last jump, and Dark exposure in saves and
+  playtest reports
 
 ## Route Options
 
@@ -37,12 +38,33 @@ Each option carries:
 These numbers are route facts. Plotting records a choice. `jump` commits the
 choice and applies the consequences.
 
+## Current Fix
+
+`NavigationState` also carries a lightweight current fix. This is not a map and
+does not try to make Phase 3 arrive early. It answers the player's immediate
+question after a jump: where does the ship think it is now?
+
+Current fixes:
+
+- `WAKEFUL DRIFT` — starting fix, destination solution unresolved
+- `KHEPRI-4` — cold beacon, long coast corridor
+- `ARGOS-12` — broken relay shadow, partial triangulation
+- `CARINA EDGE` — thin Dark boundary, poor audit trail
+
+Each jump sets the current fix to that route's arrival reference. The normal HUD
+shows the fix label and local signal. The raw nav panel repeats the fix as
+literal telemetry.
+
+This gives route planning a little fictional ground without introducing sectors,
+travel maps, or local ship geography yet.
+
 ## Player Surface
 
 The normal `status` readout includes a compact `NAVIGATION` block:
 
 ```text
 NAVIGATION
+FIX       WAKEFUL DRIFT destination solution unresolved
 PLOT      none          raw nav for candidate routes
 JUMP      none          plot a route, then jump
 OPTIONS   short, medium, deep routes available; plot or delegate nav
@@ -81,6 +103,7 @@ jump
 watch does not advance. If a route is plotted, the engine:
 
 - clears `plotted_route_id`
+- sets `current_fix_id` to the route arrival fix
 - records `last_jump_route_id`
 - increments `jumps_executed`
 - adds to `total_dark_exposure`
@@ -93,22 +116,8 @@ The normal per-beat mission clock and ambient system drift then run as usual.
 This means a jump is not just a ledger update; the route can push the current
 maintenance watch into worse coolant or sleeper conditions.
 
-## Navigation Context Gap
-
-The first executable jump works mechanically, but it does not yet answer the
-player's obvious spatial questions:
-
-- where the ship is now
-- what place, waypoint, or solution the ship just jumped to
-- why that place matters
-- why another route should be plotted from here
-- what arka gains by making the route feel settled or uninteresting
-
-This is intentionally left out of Phase 2C/D, but it should not be forgotten.
-Future work needs a light "current fix" layer before route planning can feel
-like travel rather than abstract number conversion. That layer does not need to
-be a full map. It might be a destination solution, waypoint label, local signal,
-or mission constraint that changes after a jump.
+Natural `where are we?` style input maps to `status`, so the current fix is easy
+to ask for without adding another visible command.
 
 ## arka Recommendation
 
@@ -131,4 +140,5 @@ This gives route delegation the same structure as coolant delegation:
 - `raw nav` is raw telemetry and should remain available outside arka's voice.
 - Jump execution and route consequence application are deterministic engine
   transitions.
-- Post-jump balance and aftermath pacing remain Phase 2E work.
+- Full spatial meaning, local sectors, and post-jump containment remain Phase 3
+  work.

@@ -190,6 +190,37 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(restored.navigation.jumps_executed, 0)
         self.assertEqual(restored.navigation.total_dark_exposure, 0)
 
+    def test_version_four_save_loads_with_default_current_fix(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 4,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {
+                "plotted_route_id": null,
+                "last_jump_route_id": "argos-12",
+                "manual_plots": 0,
+                "delegated_plots": 1,
+                "jumps_executed": 1,
+                "total_dark_exposure": 9
+              },
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(restored.navigation.current_fix_id, "wakeful-drift")
+        self.assertEqual(restored.navigation.last_jump_route_id, "argos-12")
+
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             loads('{"version": 999, "turn": 1}')

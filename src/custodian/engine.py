@@ -327,6 +327,7 @@ class GameEngine:
         ).clamped()
         navigation = replace(
             state.navigation,
+            current_fix_id=option.route_id,
             plotted_route_id=None,
             last_jump_route_id=option.route_id,
             jumps_executed=state.navigation.jumps_executed + 1,
@@ -343,6 +344,7 @@ class GameEngine:
             reactor=reactor,
             cryostasis=cryostasis,
         )
+        fix = navigation.current_fix
         return (
             jumped,
             (
@@ -351,6 +353,7 @@ class GameEngine:
                     f"NAVIGATION jump applied: {option.distance_label} closed, "
                     f"{option.elapsed_days} mission days spent, Dark exposure {option.dark_exposure}."
                 ),
+                f"ARRIVAL FIX {fix.label}: {fix.purpose}.",
                 _arka_jump_line(state, option),
             ),
             True,

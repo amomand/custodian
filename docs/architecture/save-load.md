@@ -29,8 +29,9 @@ load with a default mission clock so Phase 1D local saves can still be opened.
 Version 3 adds `NavigationState`; version 2 saves load with default route
 options and no plotted route. Version 4 adds jump execution state: last jump
 route, jump count, and total Dark exposure. Version 3 saves load with those
-fields empty or zero. Loading an unknown version raises `ValueError` rather than
-silently importing an incompatible save. Round-trip equality is covered by
+fields empty or zero. Version 5 adds the current navigation fix; version 4 saves
+load at the starting fix. Loading an unknown version raises `ValueError` rather
+than silently importing an incompatible save. Round-trip equality is covered by
 `tests/test_persistence.py`.
 
 ## Command History

@@ -171,6 +171,16 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(plotted.args["route_id"], "deep")
         self.assertEqual(jump.action, "jump")
 
+    def test_where_are_we_is_rule_based_status(self) -> None:
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        intent = interpreter.interpret("where are we?", ShipState())
+
+        self.assertEqual(intent.action, "status")
+        self.assertIsNone(intent.correction)
+
     def test_context_exposes_arka_summary_not_raw_panel(self) -> None:
         state = ShipState(
             turn=21,

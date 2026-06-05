@@ -151,6 +151,14 @@ class RouteOption:
         return f"{whole}.{decimal} ly"
 
 
+@dataclass(frozen=True)
+class NavigationFix:
+    fix_id: str
+    label: str
+    signal: str
+    purpose: str
+
+
 def default_route_options() -> tuple[RouteOption, ...]:
     return (
         RouteOption(
@@ -189,9 +197,46 @@ def default_route_options() -> tuple[RouteOption, ...]:
     )
 
 
+def default_navigation_fixes() -> tuple[NavigationFix, ...]:
+    return (
+        NavigationFix(
+            fix_id="wakeful-drift",
+            label="WAKEFUL DRIFT",
+            signal="destination solution unresolved",
+            purpose="starting fix; no reliable local signal",
+        ),
+        NavigationFix(
+            fix_id="khepri-4",
+            label="KHEPRI-4",
+            signal="cold beacon, long coast corridor",
+            purpose="safe nav reference at the cost of mission time",
+        ),
+        NavigationFix(
+            fix_id="argos-12",
+            label="ARGOS-12",
+            signal="broken relay shadow, partial triangulation",
+            purpose="balanced fix for the next destination solution",
+        ),
+        NavigationFix(
+            fix_id="carina-edge",
+            label="CARINA EDGE",
+            signal="thin Dark boundary, poor audit trail",
+            purpose="fast arrival fix with unreliable surrounding data",
+        ),
+    )
+
+
+def navigation_fix_by_id(fix_id: str) -> NavigationFix:
+    for fix in default_navigation_fixes():
+        if fix.fix_id == fix_id:
+            return fix
+    return default_navigation_fixes()[0]
+
+
 @dataclass(frozen=True)
 class NavigationState:
     options: tuple[RouteOption, ...] = field(default_factory=default_route_options)
+    current_fix_id: str = "wakeful-drift"
     plotted_route_id: str | None = None
     last_jump_route_id: str | None = None
     manual_plots: int = 0
@@ -211,6 +256,10 @@ class NavigationState:
             return None
         return self.option_by_id(self.last_jump_route_id)
 
+    @property
+    def current_fix(self) -> NavigationFix:
+        return navigation_fix_by_id(self.current_fix_id)
+
     def option_by_id(self, route_id: str) -> RouteOption | None:
         for option in self.options:
             if option.route_id == route_id:
@@ -224,6 +273,8 @@ class NavigationState:
         last_jump_label = "none" if last_jump is None else last_jump.label
         lines = [
             "RAW NAVIGATION SOLUTIONS",
+            f"current_fix         {self.current_fix.label}",
+            f"current_signal      {self.current_fix.signal}",
             f"plotted_route        {plotted_label}",
             f"last_jump_route      {last_jump_label}",
             f"jumps_executed       {self.jumps_executed}",

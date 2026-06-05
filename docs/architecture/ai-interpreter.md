@@ -19,9 +19,9 @@ allowed to own the reactor.
 3. Obvious commands use a deterministic rule path and do not call the model.
 4. Ambiguous or conversational input can call the configured OpenAI model.
 5. The engine executes only known `Intent.action` values.
-6. Reactor telemetry, route plotting, jump execution, internal clock advancement, crises,
-   sleeper losses, arka drift, and manual familiarity remain owned by
-   `ShipState` transitions.
+6. Reactor telemetry, current navigation fix, route plotting, jump execution,
+   internal clock advancement, crises, sleeper losses, arka drift, and manual
+   familiarity remain owned by `ShipState` transitions.
 
 ## Intent Shape
 
@@ -49,7 +49,7 @@ route. The engine ignores model state-change suggestions because there are none.
 Deterministic and authored:
 
 - Raw telemetry.
-- Route options, plotted route state, and jump consequences.
+- Current navigation fix, route options, plotted route state, and jump consequences.
 - arka summary drift stages.
 - Coolant physics.
 - Crisis timers and resolution.
@@ -76,7 +76,9 @@ engine print the raw panel.
 
 Route handling follows the same rule. The model may classify a route command as
 `raw`, `plot`, `delegate`, or `jump`, but route options, plotted route state,
-and jump consequences come from the deterministic engine.
+current fix, and jump consequences come from the deterministic engine. Natural
+location questions such as "where are we?" resolve to `status`, which surfaces
+the deterministic navigation HUD.
 
 This preserves the central split:
 
