@@ -2,7 +2,13 @@ import unittest
 from dataclasses import replace
 
 from custodian.engine import GameEngine
-from custodian.models import CrisisState, MissionStatus, ReactorCoolantSystem, ShipState
+from custodian.models import (
+    CrisisState,
+    MissionStatus,
+    NavigationState,
+    ReactorCoolantSystem,
+    ShipState,
+)
 
 
 class EngineTests(unittest.TestCase):
@@ -59,6 +65,15 @@ class EngineTests(unittest.TestCase):
         self.assertIn("RANGE", output)
         self.assertNotIn("arka: mission", output)
 
+    def test_status_shows_navigation_without_arka_owning_it(self) -> None:
+        state = self.engine.initial_state()
+
+        output = "\n".join(self.engine.handle(state, "status").messages)
+
+        self.assertIn("NAVIGATION", output)
+        self.assertIn("OPTIONS", output)
+        self.assertNotIn("arka: navigation", output)
+
     def test_raw_mission_advances_time_and_shows_clock(self) -> None:
         state = self.engine.initial_state()
 
@@ -69,6 +84,92 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(result.state.raw_inspections, 1)
         self.assertIn("RAW MISSION CLOCK", output)
         self.assertEqual(result.state.history[0].target, "mission")
+
+    def test_raw_nav_advances_time_and_shows_route_table(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "raw nav")
+        output = "\n".join(result.messages)
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.raw_inspections, 1)
+        self.assertIn("RAW NAVIGATION SOLUTIONS", output)
+        self.assertIn("current_fix", output)
+        self.assertIn("WAKEFUL DRIFT", output)
+        self.assertIn("KHEPRI-4", output)
+        self.assertIn("CARINA-EDGE", output)
+        self.assertEqual(result.state.history[0].target, "nav")
+
+    def test_manual_route_plot_selects_route_without_executing_jump(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "plot deep")
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.navigation.plotted_route_id, "carina-edge")
+        self.assertEqual(result.state.navigation.manual_plots, 1)
+        self.assertEqual(result.state.mission.distance_remaining_tenths_ly, 117)
+        self.assertTrue(any("CARINA-EDGE" in message for message in result.messages))
+        self.assertEqual(result.state.history[0].action, "plot")
+        self.assertEqual(result.state.history[0].target, "navigation")
+
+    def test_delegate_nav_plots_recommended_route_and_logs_delegation(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "delegate nav")
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.navigation.plotted_route_id, "argos-12")
+        self.assertEqual(result.state.navigation.delegated_plots, 1)
+        self.assertEqual(result.state.delegated_controls, 1)
+        self.assertTrue(any("ARGOS-12" in message for message in result.messages))
+
+    def test_drifted_delegate_nav_plots_fast_route_with_selective_framing(self) -> None:
+        state = ShipState(delegated_controls=5)
+
+        result = self.engine.handle(state, "delegate nav")
+
+        self.assertEqual(result.state.navigation.plotted_route_id, "carina-edge")
+        self.assertTrue(any("Fast arrival" in message for message in result.messages))
+        self.assertNotIn("Dark exposure 21", "\n".join(result.messages))
+
+    def test_jump_requires_plotted_route_without_advancing(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "jump")
+
+        self.assertFalse(result.advanced)
+        self.assertEqual(result.state.turn, 1)
+        self.assertEqual(result.state.navigation.jumps_executed, 0)
+        self.assertTrue(any("no route is plotted" in message for message in result.messages))
+        self.assertEqual(result.state.history[0].action, "jump")
+        self.assertEqual(result.state.history[0].target, "navigation")
+
+    def test_jump_applies_plotted_route_consequences_and_clears_plot(self) -> None:
+        state = ShipState(navigation=NavigationState(plotted_route_id="argos-12"))
+
+        result = self.engine.handle(state, "jump")
+
+        self.assertTrue(result.advanced)
+        self.assertEqual(result.state.turn, 2)
+        self.assertIsNone(result.state.navigation.plotted_route_id)
+        self.assertEqual(result.state.navigation.current_fix_id, "argos-12")
+        self.assertEqual(result.state.navigation.last_jump_route_id, "argos-12")
+        self.assertEqual(result.state.navigation.jumps_executed, 1)
+        self.assertEqual(result.state.navigation.total_dark_exposure, 9)
+        self.assertEqual(result.state.mission.elapsed_days, 14_361)
+        self.assertEqual(result.state.mission.distance_remaining_tenths_ly, 81)
+        self.assertEqual(result.state.mission.ship_wear_pct, 19)
+        self.assertEqual(result.state.mission.cryo_decay_pct, 10)
+        self.assertGreater(result.state.reactor.temperature_c, state.reactor.temperature_c)
+        self.assertLess(
+            result.state.cryostasis.neural_stability_pct,
+            state.cryostasis.neural_stability_pct,
+        )
+        self.assertIn("Dark exposure 9", "\n".join(result.messages))
+        self.assertIn("ARRIVAL FIX ARGOS-12", "\n".join(result.messages))
+        self.assertEqual(result.state.history[0].action, "jump")
+        self.assertEqual(result.state.history[0].target, "navigation")
 
     def test_mission_clock_advances_with_maintenance_time(self) -> None:
         state = self.engine.initial_state()

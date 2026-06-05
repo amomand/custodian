@@ -82,6 +82,24 @@ commands work.
 - waits, asks, and reacts late
 - useful for first-run affordance testing
 
+`route-short`
+
+- reads raw navigation, manually plots the short route, then executes a jump
+- useful for comparing low-exposure routing against slower mission progress
+- currently survives the maintenance window with sleeper losses
+
+`route-jump`
+
+- reads raw navigation, delegates route plotting, then executes a jump
+- useful for watching whether jump consequences feel legible and survivable
+- currently survives the maintenance window with sleeper losses
+
+`route-deep`
+
+- reads raw navigation, manually plots the deep route, then executes a jump
+- useful for comparing fast arrival against Dark exposure and cryostasis shock
+- currently survives only with immediate cryostasis attention after the shock
+
 ## Report Fields
 
 Each report includes:
@@ -90,6 +108,8 @@ Each report includes:
 - completed yes/no
 - final outcome
 - internal beat
+- mission elapsed and distance remaining
+- current fix, plotted route, last jump route, jump count, and Dark exposure
 - delegated interventions
 - raw inspections
 - manual familiarity label

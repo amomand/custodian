@@ -9,13 +9,15 @@ from custodian.models import (
     CrisisState,
     CryostasisSystem,
     MissionStatus,
+    NavigationState,
     ReactorCoolantSystem,
+    RouteOption,
     ShipState,
 )
 
 
-SAVE_VERSION = 2
-SUPPORTED_SAVE_VERSIONS = {1, SAVE_VERSION}
+SAVE_VERSION = 5
+SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, SAVE_VERSION}
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -26,6 +28,7 @@ def state_to_dict(state: ShipState) -> dict:
         "reactor": asdict(state.reactor),
         "cryostasis": asdict(state.cryostasis),
         "mission": asdict(state.mission),
+        "navigation": asdict(state.navigation),
         "manual_familiarity": state.manual_familiarity,
         "cryo_familiarity": state.cryo_familiarity,
         "delegated_controls": state.delegated_controls,
@@ -60,6 +63,7 @@ def state_from_dict(data: dict) -> ShipState:
         reactor=ReactorCoolantSystem(**data["reactor"]),
         cryostasis=CryostasisSystem(**data["cryostasis"]),
         mission=MissionStatus(**data.get("mission", {})),
+        navigation=_navigation_from_data(data.get("navigation")),
         manual_familiarity=data["manual_familiarity"],
         cryo_familiarity=data["cryo_familiarity"],
         delegated_controls=data["delegated_controls"],
@@ -98,6 +102,29 @@ def _optional_reactor(data: dict | None) -> ReactorCoolantSystem | None:
 
 def _optional_cryo(data: dict | None) -> CryostasisSystem | None:
     return None if data is None else CryostasisSystem(**data)
+
+
+def _navigation_from_data(data: object) -> NavigationState:
+    if not isinstance(data, dict):
+        return NavigationState()
+
+    raw_options = data.get("options", ())
+    options: list[RouteOption] = []
+    if isinstance(raw_options, (list, tuple)):
+        for option in raw_options:
+            if isinstance(option, dict):
+                options.append(RouteOption(**option))
+
+    return NavigationState(
+        options=tuple(options) or NavigationState().options,
+        current_fix_id=str(data.get("current_fix_id", "wakeful-drift")),
+        plotted_route_id=_optional_str(data.get("plotted_route_id")),
+        last_jump_route_id=_optional_str(data.get("last_jump_route_id")),
+        manual_plots=int(data.get("manual_plots", 0)),
+        delegated_plots=int(data.get("delegated_plots", 0)),
+        jumps_executed=int(data.get("jumps_executed", 0)),
+        total_dark_exposure=int(data.get("total_dark_exposure", 0)),
+    )
 
 
 def _history_from_data(data: object) -> tuple[CommandRecord, ...]:

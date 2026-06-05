@@ -38,6 +38,38 @@ def mission_hud_lines(state: ShipState) -> tuple[str, ...]:
     )
 
 
+def navigation_hud_lines(state: ShipState) -> tuple[str, ...]:
+    fix = state.navigation.current_fix
+    fix_line = f"FIX       {fix.label:<13} {fix.signal}"
+    plotted = state.navigation.plotted_route
+    if plotted is None:
+        plot_line = "PLOT      none          raw nav for candidate routes"
+    else:
+        plot_line = (
+            f"PLOT      {plotted.label:<13} {plotted.jump_class} solution held"
+        )
+
+    last_jump = state.navigation.last_jump_route
+    if last_jump is None:
+        jump_line = "JUMP      none          plot a route, then jump"
+    else:
+        jump_line = (
+            f"JUMP      {state.navigation.jumps_executed:<13} "
+            f"last {last_jump.label}, dark {state.navigation.total_dark_exposure}"
+        )
+
+    options = ", ".join(option.jump_class for option in state.navigation.options)
+    return (
+        "",
+        "NAVIGATION",
+        fix_line,
+        plot_line,
+        jump_line,
+        f"OPTIONS   {options} routes available; plot or delegate nav",
+        "",
+    )
+
+
 def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
     reactor = state.reactor
     prev = state.previous_reactor

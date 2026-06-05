@@ -19,15 +19,20 @@ allowed to own the reactor.
 3. Obvious commands use a deterministic rule path and do not call the model.
 4. Ambiguous or conversational input can call the configured OpenAI model.
 5. The engine executes only known `Intent.action` values.
-6. Reactor telemetry, internal clock advancement, crises, sleeper losses, arka
-   drift, and manual familiarity remain owned by `ShipState` transitions.
+6. Reactor telemetry, current navigation fix, route plotting, jump execution,
+   internal clock advancement, crises, sleeper losses, arka drift, and manual
+   familiarity remain owned by `ShipState` transitions.
 
 ## Intent Shape
 
 ```python
 Intent(
-    action="status|raw|delegate|manual|wait|help|quit|converse|none",
-    args={"operation": "pump_up|pump_down|vent|flush|balance"},
+    action="status|raw|delegate|plot|jump|manual|wait|help|quit|converse|none",
+    args={
+        "operation": "pump_up|pump_down|vent|flush|balance",
+        "target": "coolant|cryo|mission|nav",
+        "route_id": "short|medium|deep|khepri-4|argos-12|carina-edge",
+    },
     confidence=0.0,
     reply="optional arka line",
     rationale="debug note",
@@ -35,14 +40,16 @@ Intent(
 )
 ```
 
-`manual` is the only action that requires an argument. The engine ignores model
-state-change suggestions because there are none.
+`manual` and `plot` require arguments. `raw` and `delegate` can carry a target.
+`jump` carries no arguments; the engine executes only the currently plotted
+route. The engine ignores model state-change suggestions because there are none.
 
 ## Authority Boundary
 
 Deterministic and authored:
 
 - Raw telemetry.
+- Current navigation fix, route options, plotted route state, and jump consequences.
 - arka summary drift stages.
 - Coolant physics.
 - Crisis timers and resolution.
@@ -66,6 +73,12 @@ ordinary chatbot unreliability.
 The model receives the arka-facing summary, not raw truth. If the player asks
 for raw telemetry, the interpreter should return `action="raw"` and let the
 engine print the raw panel.
+
+Route handling follows the same rule. The model may classify a route command as
+`raw`, `plot`, `delegate`, or `jump`, but route options, plotted route state,
+current fix, and jump consequences come from the deterministic engine. Natural
+location questions such as "where are we?" resolve to `status`, which surfaces
+the deterministic navigation HUD.
 
 This preserves the central split:
 

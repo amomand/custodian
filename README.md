@@ -20,10 +20,13 @@ Phase 0 is concluded. Phase 1A-D is now represented in the terminal loop:
 coolant is shorter, cryostasis is live, the systems can pressure each other, and
 runs can be saved and resumed. Phase 2A starts the mission-pressure layer:
 status now includes elapsed mission time, distance remaining, ship wear, and
-long-duration cryostasis decay. A course correction makes the goal legible:
-every status readout opens with an objective block (goal, horizon, the metric
-failing fastest this beat) and the HUD carries trend arrows. Next spine work is
-route choice and jump cost.
+long-duration cryostasis decay. Phase 2B adds route options, raw navigation, and
+manual or delegated plotting. Phase 2C/D adds jump execution, route
+consequences, and drift-sensitive arka route advice. Phase 2E adds a lightweight
+current navigation fix and route comparison playtests, closing the route layer
+before spatial ship work. A course correction makes the goal legible: every
+status readout opens with an objective block (goal, horizon, the metric failing
+fastest this beat) and the HUD carries trend arrows.
 
 The player can work the coolant and cryostasis panels by hand. They are real,
 useful, and a little fiddly. Or the player can ask `arka` to handle one panel
@@ -37,6 +40,7 @@ Core ideas:
 - Optional AI-powered natural language input for arka
 - Deterministic reactor and cryostasis state
 - Deterministic mission clock with ship wear and cryostasis decay
+- Deterministic route options with current fix, plotting, delegation, and jump execution
 - Raw telemetry as truth-adjacent, slower than reassurance
 - arka summaries that move from accurate to interpretive, selective, and wrong
 - Hidden manual familiarity gained only by manual work
@@ -114,6 +118,8 @@ Developer-only terminal diagnostics use a colon prefix:
 - **Event refreshes** - interactive terminals clear on launch and major pressure beats
 - **Legible objective block** - every status opens with goal, horizon, and the metric failing fastest
 - **Mission clock** - elapsed mission time, distance remaining, ship wear, and cryostasis decay
+- **Navigation options** - short, medium, and deep routes can be inspected, plotted, and jumped
+- **Current fix** - the ship reports where the latest jump leaves it without becoming a map
 - **Trend-aware HUD** - per-metric arrows show what is moving toward danger this beat
 - **Delegation as throughput** - one manual control per beat, or a whole panel via arka
 - **Coolant HUD** - telemetry is shown separately from arka's summary
@@ -147,6 +153,7 @@ Current working docs:
 - `docs/game_mechanics/delegation-and-drift.md` - arka dependence and summary drift
 - `docs/game_mechanics/objectives-and-priority.md` - objective block, horizon, and per-beat priority
 - `docs/game_mechanics/mission-clock.md` - mission time, distance, wear, and cryostasis decay
+- `docs/game_mechanics/routing.md` - route options, current fix, plotting, and jump consequences
 - `docs/architecture/save-load.md` - run serialisation and command history
 - `docs/lore/arka.md` - arka character and runtime voice capsule
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
@@ -176,7 +183,8 @@ custodian/
 │   │   ├── opening-sequence.md     # Boot/debrief design notes
 │   │   ├── reactor-coolant.md      # Coolant telemetry and pressure beats
 │   │   ├── cryostasis-viability.md # Cryostasis telemetry and sleeper pressure
-│   │   └── mission-clock.md        # Mission time, distance, wear, decay
+│   │   ├── mission-clock.md        # Mission time, distance, wear, decay
+│   │   └── routing.md              # Route options, current fix, jumps
 │   ├── lore/
 │   │   └── arka.md                 # arka voice and character notes
 │   └── original-idea.md            # Copied seed idea
@@ -189,7 +197,7 @@ custodian/
 │   ├── narrative.py                # Opening and closing terminal text
 │   ├── playtest.py                 # Deterministic scenario runner core
 │   ├── seeds.py                    # Named simulation entry states
-│   ├── telemetry.py                # Compact terminal coolant HUD
+│   ├── telemetry.py                # Compact terminal HUDs
 │   └── cli.py                      # Terminal loop
 ├── tests/                          # Unit tests and AI boundary tests
 └── tools/

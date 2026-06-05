@@ -1,7 +1,18 @@
 import unittest
 
-from custodian.models import CryostasisSystem, MissionStatus, ReactorCoolantSystem, ShipState
-from custodian.telemetry import coolant_hud_lines, cryostasis_hud_lines, mission_hud_lines
+from custodian.models import (
+    CryostasisSystem,
+    MissionStatus,
+    NavigationState,
+    ReactorCoolantSystem,
+    ShipState,
+)
+from custodian.telemetry import (
+    coolant_hud_lines,
+    cryostasis_hud_lines,
+    mission_hud_lines,
+    navigation_hud_lines,
+)
 
 
 class TelemetryTests(unittest.TestCase):
@@ -34,6 +45,33 @@ class TelemetryTests(unittest.TestCase):
 
         self.assertEqual(lines[range_index + 1], "")
         self.assertTrue(lines[range_index + 2].startswith("WEAR"))
+
+    def test_navigation_hud_shows_plot_without_arka_voice(self) -> None:
+        state = ShipState(
+            navigation=NavigationState(
+                plotted_route_id="argos-12",
+                last_jump_route_id="khepri-4",
+                jumps_executed=1,
+                total_dark_exposure=4,
+            )
+        )
+
+        hud = "\n".join(navigation_hud_lines(state))
+
+        self.assertIn("NAVIGATION", hud)
+        self.assertIn("WAKEFUL DRIFT", hud)
+        self.assertIn("ARGOS-12", hud)
+        self.assertIn("medium solution held", hud)
+        self.assertIn("last KHEPRI-4, dark 4", hud)
+        self.assertIn("short, medium, deep", hud)
+        self.assertNotIn("arka:", hud)
+
+    def test_navigation_hud_has_breathing_room_around_block(self) -> None:
+        lines = navigation_hud_lines(ShipState())
+
+        self.assertEqual(lines[0], "")
+        self.assertEqual(lines[-1], "")
+        self.assertEqual(lines[1], "NAVIGATION")
 
     def test_coolant_hud_carries_raw_readings_outside_arka_voice(self) -> None:
         state = ShipState(

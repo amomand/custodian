@@ -40,6 +40,8 @@ The repo currently has a narrow terminal MVP:
   whole panel via arka, with drift weighted toward delegation and mitigated by
   raw-reading vigilance.
 - Save/load of `ShipState` and structured command history records (Phase 1D).
+- Mission clock, route options, current navigation fix, first jump execution,
+  and route-advice drift (Phase 2A-E).
 - Tests around state transitions and AI boundary.
 - Markdown docs for the MVP, arka, and the interpreter.
 
@@ -301,9 +303,12 @@ Useful tests:
 
 Goal: make the ship feel like it is going somewhere, not just surviving a room.
 
-Status: started. Phase 2A adds a passive deterministic mission clock to the
-terminal slice: elapsed mission time, distance remaining, ship wear, and
-long-duration cryostasis decay. Route choices and jump execution remain next.
+Status: concluded in the terminal slice. Phase 2A adds a passive deterministic
+mission clock: elapsed mission time, distance remaining, ship wear, and
+long-duration cryostasis decay. Phase 2B adds route options and plotting. Phase
+2C/D adds jump execution, route consequences, and drift-sensitive arka route
+advice. Phase 2E adds a light current-fix layer and seeded route comparison
+evidence before spatial ship work.
 
 Phase 2 should stay before the spatial ship phase. Routes create the strategic
 loop; schematics and spatial containment should then reveal the consequences of
@@ -367,6 +372,109 @@ Exit evidence:
 - High ship wear worsens coolant drift.
 - High cryostasis decay worsens sleeper pressure.
 - Mission telemetry remains raw deterministic state, outside arka's generated voice.
+
+### Phase 2B: Route Options
+
+Status: implemented in the current terminal slice.
+
+Goal: let the player see and plot candidate routes before jumps exist.
+
+Implemented:
+
+- `NavigationState` on `ShipState`.
+- Three deterministic route options: short, medium, and deep.
+- A compact `NAVIGATION` status block.
+- `raw nav` for dense route telemetry.
+- `plot short`, `plot medium`, and `plot deep` for manual route plotting.
+- `delegate nav` for arka route plotting, currently choosing the medium route.
+- Save/load support with migration for Phase 2A saves.
+- Playtest summaries that report plotted route and manual/delegated route plots.
+
+Design stance:
+
+Route options are facts, not consequences. Plotting a route costs attention and
+records a choice, but it does not execute a jump, move the ship by the route
+distance, apply Dark exposure, or apply route risk yet.
+
+Exit evidence:
+
+- Raw navigation data is visible outside arka's voice.
+- Manual route plotting and delegated route plotting produce different habit
+  records.
+- arka can plot a useful route without owning navigation truth.
+- At the Phase 2B boundary, jump execution remained unimplemented and explicit.
+
+### Phase 2C/D: Jump Execution And Route Advice
+
+Status: implemented in the current terminal slice.
+
+Goal: make plotted routes materially affect the run, and let arka's route advice
+begin to drift without giving the model ownership of navigation truth.
+
+Implemented:
+
+- `jump` / `execute jump` commits the currently plotted route.
+- Jump execution clears the plotted route and records the last jump.
+- Route distance, elapsed mission days, projected wear, cryostasis age, and Dark
+  exposure are applied deterministically.
+- Route instability and Dark exposure shock coolant and cryostasis state.
+- `NavigationState` records jump count and total Dark exposure.
+- Save/load support with migration for Phase 2B saves.
+- Playtest summaries report last jump, jump count, and Dark exposure.
+- arka's early navigation delegation selects the medium route and names the cost.
+- under selective or wrong drift, arka delegates toward the deep route while
+  omitting or contradicting the raw navigation risk.
+
+Design stance:
+
+Jumping is still one maintenance-watch action, not a new chapter of the game.
+It should make route choice matter without becoming a full spatial or event
+system. Raw navigation data remains the audit path; arka's advice is useful
+early and less trustworthy under drift.
+
+Exit evidence:
+
+- A plotted route can be executed and has visible consequences.
+- `raw nav` remains true before and after arka route advice.
+- Jump consequences are deterministic engine state.
+- arka can misframe route risk without inventing route facts.
+
+### Phase 2E: Balance And Closeout
+
+Status: implemented in the current terminal slice.
+
+Goal: decide whether Phase 2's route loop is fun, legible, and dangerous enough
+to support Phase 3.
+
+Implemented:
+
+- Add a light navigation-context layer so the player knows where the ship is
+  after a jump, what kind of waypoint or solution it reached, and why plotting
+  another route matters.
+- `NavigationState.current_fix_id`, with a starting `WAKEFUL DRIFT` fix and one
+  arrival fix for each route.
+- `NAVIGATION` HUD and `raw nav` show the current fix and local signal.
+- `where are we?` maps to `status` so the fix is easy to ask for.
+- Save/load support with migration for Phase 2C/D saves.
+- Playtest summaries report current fix.
+- Added `route-short` and `route-deep` seeded routes alongside delegated
+  `route-jump`, so short/medium/deep tradeoffs are visible in summaries.
+- Route and architecture docs now describe the Phase 2 boundary.
+
+Design stance:
+
+The current fix is deliberately not a map. It is a handhold for playtesting:
+enough to say "we are at ARGOS-12 now" and make another route feel less abstract,
+but not enough to answer what local space looks like. Phase 3 should turn those
+fixes into sectors, symptoms, containment choices, and reasons to care.
+
+Exit evidence:
+
+- After a jump, the player can see where the ship is in the HUD and raw nav.
+- Short, medium/delegated, and deep route playtests now produce distinct
+  distance, Dark exposure, and sleeper-loss profiles.
+- Route facts, current fix, and jump consequences remain deterministic state.
+- Phase 2 is ready to hand its route loop to Phase 3's spatial ship.
 
 ## Phase 3: Spatial Ship And Containment
 

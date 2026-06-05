@@ -46,6 +46,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(_complete_command("rer", 0), "reroute chill")
         self.assertEqual(_complete_command("delegate c", 0), "delegate cryo")
         self.assertEqual(_complete_command("delegate c", 1), None)
+        self.assertEqual(_complete_command("plot m", 0), "plot medium")
+        self.assertEqual(_complete_command("ju", 0), "jump")
 
     def test_completion_can_be_disabled(self) -> None:
         tty_stdin = SimpleNamespace(isatty=lambda: True)

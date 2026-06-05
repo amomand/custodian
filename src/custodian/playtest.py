@@ -77,6 +77,13 @@ class PlaytestReport:
             f"distance remaining: {_distance_label(self.final_state)}",
             f"ship wear: {self.final_state.mission.ship_wear_pct}%",
             f"cryo decay: {self.final_state.mission.cryo_decay_pct}%",
+            f"current fix: {self.final_state.navigation.current_fix.label}",
+            f"plotted route: {_plotted_route_label(self.final_state)}",
+            f"last jump route: {_last_jump_route_label(self.final_state)}",
+            f"manual route plots: {self.final_state.navigation.manual_plots}",
+            f"delegated route plots: {self.final_state.navigation.delegated_plots}",
+            f"jumps executed: {self.final_state.navigation.jumps_executed}",
+            f"dark exposure: {self.final_state.navigation.total_dark_exposure}",
             f"delegated interventions: {self.final_state.delegated_controls}",
             f"delegated cryo interventions: {self.final_state.delegated_cryo_controls}",
             f"raw inspections: {self.final_state.raw_inspections}",
@@ -182,6 +189,64 @@ SCENARIOS: dict[str, Scenario] = {
             "wait",
             "balance",
             "flush",
+        ),
+    ),
+    "route-short": Scenario(
+        name="route-short",
+        description="Manually plot the safer short route, execute it, then repair the watch.",
+        commands=(
+            "raw nav",
+            "plot short",
+            "jump",
+            "pump up",
+            "balance",
+            "flush",
+            "vent",
+            "stabilise bank",
+            "triage",
+            "reroute chill",
+            "balance",
+            "flush",
+            "triage",
+        ),
+    ),
+    "route-jump": Scenario(
+        name="route-jump",
+        description="Inspect, delegate a route, execute it, then fight the consequences.",
+        commands=(
+            "raw nav",
+            "delegate nav",
+            "jump",
+            "pump up",
+            "balance",
+            "flush",
+            "vent",
+            "stabilise bank",
+            "triage",
+            "delegate",
+            "reroute chill",
+            "balance",
+            "flush",
+            "triage",
+        ),
+    ),
+    "route-deep": Scenario(
+        name="route-deep",
+        description="Manually plot the deep route and prioritise cryostasis after the shock.",
+        commands=(
+            "raw nav",
+            "plot deep",
+            "jump",
+            "stabilise bank",
+            "triage",
+            "reroute chill",
+            "pump up",
+            "balance",
+            "flush",
+            "vent",
+            "balance",
+            "flush",
+            "triage",
         ),
     ),
 }
@@ -296,6 +361,16 @@ def _distance_label(state: ShipState) -> str:
     whole = state.mission.distance_remaining_tenths_ly // 10
     decimal = state.mission.distance_remaining_tenths_ly % 10
     return f"{whole}.{decimal} ly"
+
+
+def _plotted_route_label(state: ShipState) -> str:
+    plotted = state.navigation.plotted_route
+    return "none" if plotted is None else f"{plotted.label} ({plotted.jump_class})"
+
+
+def _last_jump_route_label(state: ShipState) -> str:
+    last_jump = state.navigation.last_jump_route
+    return "none" if last_jump is None else f"{last_jump.label} ({last_jump.jump_class})"
 
 
 def _familiarity_label(familiarity: int) -> str:
