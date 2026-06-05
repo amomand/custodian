@@ -22,9 +22,10 @@ Included:
 - One `CryostasisSystem` with raw telemetry and sleeper viability pressure.
 - One `MissionStatus` clock with elapsed mission time, distance remaining, ship
   wear, and long-duration cryostasis decay.
+- One `NavigationState` with short, medium, and deep route options.
 - An `arka` layer that summarises the same deterministic systems.
-- Compact mission, coolant, and cryostasis HUDs that carry current telemetry outside
-  arka's voice.
+- Compact mission, navigation, coolant, and cryostasis HUDs that carry current
+  telemetry outside arka's voice.
 - Optional arka interpreter for natural-language input and off-script replies.
 - Diegetic opening screen and closing debrief.
 - Manual actions and delegation as competing ways to spend attention.
@@ -38,7 +39,7 @@ Still excluded:
 - Map movement.
 - Random generation.
 - Rich UI.
-- Route choice and jump execution.
+- Jump execution.
 - Deep lore.
 
 ## Player Loop
@@ -65,8 +66,13 @@ Core commands:
 - `raw`: read detailed coolant telemetry.
 - `raw cryo`: read detailed cryostasis telemetry.
 - `raw mission`: read detailed mission clock telemetry.
+- `raw nav`: read detailed route telemetry.
+- `plot short`: manually plot the short route.
+- `plot medium`: manually plot the medium route.
+- `plot deep`: manually plot the deep route.
 - `delegate`: let arka adjust the whole coolant panel.
 - `delegate cryo`: let arka tend the whole cryostasis panel.
+- `delegate nav`: let arka plot the next route.
 - `pump up`: manual increase to coolant flow.
 - `pump down`: manual pressure relief through lower flow.
 - `vent`: manual pressure venting, costs coolant reserve.
@@ -93,6 +99,7 @@ shown as a number.
 
 - Internal maintenance beat.
 - Mission clock: elapsed time, distance remaining, ship wear, and cryostasis decay.
+- Navigation options and plotted route.
 - Reactor coolant telemetry.
 - Hidden coolant and cryostasis familiarity.
 - Number of delegated interventions, including cryostasis delegation.
@@ -117,6 +124,13 @@ shown as a number.
 - Distance remaining, stored in tenths of a light year.
 - Ship wear percentage.
 - Long-duration cryostasis decay percentage.
+
+`NavigationState` owns route telemetry:
+
+- Candidate route options.
+- Currently plotted route.
+- Manual route plot count.
+- Delegated route plot count.
 
 `ReactorCoolantSystem` owns telemetry:
 
@@ -163,6 +177,7 @@ The supported intent actions are:
 - `status`
 - `raw`
 - `delegate`
+- `plot`
 - `manual`
 - `wait`
 - `help`
@@ -212,7 +227,12 @@ information channel, and unattended sleepers.
 Phase 2A adds a passive mission clock to this arc. Each advancing command moves
 elapsed mission time forward, closes a small amount of distance, and accumulates
 ship wear or cryostasis decay. The current coolant slice keeps that pressure
-gentle; future route choices should push these same fields harder.
+gentle; future jump execution should push these same fields harder.
+
+Phase 2B adds route options and plotting. `raw nav` exposes dense navigation
+solutions, `plot short|medium|deep` lets the player choose one by hand, and
+`delegate nav` lets arka plot a medium recommendation. Plotting costs attention
+but does not execute a jump yet.
 
 ## Success And Failure
 
@@ -246,5 +266,6 @@ docs, not in the text shown to the player.
    toward delegation with vigilance mitigation. Done.
 7. Phase 1D: save/load of `ShipState` and structured command history records. Done.
 8. Phase 2A: passive mission clock, distance, ship wear, and cryostasis decay. Done.
-9. Keep future expansion behind the same state-transition shape: more systems
+9. Phase 2B: route options, raw navigation, manual plotting, and delegated plotting. Done.
+10. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.

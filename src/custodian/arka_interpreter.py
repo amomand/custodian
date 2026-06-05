@@ -24,6 +24,7 @@ ALLOWED_ACTIONS = {
     "status",
     "raw",
     "delegate",
+    "plot",
     "manual",
     "wait",
     "help",
@@ -186,6 +187,7 @@ def build_arka_context(state: ShipState) -> dict[str, Any]:
         "arka_summary": summarize_coolant(state),
         "cryo_status": _cryo_status_label(state),
         "mission_pressure": _mission_pressure_label(state),
+        "navigation_status": _navigation_status_label(state),
         "crisis": None
         if crisis is None
         else {
@@ -262,13 +264,14 @@ def _system_prompt() -> str:
         _runtime_voice_capsule()
         + "\n\n"
         + "You are also a strict command interpreter. Output ONLY one JSON object.\n"
-        + "Allowed actions: status, raw, delegate, manual, wait, help, quit, converse, none.\n"
+        + "Allowed actions: status, raw, delegate, plot, manual, wait, help, quit, converse, none.\n"
         + "For manual coolant action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
         + "For manual cryostasis action, args.operation must be one of: stabilise_bank, reroute_chill, cycle_pods, triage and args.target must be cryo.\n"
         + "Use status for quick arka summaries. Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
-        + "For raw, set args.target to coolant, cryo, or mission. For delegate, set args.target to coolant or cryo.\n"
-        + "Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, or cryostasis.\n"
-        + "Use delegate when the player asks arka/you to handle coolant or cryostasis, fix it, take over, or automate.\n"
+        + "For raw, set args.target to coolant, cryo, mission, or nav. For delegate, set args.target to coolant, cryo, or nav.\n"
+        + "Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, cryostasis, route, nav, or navigation.\n"
+        + "For plot, args.route_id must be short, medium, deep, khepri-4, argos-12, or carina-edge.\n"
+        + "Use delegate when the player asks arka/you to handle coolant, cryostasis, or navigation, fix it, take over, or automate.\n"
         + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not advance maintenance time.\n"
         + "Do not create state changes, telemetry, inventory, maps, or future events.\n"
         + "If asked about reactor condition, base any reply only on context.arka_summary.\n"
@@ -293,13 +296,27 @@ def _intent_from_model_data(data: Any) -> Intent:
 
     if action == "raw":
         target = args.get("target", "coolant")
-        if target not in {"coolant", "cryo", "mission"}:
+        if target not in {"coolant", "cryo", "mission", "nav", "navigation"}:
             args["target"] = "coolant"
 
     if action == "delegate":
         target = args.get("target", "coolant")
-        if target not in {"coolant", "cryo"}:
+        if target not in {"coolant", "cryo", "nav", "navigation"}:
             args["target"] = "coolant"
+
+    if action == "plot":
+        route_id = args.get("route_id", "")
+        if route_id not in {
+            "short",
+            "medium",
+            "deep",
+            "long",
+            "khepri-4",
+            "argos-12",
+            "carina-edge",
+        }:
+            action = "converse"
+            args = {}
 
     if action == "manual":
         operation = args.get("operation", "")
@@ -416,6 +433,27 @@ def _rule_based(command: str) -> Intent | None:
             rationale="raw mission",
         )
     if corrected in {
+        "raw nav",
+        "raw navigation",
+        "inspect nav",
+        "inspect navigation",
+        "check nav",
+        "check navigation",
+        "navigation telemetry",
+        "route telemetry",
+        "route options",
+        "routes",
+        "nav",
+        "navigation",
+    }:
+        return Intent(
+            "raw",
+            {"target": "nav"},
+            1.0,
+            correction=correction,
+            rationale="raw nav",
+        )
+    if corrected in {
         "delegate",
         "arka",
         "arka coolant",
@@ -445,6 +483,34 @@ def _rule_based(command: str) -> Intent | None:
             1.0,
             correction=correction,
             rationale="delegate cryo",
+        )
+    if corrected in {
+        "delegate nav",
+        "delegate navigation",
+        "arka nav",
+        "arka navigation",
+        "handle nav",
+        "handle navigation",
+        "plot for me",
+        "plot a route",
+        "choose route",
+        "pick route",
+    }:
+        return Intent(
+            "delegate",
+            {"target": "nav"},
+            1.0,
+            correction=correction,
+            rationale="delegate nav",
+        )
+    route_id = _route_plot_id(corrected)
+    if route_id is not None:
+        return Intent(
+            "plot",
+            {"route_id": route_id},
+            1.0,
+            correction=correction,
+            rationale="plot route",
         )
     if corrected in {"wait", "hold", "listen", "stand by"}:
         return Intent("wait", {}, 1.0, correction=correction, rationale="wait")
@@ -536,6 +602,13 @@ def _mission_pressure_label(state: ShipState) -> str:
     if state.mission.ship_wear_pct >= 35 or state.mission.cryo_decay_pct >= 24:
         return "mission clock is costing the ship"
     return "mission clock present but not yet dominant"
+
+
+def _navigation_status_label(state: ShipState) -> str:
+    plotted = state.navigation.plotted_route
+    if plotted is None:
+        return "no route plotted"
+    return f"{plotted.jump_class} route plotted"
 
 
 def _normalise(command_text: str) -> str:
@@ -641,6 +714,31 @@ def _manual_operation(command: str) -> str | None:
     return mapping.get(command)
 
 
+def _route_plot_id(command: str) -> str | None:
+    prefixes = ("plot ", "plot route ", "plot course ", "set route ", "chart ")
+    route = None
+    for prefix in prefixes:
+        if command.startswith(prefix):
+            route = command[len(prefix) :]
+            break
+    if route is None:
+        return None
+
+    mapping = {
+        "short": "short",
+        "khepri": "khepri-4",
+        "khepri-4": "khepri-4",
+        "medium": "medium",
+        "argos": "argos-12",
+        "argos-12": "argos-12",
+        "long": "deep",
+        "deep": "deep",
+        "carina": "carina-edge",
+        "carina-edge": "carina-edge",
+    }
+    return mapping.get(route)
+
+
 def _cryo_status_label(state: ShipState) -> str:
     flags = state.cryostasis.danger_flags()
     if not flags:
@@ -700,6 +798,18 @@ _KNOWN_COMMANDS = (
     "mission numbers",
     "route clock",
     "arrival clock",
+    "raw nav",
+    "raw navigation",
+    "inspect nav",
+    "inspect navigation",
+    "check nav",
+    "check navigation",
+    "navigation telemetry",
+    "route telemetry",
+    "route options",
+    "routes",
+    "nav",
+    "navigation",
     "delegate",
     "arka",
     "arka coolant",
@@ -719,6 +829,26 @@ _KNOWN_COMMANDS = (
     "handle pods",
     "take cryo",
     "take cryostasis",
+    "delegate nav",
+    "delegate navigation",
+    "arka nav",
+    "arka navigation",
+    "handle nav",
+    "handle navigation",
+    "plot for me",
+    "plot a route",
+    "choose route",
+    "pick route",
+    "plot short",
+    "plot medium",
+    "plot long",
+    "plot deep",
+    "plot khepri",
+    "plot khepri-4",
+    "plot argos",
+    "plot argos-12",
+    "plot carina",
+    "plot carina-edge",
     "wait",
     "hold",
     "listen",
