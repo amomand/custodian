@@ -98,6 +98,38 @@ This split is load-bearing:
 - model replies must not invent telemetry.
 - authored drift decides when arka becomes misleading.
 
+## Open UI Hypothesis: Delegation Quiets The HUD
+
+Not implemented yet, but worth holding onto for playtest feel:
+
+Delegation might make the full HUD disappear for that beat. Instead of showing
+every metric again after `delegate`, the terminal could clear down to a sparse
+arka acknowledgement and perhaps a compact advisory line. All that panel noise
+goes away because arka is dealing with it.
+
+This could make delegation feel attractive in the player's hands, not just in
+the numbers. The relief is immediate: less reading, fewer bars, no urgent scan
+of every failing metric. The cost is the same relief. The player no longer sees
+what changed unless they deliberately ask for `status` or read a raw panel.
+
+Design questions:
+
+- Does hiding the HUD after delegation make arka feel usefully competent, or
+  does it make the interface feel withholding?
+- Should `status` bring the whole HUD back without advancing time, or should
+  regaining the raw picture cost a beat?
+- Should the HUD vanish for both coolant and cryostasis delegation, or only when
+  arka takes the panel most relevant to the current attention line?
+- During active crises, should arka still suppress the HUD, or would that make
+  late failure feel unfair rather than seductive?
+- Does this make transcripts harder to review, and if so do developer reports
+  need a fuller hidden trace?
+
+Boundary:
+
+The HUD going quiet must be presentation only. Raw telemetry still belongs to
+deterministic state, and arka still must not become the source of ship truth.
+
 ## Current Route Evidence
 
 Run:

@@ -103,6 +103,36 @@ class CryostasisSystem:
 
 
 @dataclass(frozen=True)
+class MissionStatus:
+    elapsed_days: int = 14_235
+    distance_remaining_tenths_ly: int = 118
+    ship_wear_pct: int = 17
+    cryo_decay_pct: int = 6
+
+    def clamped(self) -> "MissionStatus":
+        return replace(
+            self,
+            elapsed_days=max(0, self.elapsed_days),
+            distance_remaining_tenths_ly=max(0, self.distance_remaining_tenths_ly),
+            ship_wear_pct=max(0, min(100, self.ship_wear_pct)),
+            cryo_decay_pct=max(0, min(100, self.cryo_decay_pct)),
+        )
+
+    def raw_lines(self) -> tuple[str, ...]:
+        elapsed_years = self.elapsed_days // 365
+        elapsed_remainder = self.elapsed_days % 365
+        distance_whole = self.distance_remaining_tenths_ly // 10
+        distance_decimal = self.distance_remaining_tenths_ly % 10
+        return (
+            "RAW MISSION CLOCK",
+            f"elapsed_mission      {elapsed_years:>3}y {elapsed_remainder:>3}d",
+            f"distance_remaining  {distance_whole:>3}.{distance_decimal} ly",
+            f"ship_wear_pct       {self.ship_wear_pct:>4}   caution above 35",
+            f"cryo_decay_pct      {self.cryo_decay_pct:>4}   caution above 24",
+        )
+
+
+@dataclass(frozen=True)
 class CrisisState:
     kind: str
     label: str
@@ -130,6 +160,7 @@ class ShipState:
     turn: int = 1
     reactor: ReactorCoolantSystem = field(default_factory=ReactorCoolantSystem)
     cryostasis: CryostasisSystem = field(default_factory=CryostasisSystem)
+    mission: MissionStatus = field(default_factory=MissionStatus)
     manual_familiarity: int = 0
     cryo_familiarity: int = 0
     delegated_controls: int = 0

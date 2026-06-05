@@ -1,10 +1,18 @@
 import unittest
 
 from custodian.models import ShipState
-from custodian.narrative import closing_lines, opening_lines
+from custodian.narrative import boot_lines, closing_lines, opening_lines
 
 
 class NarrativeTests(unittest.TestCase):
+    def test_boot_screen_is_arka_kernel_not_arka_speech(self) -> None:
+        boot = "\n".join(boot_lines())
+
+        self.assertIn("A.R.K.A OPERATIONS KERNEL", boot)
+        self.assertIn("loading maintenance shell", boot)
+        self.assertIn("press any key", boot)
+        self.assertNotIn("arka:", boot)
+
     def test_opening_establishes_arka_and_available_raw_panel(self) -> None:
         opening = "\n".join(opening_lines())
 

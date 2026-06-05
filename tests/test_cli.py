@@ -2,7 +2,12 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from custodian.cli import _complete_command, _configure_completion, _lines_with_arka_spacing
+from custodian.cli import (
+    _complete_command,
+    _configure_completion,
+    _lines_with_arka_spacing,
+    _should_show_boot_screen,
+)
 
 
 class CliTests(unittest.TestCase):
@@ -47,6 +52,26 @@ class CliTests(unittest.TestCase):
         with patch("custodian.cli.sys.stdin", tty_stdin):
             with patch.dict("custodian.cli.os.environ", {"CUSTODIAN_COMPLETE": "off"}):
                 self.assertFalse(_configure_completion())
+
+    def test_boot_screen_only_shows_for_interactive_terminals(self) -> None:
+        tty = SimpleNamespace(isatty=lambda: True)
+        pipe = SimpleNamespace(isatty=lambda: False)
+
+        with patch("custodian.cli.sys.stdin", tty):
+            with patch("custodian.cli.sys.stdout", tty):
+                self.assertTrue(_should_show_boot_screen())
+
+        with patch("custodian.cli.sys.stdin", pipe):
+            with patch("custodian.cli.sys.stdout", tty):
+                self.assertFalse(_should_show_boot_screen())
+
+    def test_boot_screen_can_be_disabled(self) -> None:
+        tty = SimpleNamespace(isatty=lambda: True)
+
+        with patch("custodian.cli.sys.stdin", tty):
+            with patch("custodian.cli.sys.stdout", tty):
+                with patch.dict("custodian.cli.os.environ", {"CUSTODIAN_BOOT": "off"}):
+                    self.assertFalse(_should_show_boot_screen())
 
 
 if __name__ == "__main__":

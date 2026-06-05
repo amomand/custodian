@@ -73,6 +73,10 @@ class PlaytestReport:
             f"completed: {'yes' if self.completed else 'no'}",
             f"outcome: {self.final_outcome}",
             f"internal beat: {self.final_state.turn}",
+            f"mission elapsed: {_elapsed_label(self.final_state)}",
+            f"distance remaining: {_distance_label(self.final_state)}",
+            f"ship wear: {self.final_state.mission.ship_wear_pct}%",
+            f"cryo decay: {self.final_state.mission.cryo_decay_pct}%",
             f"delegated interventions: {self.final_state.delegated_controls}",
             f"delegated cryo interventions: {self.final_state.delegated_cryo_controls}",
             f"raw inspections: {self.final_state.raw_inspections}",
@@ -280,6 +284,18 @@ def _forbidden_hits(lines: Iterable[str]) -> tuple[str, ...]:
 
 def _manual_familiarity_label(state: ShipState) -> str:
     return _familiarity_label(state.manual_familiarity)
+
+
+def _elapsed_label(state: ShipState) -> str:
+    years = state.mission.elapsed_days // 365
+    days = state.mission.elapsed_days % 365
+    return f"{years}y {days}d"
+
+
+def _distance_label(state: ShipState) -> str:
+    whole = state.mission.distance_remaining_tenths_ly // 10
+    decimal = state.mission.distance_remaining_tenths_ly % 10
+    return f"{whole}.{decimal} ly"
 
 
 def _familiarity_label(familiarity: int) -> str:

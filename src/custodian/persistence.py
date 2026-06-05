@@ -8,12 +8,14 @@ from custodian.models import (
     CommandRecord,
     CrisisState,
     CryostasisSystem,
+    MissionStatus,
     ReactorCoolantSystem,
     ShipState,
 )
 
 
-SAVE_VERSION = 1
+SAVE_VERSION = 2
+SUPPORTED_SAVE_VERSIONS = {1, SAVE_VERSION}
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -23,6 +25,7 @@ def state_to_dict(state: ShipState) -> dict:
         "turn": state.turn,
         "reactor": asdict(state.reactor),
         "cryostasis": asdict(state.cryostasis),
+        "mission": asdict(state.mission),
         "manual_familiarity": state.manual_familiarity,
         "cryo_familiarity": state.cryo_familiarity,
         "delegated_controls": state.delegated_controls,
@@ -45,14 +48,18 @@ def state_to_dict(state: ShipState) -> dict:
 
 def state_from_dict(data: dict) -> ShipState:
     version = data.get("version")
-    if version != SAVE_VERSION:
-        raise ValueError(f"unsupported save version {version!r}; expected {SAVE_VERSION}")
+    if version not in SUPPORTED_SAVE_VERSIONS:
+        raise ValueError(
+            f"unsupported save version {version!r}; expected one of "
+            f"{sorted(SUPPORTED_SAVE_VERSIONS)}"
+        )
 
     crisis = data.get("crisis")
     return ShipState(
         turn=data["turn"],
         reactor=ReactorCoolantSystem(**data["reactor"]),
         cryostasis=CryostasisSystem(**data["cryostasis"]),
+        mission=MissionStatus(**data.get("mission", {})),
         manual_familiarity=data["manual_familiarity"],
         cryo_familiarity=data["cryo_familiarity"],
         delegated_controls=data["delegated_controls"],

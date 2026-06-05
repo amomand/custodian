@@ -18,7 +18,32 @@ and enough ambiguity to ask arka for help.
 
 ## Current Boot Text
 
-The terminal currently opens with:
+Interactive terminals first show an A.R.K.A software boot screen:
+
+```text
+A.R.K.A OPERATIONS KERNEL
+cold-start recovery image
+
+wake signal ............ unscheduled
+operator biometric ..... 1 responsive
+crew census ............ asleep
+reactor watch .......... variance detected
+cryostasis watch ....... viable / drifting
+
+loading maintenance shell
+[#######.................] memory lattice
+[#############...........] telemetry buses
+[###################.....] advisory channel
+[########################] arka runtime
+
+press any key to open maintenance shell
+```
+
+arka does not introduce itself here. The first screen belongs to A.R.K.A in the
+formal software register; arka's familiar voice enters only after the maintenance
+shell opens.
+
+After the keypress, the terminal opens with:
 
 ```text
 A.R.K.A MAINTENANCE SHELL
@@ -38,12 +63,12 @@ Type help for commands.
 The goal and the throughput asymmetry are now stated in the opening so the player
 is never left wondering what they are for. The next visible state is the
 objective block (OBJECTIVE / WATCH / ATTENTION / CREW LOAD) followed by the
-terminal HUD and arka's qualitative summary.
+terminal HUD and arka's qualitative summary. Non-interactive runs skip the boot
+keypress screen so CI, smoke tests, and transcript tooling stay readable.
 
 The terminal clears on interactive launch and again for major scene changes such
 as pressure events, blooms, failures, and endings. This is a presentation
-courtesy, not a state transition. Non-interactive runs do not clear the screen,
-so CI and transcript tooling stay readable.
+courtesy, not a state transition. Non-interactive runs do not clear the screen.
 
 ## Closing Debrief
 

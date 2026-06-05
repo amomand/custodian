@@ -1,10 +1,40 @@
 import unittest
 
-from custodian.models import CryostasisSystem, ReactorCoolantSystem, ShipState
-from custodian.telemetry import coolant_hud_lines, cryostasis_hud_lines
+from custodian.models import CryostasisSystem, MissionStatus, ReactorCoolantSystem, ShipState
+from custodian.telemetry import coolant_hud_lines, cryostasis_hud_lines, mission_hud_lines
 
 
 class TelemetryTests(unittest.TestCase):
+    def test_mission_hud_carries_clock_without_arka_voice(self) -> None:
+        state = ShipState(
+            mission=MissionStatus(
+                elapsed_days=15_000,
+                distance_remaining_tenths_ly=97,
+                ship_wear_pct=36,
+                cryo_decay_pct=25,
+            )
+        )
+
+        hud = "\n".join(mission_hud_lines(state))
+
+        self.assertIn("MISSION CLOCK", hud)
+        self.assertIn("41y 35d", hud)
+        self.assertIn("9.7 ly", hud)
+        self.assertIn("WEAR", hud)
+        self.assertIn("CRYO AGE", hud)
+        self.assertIn("HIGH", hud)
+        self.assertNotIn("arka:", hud)
+
+    def test_mission_hud_adds_breathing_room_after_range(self) -> None:
+        lines = mission_hud_lines(ShipState())
+
+        range_index = lines.index(
+            "RANGE     11.8 ly       destination solution unresolved"
+        )
+
+        self.assertEqual(lines[range_index + 1], "")
+        self.assertTrue(lines[range_index + 2].startswith("WEAR"))
+
     def test_coolant_hud_carries_raw_readings_outside_arka_voice(self) -> None:
         state = ShipState(
             reactor=ReactorCoolantSystem(

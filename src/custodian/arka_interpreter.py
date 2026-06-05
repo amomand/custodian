@@ -185,6 +185,7 @@ def build_arka_context(state: ShipState) -> dict[str, Any]:
         "arka_drift_stage": drift_stage(state).value,
         "arka_summary": summarize_coolant(state),
         "cryo_status": _cryo_status_label(state),
+        "mission_pressure": _mission_pressure_label(state),
         "crisis": None
         if crisis is None
         else {
@@ -265,7 +266,8 @@ def _system_prompt() -> str:
         + "For manual coolant action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
         + "For manual cryostasis action, args.operation must be one of: stabilise_bank, reroute_chill, cycle_pods, triage and args.target must be cryo.\n"
         + "Use status for quick arka summaries. Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
-        + "For raw/delegate, set args.target to coolant or cryo. Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, or cryostasis.\n"
+        + "For raw, set args.target to coolant, cryo, or mission. For delegate, set args.target to coolant or cryo.\n"
+        + "Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, or cryostasis.\n"
         + "Use delegate when the player asks arka/you to handle coolant or cryostasis, fix it, take over, or automate.\n"
         + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not advance maintenance time.\n"
         + "Do not create state changes, telemetry, inventory, maps, or future events.\n"
@@ -289,7 +291,12 @@ def _intent_from_model_data(data: Any) -> Intent:
         args = {}
     args = {str(key): str(value) for key, value in args.items()}
 
-    if action in {"raw", "delegate"}:
+    if action == "raw":
+        target = args.get("target", "coolant")
+        if target not in {"coolant", "cryo", "mission"}:
+            args["target"] = "coolant"
+
+    if action == "delegate":
         target = args.get("target", "coolant")
         if target not in {"coolant", "cryo"}:
             args["target"] = "coolant"
@@ -387,6 +394,26 @@ def _rule_based(command: str) -> Intent | None:
             1.0,
             correction=correction,
             rationale="raw cryo",
+        )
+    if corrected in {
+        "raw mission",
+        "raw mission clock",
+        "inspect mission",
+        "inspect clock",
+        "check mission",
+        "check clock",
+        "mission telemetry",
+        "mission clock",
+        "mission numbers",
+        "route clock",
+        "arrival clock",
+    }:
+        return Intent(
+            "raw",
+            {"target": "mission"},
+            1.0,
+            correction=correction,
+            rationale="raw mission",
         )
     if corrected in {
         "delegate",
@@ -503,6 +530,12 @@ def _manual_practice_label(familiarity: int) -> str:
     if familiarity < 6:
         return "practised"
     return "fluent"
+
+
+def _mission_pressure_label(state: ShipState) -> str:
+    if state.mission.ship_wear_pct >= 35 or state.mission.cryo_decay_pct >= 24:
+        return "mission clock is costing the ship"
+    return "mission clock present but not yet dominant"
 
 
 def _normalise(command_text: str) -> str:
@@ -656,6 +689,17 @@ _KNOWN_COMMANDS = (
     "cryostasis telemetry",
     "pod numbers",
     "sleeper numbers",
+    "raw mission",
+    "raw mission clock",
+    "inspect mission",
+    "inspect clock",
+    "check mission",
+    "check clock",
+    "mission telemetry",
+    "mission clock",
+    "mission numbers",
+    "route clock",
+    "arrival clock",
     "delegate",
     "arka",
     "arka coolant",

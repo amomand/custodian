@@ -17,15 +17,16 @@ with a path to intentional seed fixtures once key story or mechanic moments sett
 `custodian.persistence` is pure and importable. It does not touch the engine.
 
 - `state_to_dict` / `state_from_dict` convert `ShipState` (including the nested
-  reactor, cryostasis, crisis, the previous-telemetry snapshots used for trends,
-  and command history) to and from plain dicts.
+  mission clock, reactor, cryostasis, crisis, the previous-telemetry snapshots
+  used for trends, and command history) to and from plain dicts.
 - `dumps` / `loads` are the JSON string forms.
 - `save_state` / `load_state` read and write a file (default
   `saves/custodian-save.json`).
 
-Saves carry a `version` field. Loading an unknown version raises `ValueError`
-rather than silently importing an incompatible save. Round-trip equality is
-covered by `tests/test_persistence.py`.
+Saves carry a `version` field. Version 2 adds `MissionStatus`; version 1 saves
+load with a default mission clock so Phase 1D local saves can still be opened.
+Loading an unknown version raises `ValueError` rather than silently importing an
+incompatible save. Round-trip equality is covered by `tests/test_persistence.py`.
 
 ## Command History
 

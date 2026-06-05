@@ -15,11 +15,12 @@ from custodian.models import (
     CrisisState,
     CryostasisSystem,
     DriftStage,
+    MissionStatus,
     ReactorCoolantSystem,
     ShipState,
 )
 from custodian.objectives import objective_lines
-from custodian.telemetry import coolant_hud_lines, cryostasis_hud_lines
+from custodian.telemetry import coolant_hud_lines, cryostasis_hud_lines, mission_hud_lines
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,16 @@ class GameEngine:
                     ),
                     prior=state,
                 )
+            if target == "mission":
+                return self._advance(
+                    replace(state, raw_inspections=state.raw_inspections + 1),
+                    correction
+                    + (
+                        "You pull the mission clock into raw view.",
+                        *state.mission.raw_lines(),
+                    ),
+                    prior=state,
+                )
             return self._advance(
                 replace(state, raw_inspections=state.raw_inspections + 1),
                 correction
@@ -142,6 +153,7 @@ class GameEngine:
     def _status_messages(self, state: ShipState) -> tuple[str, ...]:
         messages = [
             *objective_lines(state),
+            *mission_hud_lines(state),
             *coolant_hud_lines(state),
             summarize_coolant(state),
             *cryostasis_hud_lines(state),
@@ -165,10 +177,12 @@ class GameEngine:
             return StepResult(state, messages, advanced=True)
 
         had_crisis = state.crisis is not None
-        reactor = _ambient_coolant_drift(state).clamped()
-        cryostasis = _ambient_cryo_drift(replace(state, reactor=reactor)).clamped()
+        mission = _advance_mission_clock(state).clamped()
+        mission_state = replace(state, mission=mission)
+        reactor = _ambient_coolant_drift(mission_state).clamped()
+        cryostasis = _ambient_cryo_drift(replace(mission_state, reactor=reactor)).clamped()
         next_state = replace(
-            state,
+            mission_state,
             turn=state.turn + 1,
             reactor=reactor,
             cryostasis=cryostasis,
@@ -605,8 +619,8 @@ class GameEngine:
 
 def _ambient_coolant_drift(state: ShipState) -> ReactorCoolantSystem:
     reactor = state.reactor
-    heat_gain = 8 + state.turn // 4
-    pressure_gain = 0
+    heat_gain = 8 + state.turn // 4 + state.mission.ship_wear_pct // 25
+    pressure_gain = state.mission.ship_wear_pct // 40
     if state.crisis is not None:
         if state.crisis.kind == "thermal_runaway":
             heat_gain += 14
@@ -647,7 +661,7 @@ def _ambient_cryo_drift(state: ShipState) -> CryostasisSystem:
     if reactor.flow_lps < 70 or reactor.coolant_reserve_pct < 45:
         warming += 1
 
-    neural_drop = 1
+    neural_drop = 1 + state.mission.cryo_decay_pct // 25
     if cryo.bank_temperature_c > -170:
         neural_drop += 2
     if cryo.pod_fault_load > 12:
@@ -662,6 +676,8 @@ def _ambient_cryo_drift(state: ShipState) -> CryostasisSystem:
         risk_gain += 5
     if cryo.pod_fault_load > 12:
         risk_gain += 4
+    if state.mission.cryo_decay_pct >= 24:
+        risk_gain += state.mission.cryo_decay_pct // 12
 
     return replace(
         cryo,
@@ -669,6 +685,25 @@ def _ambient_cryo_drift(state: ShipState) -> CryostasisSystem:
         neural_stability_pct=cryo.neural_stability_pct - neural_drop,
         pod_fault_load=cryo.pod_fault_load + (1 if state.turn % 3 == 0 else 0),
         sleepers_at_risk=cryo.sleepers_at_risk + risk_gain,
+    )
+
+
+def _advance_mission_clock(state: ShipState) -> MissionStatus:
+    mission = state.mission
+    wear_gain = 1 if state.turn % 2 == 0 else 0
+    decay_gain = 1 if state.turn % 2 == 1 else 0
+
+    if state.reactor.temperature_c > 620 or state.reactor.pressure_kpa > 270:
+        wear_gain += 1
+    if state.cryostasis.neural_stability_pct < 78 or state.cryostasis.sleepers_at_risk:
+        decay_gain += 1
+
+    return replace(
+        mission,
+        elapsed_days=mission.elapsed_days + 42,
+        distance_remaining_tenths_ly=mission.distance_remaining_tenths_ly - 1,
+        ship_wear_pct=mission.ship_wear_pct + wear_gain,
+        cryo_decay_pct=mission.cryo_decay_pct + decay_gain,
     )
 
 
@@ -972,6 +1007,10 @@ def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | Non
                 f"delegated interventions: {state.delegated_controls}",
                 f"delegated cryo interventions: {state.delegated_cryo_controls}",
                 f"raw inspections: {state.raw_inspections}",
+                f"mission elapsed days: {state.mission.elapsed_days}",
+                f"distance remaining tenths ly: {state.mission.distance_remaining_tenths_ly}",
+                f"ship wear pct: {state.mission.ship_wear_pct}",
+                f"cryo decay pct: {state.mission.cryo_decay_pct}",
                 f"sleepers lost: {state.sleepers_lost}",
                 f"sleepers at risk: {state.cryostasis.sleepers_at_risk}",
                 f"crisis: {crisis_line_text}",
@@ -988,6 +1027,8 @@ def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | Non
                 f"delegated interventions: {state.delegated_controls}",
                 f"delegated cryo interventions: {state.delegated_cryo_controls}",
                 f"raw inspections: {state.raw_inspections}",
+                f"ship wear pct: {state.mission.ship_wear_pct}",
+                f"cryo decay pct: {state.mission.cryo_decay_pct}",
             ),
         )
     return StepResult(
@@ -1006,6 +1047,7 @@ def _help_lines() -> tuple[str, ...]:
         "status           refresh panels and arka summaries",
         "raw              detailed coolant telemetry",
         "raw cryo         detailed cryostasis telemetry",
+        "raw mission      detailed mission clock telemetry",
         "delegate         ask arka to adjust coolant",
         "delegate cryo    ask arka to tend cryostasis",
         "pump up          manually increase coolant flow",
