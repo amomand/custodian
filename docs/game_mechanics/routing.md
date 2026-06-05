@@ -93,6 +93,23 @@ The normal per-beat mission clock and ambient system drift then run as usual.
 This means a jump is not just a ledger update; the route can push the current
 maintenance watch into worse coolant or sleeper conditions.
 
+## Navigation Context Gap
+
+The first executable jump works mechanically, but it does not yet answer the
+player's obvious spatial questions:
+
+- where the ship is now
+- what place, waypoint, or solution the ship just jumped to
+- why that place matters
+- why another route should be plotted from here
+- what arka gains by making the route feel settled or uninteresting
+
+This is intentionally left out of Phase 2C/D, but it should not be forgotten.
+Future work needs a light "current fix" layer before route planning can feel
+like travel rather than abstract number conversion. That layer does not need to
+be a full map. It might be a destination solution, waypoint label, local signal,
+or mission constraint that changes after a jump.
+
 ## arka Recommendation
 
 Early, arka plots `ARGOS-12`, the medium route, and names the route cost plainly.

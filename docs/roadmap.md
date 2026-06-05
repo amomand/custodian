@@ -451,6 +451,9 @@ Likely work:
 - Tune short/medium/deep route costs.
 - Add or adjust seeded playtest routes around manual plotting, delegated
   plotting, and jump execution.
+- Add a light navigation-context layer so the player knows where the ship is
+  after a jump, what kind of waypoint or solution it reached, and why plotting
+  another route matters.
 - Decide whether post-jump pressure needs one more authored beat or whether the
   existing coolant/cryo drift is enough for now.
 - Review arka route advice for usefulness, omission, and late contradiction.
