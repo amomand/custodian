@@ -17,20 +17,20 @@ reassurance and the colder raw layer.
 readout:
 
 ```
-OBJECTIVE  keep coolant and cryostasis inside nominal until the watch ends
+OBJECTIVE  hold coolant and cryostasis nominal until the watch closes
 WATCH      9 beats remain
-PRIORITY   coolant temperature is climbing toward its ceiling
-CAPACITY   one system steadies by hand each beat; arka can take a whole panel at once
+ATTENTION  coolant temperature is climbing toward its ceiling
+CREW LOAD  one manual control per beat; arka can take a whole panel
 ```
 
 - **OBJECTIVE** — the overall win condition, always visible during play.
 - **WATCH** — the horizon. `beats_remaining` counts down to the maintenance
   window close (`MISSION_END_TURN`). Player-facing text says "beats", never
   "turn"/"turns", to keep the transcript free of meta vocabulary.
-- **PRIORITY** — the per-beat objective: the metric degrading hardest toward
+- **ATTENTION** — the per-beat pressure: the metric degrading hardest toward
   danger right now. This is what makes manual triage decidable.
-- **CAPACITY** — states the throughput asymmetry that makes delegation a real
-  decision: one system by hand per beat, or a whole panel via arka.
+- **CREW LOAD** — states the throughput asymmetry that makes delegation a real
+  decision: one manual control per beat, or a whole panel via arka.
 
 ## How Priority Is Chosen
 

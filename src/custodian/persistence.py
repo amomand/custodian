@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from custodian.models import (
+    CommandRecord,
     CrisisState,
     CryostasisSystem,
     ReactorCoolantSystem,
@@ -13,7 +14,7 @@ from custodian.models import (
 
 
 SAVE_VERSION = 1
-DEFAULT_SAVE_PATH = Path("custodian-save.json")
+DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
 def state_to_dict(state: ShipState) -> dict:
@@ -38,7 +39,7 @@ def state_to_dict(state: ShipState) -> dict:
             if state.previous_cryostasis is not None
             else None
         ),
-        "history": list(state.history),
+        "history": [asdict(record) for record in state.history],
     }
 
 
@@ -62,7 +63,7 @@ def state_from_dict(data: dict) -> ShipState:
         outcome=data.get("outcome"),
         previous_reactor=_optional_reactor(data.get("previous_reactor")),
         previous_cryostasis=_optional_cryo(data.get("previous_cryostasis")),
-        history=tuple(data.get("history", ())),
+        history=_history_from_data(data.get("history", ())),
     )
 
 
@@ -75,7 +76,8 @@ def loads(text: str) -> ShipState:
 
 
 def save_state(state: ShipState, path: Path = DEFAULT_SAVE_PATH) -> Path:
-    path.write_text(dumps(state), encoding="utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(dumps(state) + "\n", encoding="utf-8")
     return path
 
 
@@ -89,3 +91,29 @@ def _optional_reactor(data: dict | None) -> ReactorCoolantSystem | None:
 
 def _optional_cryo(data: dict | None) -> CryostasisSystem | None:
     return None if data is None else CryostasisSystem(**data)
+
+
+def _history_from_data(data: object) -> tuple[CommandRecord, ...]:
+    if not isinstance(data, (list, tuple)):
+        return ()
+
+    records: list[CommandRecord] = []
+    for item in data:
+        if isinstance(item, str):
+            records.append(CommandRecord(raw=item, action="unknown"))
+        elif isinstance(item, dict):
+            records.append(
+                CommandRecord(
+                    raw=str(item.get("raw", "")),
+                    action=str(item.get("action", "unknown")),
+                    target=_optional_str(item.get("target")),
+                    operation=_optional_str(item.get("operation")),
+                    advanced=bool(item.get("advanced", False)),
+                    beat_after=int(item.get("beat_after", 1)),
+                )
+            )
+    return tuple(records)
+
+
+def _optional_str(value: object) -> str | None:
+    return None if value is None else str(value)

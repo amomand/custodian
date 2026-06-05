@@ -78,19 +78,19 @@ def objective_lines(state: ShipState) -> tuple[str, ...]:
     remaining = beats_remaining(state)
     watch = "the watch is closing" if remaining <= 1 else f"{remaining} beats remain"
     lines = [
-        "OBJECTIVE  keep coolant and cryostasis inside nominal until the watch ends",
+        "OBJECTIVE  hold coolant and cryostasis nominal until the watch closes",
         f"WATCH      {watch}",
-        _priority_line(state),
-        "CAPACITY   one system steadies by hand each beat; arka can take a whole panel at once",
+        _attention_line(state),
+        "CREW LOAD  one manual control per beat; arka can take a whole panel",
     ]
     return tuple(lines)
 
 
-def _priority_line(state: ShipState) -> str:
+def _attention_line(state: ShipState) -> str:
     top = priority(state)
     if top is None:
-        return "PRIORITY   panels nominal; bank manual practice or let arka hold the watch"
-    return f"PRIORITY   {top.spec.system} {top.spec.label} {_movement(top)}"
+        return "ATTENTION  panels nominal; manual practice remains available"
+    return f"ATTENTION  {top.spec.system} {top.spec.label} {_movement(top)}"
 
 
 def _movement(item: Priority) -> str:

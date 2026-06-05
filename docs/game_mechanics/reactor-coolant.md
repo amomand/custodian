@@ -38,7 +38,7 @@ The trend token shows direction since the previous beat and marks worsening:
 
 Trends are what make the one-action-per-beat triage playable: the player can see
 which metric is failing fastest and spend their single manual action on it. The
-`PRIORITY` line in the objective block names that metric explicitly.
+`ATTENTION` line in the objective block names that metric explicitly.
 
 ## Manual Actions
 

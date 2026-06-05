@@ -111,7 +111,7 @@ Developer-only terminal diagnostics use a colon prefix:
 - **Event refreshes** - interactive terminals clear on launch and major pressure beats
 - **Legible objective block** - every status opens with goal, horizon, and the metric failing fastest
 - **Trend-aware HUD** - per-metric arrows show what is moving toward danger this beat
-- **Delegation as throughput** - one system by hand per beat, or a whole panel via arka
+- **Delegation as throughput** - one manual control per beat, or a whole panel via arka
 - **Coolant HUD** - telemetry is shown separately from arka's summary
 - **Cryostasis HUD** - sleeper viability is visible outside arka's voice
 - **Run debrief** - endings reflect manual practice, delegation, and raw checks

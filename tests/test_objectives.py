@@ -20,7 +20,7 @@ class ObjectivesTests(unittest.TestCase):
 
         self.assertIn("OBJECTIVE", lines)
         self.assertIn("WATCH", lines)
-        self.assertIn("PRIORITY", lines)
+        self.assertIn("ATTENTION", lines)
         self.assertIn("whole panel", lines)
         # In-world readout must not leak the forbidden meta vocabulary.
         self.assertNotIn("turn", lines.lower())

@@ -14,13 +14,13 @@ telemetry while arka's account of the loop becomes less trustworthy.
 
 Delegation is not just "arka is higher quality." It is a capacity decision.
 
-- Manual control steadies **one system per beat**. The player picks the single
+- Manual control answers **one control per beat**. The player picks the single
   intervention they can afford and spends the beat on it.
 - arka takes a **whole panel at once**. When it handles coolant or cryostasis, it
   addresses several metrics in a single beat.
 
 Because telemetry degrades on several axes at once (see the trend arrows and the
-`PRIORITY` line in the objective block), a hands-on player constantly falls
+`ATTENTION` line in the objective block), a hands-on player constantly falls
 behind on everything they did not touch. That is the honest, structural reason
 delegation is seductive: there is too much ship for one waking custodian.
 

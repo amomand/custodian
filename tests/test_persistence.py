@@ -1,6 +1,7 @@
 import unittest
 
 from custodian.models import (
+    CommandRecord,
     CrisisState,
     CryostasisSystem,
     ReactorCoolantSystem,
@@ -30,7 +31,28 @@ class PersistenceTests(unittest.TestCase):
             ),
             previous_reactor=ReactorCoolantSystem(temperature_c=600),
             previous_cryostasis=CryostasisSystem(),
-            history=("status", "balance", "delegate"),
+            history=(
+                CommandRecord(
+                    raw="status",
+                    action="status",
+                    advanced=False,
+                    beat_after=8,
+                ),
+                CommandRecord(
+                    raw="balance",
+                    action="manual",
+                    operation="balance",
+                    advanced=True,
+                    beat_after=9,
+                ),
+                CommandRecord(
+                    raw="delegate cryo",
+                    action="delegate",
+                    target="cryo",
+                    advanced=True,
+                    beat_after=10,
+                ),
+            ),
         )
 
     def test_round_trip_preserves_full_state(self) -> None:
@@ -54,6 +76,37 @@ class PersistenceTests(unittest.TestCase):
             path = Path(tmp) / "save.json"
             save_state(state, path)
             self.assertEqual(load_state(path), state)
+
+    def test_save_creates_parent_directory(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "nested" / "save.json"
+            save_state(ShipState(), path)
+            self.assertTrue(path.exists())
+
+    def test_legacy_string_history_is_loaded_as_records(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 1,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "history": ["status"]
+            }
+            """
+        )
+
+        self.assertEqual(restored.history[0].raw, "status")
+        self.assertEqual(restored.history[0].action, "unknown")
 
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

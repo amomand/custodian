@@ -47,11 +47,11 @@ knows the goal and the most urgent thing this beat:
 
 - **OBJECTIVE** — keep coolant and cryostasis nominal until the watch ends.
 - **WATCH** — beats remaining until the maintenance window closes.
-- **PRIORITY** — the metric degrading hardest toward danger right now.
-- **CAPACITY** — one system by hand per beat, or a whole panel via arka.
+- **ATTENTION** — the metric degrading hardest toward danger right now.
+- **CREW LOAD** — one manual control per beat, or a whole panel via arka.
 
-This is the delegation thesis as a throughput decision: manual control steadies
-one system per beat, while arka takes a whole panel at once. Because several
+This is the delegation thesis as a throughput decision: manual control answers
+one control per beat, while arka takes a whole panel at once. Because several
 metrics drift each beat (shown by trend arrows on the HUD), a hands-on player
 falls behind on everything they did not touch, which is the honest reason
 delegation is tempting.
@@ -96,7 +96,7 @@ shown as a number.
 - Sleeper losses.
 - Terminal outcome.
 - Previous coolant and cryostasis snapshots, used to compute HUD trend arrows.
-- Structured command history, recorded centrally in `GameEngine.handle`.
+- Structured command history records, written centrally in `GameEngine.handle`.
 
 `CryostasisSystem` owns telemetry:
 
@@ -227,6 +227,6 @@ docs, not in the text shown to the player.
 6. Course correction: legible objective block (goal, horizon, per-beat priority),
    trend-aware HUD, delegation framed as a throughput choice, and drift weighted
    toward delegation with vigilance mitigation. Done.
-7. Phase 1D: save/load of `ShipState` and structured command history. Done.
+7. Phase 1D: save/load of `ShipState` and structured command history records. Done.
 8. Keep future expansion behind the same state-transition shape: more systems
    should plug in without moving parser or CLI responsibilities into the model.

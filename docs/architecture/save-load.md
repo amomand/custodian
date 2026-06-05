@@ -10,7 +10,7 @@ player got there. Two pieces:
 
 These exist for the same reason the design does: the game is about player
 habits, so we need to capture and restore the exact state those habits produced,
-and to seed known story/mechanic moments for testing.
+with a path to intentional seed fixtures once key story or mechanic moments settle.
 
 ## State Serialisation
 
@@ -21,7 +21,7 @@ and to seed known story/mechanic moments for testing.
   and command history) to and from plain dicts.
 - `dumps` / `loads` are the JSON string forms.
 - `save_state` / `load_state` read and write a file (default
-  `custodian-save.json`).
+  `saves/custodian-save.json`).
 
 Saves carry a `version` field. Loading an unknown version raises `ValueError`
 rather than silently importing an incompatible save. Round-trip equality is
@@ -29,11 +29,12 @@ covered by `tests/test_persistence.py`.
 
 ## Command History
 
-`ShipState.history` is a tuple of the raw commands that advanced or were handled
-during the watch. The engine records it centrally in `GameEngine.handle`, so
-every player command is captured without threading bookkeeping through each
-branch. Developer colon-commands (`:debug`, `:save`, ...) are not recorded as
-play.
+`ShipState.history` is a tuple of `CommandRecord` entries. Each record stores the
+raw command text, interpreted action, optional target/operation, whether the
+command advanced the watch, and the beat after handling. The engine records it
+centrally in `GameEngine.handle`, so every player command is captured without
+threading bookkeeping through each branch. Developer colon-commands (`:debug`,
+`:save`, ...) are not recorded as play.
 
 History travels with the save, so a restored watch carries its own provenance.
 
@@ -44,11 +45,15 @@ consistent with `:debug` and `:metrics`. They are handled in the CLI layer so th
 engine stays pure:
 
 ```
-:save            write the current watch to custodian-save.json
+:save            write the current watch to saves/custodian-save.json
 :save path.json  write to a specific path
-:load            restore from custodian-save.json
+:load            restore from saves/custodian-save.json
 :load path.json  restore from a specific path
 ```
+
+Seed saves for known story or mechanic moments should live as intentional
+fixtures once their moments are stable. Ordinary local saves belong under
+`saves/`, which is ignored by git.
 
 ## Boundaries
 

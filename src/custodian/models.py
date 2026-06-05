@@ -116,6 +116,16 @@ class CrisisState:
 
 
 @dataclass(frozen=True)
+class CommandRecord:
+    raw: str
+    action: str
+    target: str | None = None
+    operation: str | None = None
+    advanced: bool = False
+    beat_after: int = 1
+
+
+@dataclass(frozen=True)
 class ShipState:
     turn: int = 1
     reactor: ReactorCoolantSystem = field(default_factory=ReactorCoolantSystem)
@@ -130,7 +140,7 @@ class ShipState:
     outcome: str | None = None
     previous_reactor: ReactorCoolantSystem | None = None
     previous_cryostasis: CryostasisSystem | None = None
-    history: tuple[str, ...] = ()
+    history: tuple[CommandRecord, ...] = ()
 
     @property
     def is_finished(self) -> bool:

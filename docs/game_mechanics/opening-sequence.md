@@ -28,8 +28,8 @@ custodian roster: 1 responsive
 
 arka: Good. You're awake.
 arka: Reactor coolant is drifting. Cryostasis is colder than you are.
-arka: The job is simple to say: keep both panels inside nominal until the watch ends.
-arka: You can steady one system by hand each beat. I can take a whole panel at once.
+arka: The job is simple to say: hold both panels nominal until the watch closes.
+arka: Your hands can answer one control at a time. I can take a whole panel.
 arka: I can take coolant or cryo, if you like. Raw panels and manual controls are live.
 arka: Pumps, vent, flush, balance. Banks, chill, pods, triage. Unglamorous verbs, but they work.
 Type help for commands.
@@ -37,7 +37,7 @@ Type help for commands.
 
 The goal and the throughput asymmetry are now stated in the opening so the player
 is never left wondering what they are for. The next visible state is the
-objective block (OBJECTIVE / WATCH / PRIORITY / CAPACITY) followed by the
+objective block (OBJECTIVE / WATCH / ATTENTION / CREW LOAD) followed by the
 terminal HUD and arka's qualitative summary.
 
 The terminal clears on interactive launch and again for major scene changes such

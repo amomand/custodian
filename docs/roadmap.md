@@ -36,10 +36,10 @@ The repo currently has a narrow terminal MVP:
   emergency cryo chilling stresses coolant reserve.
 - A legible objective block (goal, horizon, per-beat priority) and trend-aware
   HUD so the player always knows what they are trying to achieve.
-- Delegation framed as a throughput choice: one system by hand per beat versus a
+- Delegation framed as a throughput choice: one manual control per beat versus a
   whole panel via arka, with drift weighted toward delegation and mitigated by
   raw-reading vigilance.
-- Save/load of `ShipState` and structured command history (Phase 1D).
+- Save/load of `ShipState` and structured command history records (Phase 1D).
 - Tests around state transitions and AI boundary.
 - Markdown docs for the MVP, arka, and the interpreter.
 
@@ -226,8 +226,8 @@ correction addresses both at once.
 Implemented:
 
 - a legible objective block on every status readout: OBJECTIVE (goal), WATCH
-  (horizon in beats), PRIORITY (the metric failing fastest this beat), and
-  CAPACITY (one system by hand per beat vs a whole panel via arka)
+  (horizon in beats), ATTENTION (the metric failing fastest this beat), and
+  CREW LOAD (one manual control per beat vs a whole panel via arka)
 - per-metric trend arrows on the HUD so the fastest-failing thing is scannable
 - separated system blocks and threshold bars (already started)
 - tab completion for multi-word controls (already started)
@@ -253,9 +253,9 @@ Status: implemented in the current terminal slice.
 Add:
 
 - save/load (`custodian.persistence`, `:save` / `:load`)
-- seed saves for known story/mechanic moments
-- structured command history (`ShipState.history`) for debugging and balancing
+- structured command history records (`ShipState.history`) for debugging and balancing
 - transcript reports that include both systems
+- optional seed saves for known story/mechanic moments once those moments are stable
 
 See `docs/architecture/save-load.md`. The engine stays pure: persistence only
 serialises and deserialises `ShipState`, and history is recorded centrally in
@@ -667,7 +667,7 @@ still teaching us what it is.
 1. Playtest the Phase 1A-C terminal slice and tune whether two systems create
    enough attention pressure.
 2. Consider Phase 1C.5 if the maintainer surface is slowing playtest feedback.
-3. Phase 1D: add save/load and structured command history.
+3. Phase 1D: add save/load and structured command history records.
 4. Decide whether Phase 1E needs a third system.
 5. Start the first web surface only after the terminal loop has enough shape to
     be worth preserving.

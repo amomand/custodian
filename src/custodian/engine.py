@@ -11,6 +11,7 @@ from custodian.arka import (
 from custodian.arka_interpreter import ArkaInterpreter, Intent
 from custodian.engine_constants import MISSION_END_TURN
 from custodian.models import (
+    CommandRecord,
     CrisisState,
     CryostasisSystem,
     DriftStage,
@@ -41,19 +42,24 @@ class GameEngine:
         if dev_result is not None:
             return dev_result
 
-        result = self._dispatch(state, command_text)
+        intent = self.interpreter.interpret(command_text, state)
+        result = self._dispatch(state, command_text, intent)
         new_state = result.state
-        if result.advanced:
-            new_state = replace(
-                new_state,
-                previous_reactor=state.reactor,
-                previous_cryostasis=state.cryostasis,
-            )
-        new_state = replace(new_state, history=state.history + (command_text,))
+        target = intent.args.get("target")
+        if intent.action in {"raw", "delegate"} and not target:
+            target = "coolant"
+        record = CommandRecord(
+            raw=command_text,
+            action=intent.action,
+            target=target,
+            operation=intent.args.get("operation"),
+            advanced=result.advanced,
+            beat_after=new_state.turn,
+        )
+        new_state = replace(new_state, history=state.history + (record,))
         return replace(result, state=new_state)
 
-    def _dispatch(self, state: ShipState, command_text: str) -> StepResult:
-        intent = self.interpreter.interpret(command_text, state)
+    def _dispatch(self, state: ShipState, command_text: str, intent: Intent) -> StepResult:
         correction = _correction_line(intent)
         if state.is_finished:
             return StepResult(state, ("The maintenance window is already closed.",))
@@ -77,21 +83,24 @@ class GameEngine:
                         "You lean into the raw cryostasis panel.",
                         *state.cryostasis.raw_lines(),
                     ),
+                    prior=state,
                 )
             return self._advance(
                 replace(state, raw_inspections=state.raw_inspections + 1),
                 correction
                 + ("You lean into the raw coolant panel.", *state.reactor.raw_lines()),
+                prior=state,
             )
         if intent.action == "delegate":
             delegated_state, messages = self._delegate_to_arka(
                 state, intent.args.get("target", "coolant")
             )
-            return self._advance(delegated_state, correction + messages)
+            return self._advance(delegated_state, correction + messages, prior=state)
         if intent.action == "wait":
             return self._advance(
                 state,
                 correction + ("You wait and listen to coolant move through the walls.",),
+                prior=state,
             )
 
         if intent.action == "manual":
@@ -99,7 +108,7 @@ class GameEngine:
             target = intent.args.get("target", "coolant")
             if operation in {"pump_up", "pump_down", "vent", "flush", "balance"}:
                 manual_state, messages = self._manual_control(state, operation)
-                return self._advance(manual_state, correction + messages)
+                return self._advance(manual_state, correction + messages, prior=state)
             if target == "cryo" and operation in {
                 "stabilise_bank",
                 "reroute_chill",
@@ -107,7 +116,7 @@ class GameEngine:
                 "triage",
             }:
                 manual_state, messages = self._manual_cryo_control(state, operation)
-                return self._advance(manual_state, correction + messages)
+                return self._advance(manual_state, correction + messages, prior=state)
 
         if intent.action in {"converse", "none"}:
             reply = intent.reply or (
@@ -119,7 +128,7 @@ class GameEngine:
         manual_action = _manual_action_legacy(command_text)
         if manual_action is not None:
             manual_state, messages = self._manual_control(state, manual_action)
-            return self._advance(manual_state, correction + messages)
+            return self._advance(manual_state, correction + messages, prior=state)
 
         return StepResult(
             state,
@@ -145,7 +154,13 @@ class GameEngine:
             messages.append(f"cryostasis loss report: {state.sleepers_lost} sleepers lost.")
         return tuple(messages)
 
-    def _advance(self, state: ShipState, messages: tuple[str, ...]) -> StepResult:
+    def _advance(
+        self,
+        state: ShipState,
+        messages: tuple[str, ...],
+        *,
+        prior: ShipState,
+    ) -> StepResult:
         if state.outcome is not None:
             return StepResult(state, messages, advanced=True)
 
@@ -157,6 +172,8 @@ class GameEngine:
             turn=state.turn + 1,
             reactor=reactor,
             cryostasis=cryostasis,
+            previous_reactor=prior.reactor,
+            previous_cryostasis=prior.cryostasis,
         )
         next_messages = list(messages)
         presentation_break = False
