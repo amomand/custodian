@@ -56,6 +56,23 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(dev["ui"]["dev"]["delegated_controls"], 1)
         self.assertIn("total_dark_exposure", dev["ui"]["dev"])
 
+    def test_action_spec_command_dispatches_over_http(self) -> None:
+        # An operating-desk button posts its action-spec command string. In the
+        # default no-AI mode "delegate coolant" must reach the engine and record
+        # a delegation, not misfire into a conversational no-op.
+        created = self._post("/api/session")
+        session_id = created["session_id"]
+
+        command = self._post(
+            f"/api/session/{session_id}/command", {"command": "delegate coolant"}
+        )
+        dev = self._get(f"/api/session/{session_id}/snapshot/dev")
+
+        last_record = command["snapshot"]["history"][-1]
+        self.assertEqual(last_record["action"], "delegate")
+        self.assertEqual(last_record["target"], "coolant")
+        self.assertEqual(dev["ui"]["dev"]["delegated_controls"], 1)
+
     def test_dev_snapshot_loopback_guard(self) -> None:
         self.assertTrue(_is_loopback_address("127.0.0.1"))
         self.assertTrue(_is_loopback_address("::1"))

@@ -426,6 +426,7 @@ def _rule_based(command: str) -> Intent | None:
         return Intent("quit", {}, 1.0, correction=correction, rationale="quit")
     if corrected in {
         "raw",
+        "raw coolant",
         "inspect",
         "inspect coolant",
         "read telemetry",
@@ -532,8 +533,11 @@ def _rule_based(command: str) -> Intent | None:
         )
     if corrected in {
         "delegate",
+        "delegate coolant",
         "arka",
         "arka coolant",
+        "handle coolant",
+        "take coolant",
         "auto",
         "automatic",
         "automate",
@@ -903,6 +907,7 @@ _KNOWN_COMMANDS = (
     "quit",
     "exit",
     "raw",
+    "raw coolant",
     "inspect",
     "inspect coolant",
     "read telemetry",
@@ -979,8 +984,11 @@ _KNOWN_COMMANDS = (
     "reroute around cargo",
     "bypass cargo",
     "delegate",
+    "delegate coolant",
     "arka",
     "arka coolant",
+    "handle coolant",
+    "take coolant",
     "auto",
     "automatic",
     "automate",

@@ -14,6 +14,8 @@ shape of the idea and the current playtest feel over rigid process.
 - `docs/roadmap.md` - repo copy of the long-range plan.
 - `docs/production/codex-direction-phase4.md` - operating-surface production direction.
 - `docs/architecture/engine-contracts.md` - canonical truth owners and boundaries.
+- `docs/architecture/web-session-api.md` - browser session API and snapshot contract.
+- `docs/ui/operating-desk.md` - the graphical operating desk web client.
 - `docs/lore/arka.md` - arka character and runtime voice capsule.
 - `docs/architecture/ai-interpreter.md` - current AI/simulation boundary.
 - `docs/architecture/project-operating-system.md` - notes on borrowed process.
