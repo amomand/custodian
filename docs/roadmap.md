@@ -238,11 +238,17 @@ Work:
   - arka advice followed during contradictions,
   - irreversible choices made on arka's recommendation,
   - standing delegations,
+  - whole-ship focus (zen) mode dwell, and whether it was entered during a
+    contradiction,
   - first delegation and first raw inspection timing.
 - Keep existing simple counters where they are still useful, or migrate them
   carefully into the ledger.
 - Add one-shot delegation and standing delegation.
 - Let standing delegation reduce cognitive load and improve early outcomes.
+- Add a whole-ship "take the watch" focus (zen) mode as the UI expression of
+  standing delegation: clicking arka quiets the operating desk to arka plus a few
+  strategic readouts such as route and ship overview, hiding raw panels and
+  manual noise by player choice. See `docs/ui/zen-mode.md`.
 - Prevent standing delegation from making irreversible moral choices without
   player authorisation.
 
@@ -254,12 +260,16 @@ Acceptance:
 - Delegation still does not increase manual familiarity.
 - arka cannot make final jumps, sector abandonment, or equivalent irreversible
   decisions without player confirmation.
+- Focus (zen) mode reduces noise without being a better outcome on its own,
+  keeps raw telemetry one step away, and ejects to the player for irreversible
+  decisions.
 
 Likely split:
 
 - Ledger state and persistence migration.
 - UI/action integration.
 - Standing delegation behaviour.
+- Focus (zen) mode view and its reliance signals.
 
 ### 7. Story State, Manifest Anchors, And Incidents
 
@@ -290,6 +300,8 @@ Acceptance:
 - Manifest anchors make sleeper risk more human without adding awake NPCs.
 - arka and raw evidence can frame the same event differently.
 - The player can inspect before acting unless an incident is explicitly urgent.
+- In focus (zen) mode arka's calm can persist while the hidden raw disagrees, and
+  urgent incidents eject the player from zen so contradictions stay catchable.
 - Story flags and incident outcomes survive save/load.
 
 Likely split:
@@ -446,6 +458,7 @@ When implementation reaches these areas, update or create:
 - `docs/game_mechanics/endings.md`
 - `docs/game_mechanics/graphical-manual-control.md`
 - `docs/ui/operating-desk.md`
+- `docs/ui/zen-mode.md`
 - `docs/lore/ship.md`
 - `docs/lore/manifest-anchors.md`
 - `docs/lore/the-dark.md`
