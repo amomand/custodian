@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import mimetypes
 import os
@@ -38,6 +39,20 @@ class CustodianRequestHandler(BaseHTTPRequestHandler):
 
         parts = _api_parts(path)
         try:
+            if (
+                len(parts) == 4
+                and parts[0] == "session"
+                and parts[2] == "snapshot"
+                and parts[3] == "dev"
+            ):
+                if not _is_loopback_address(self.client_address[0]):
+                    self._send_json(
+                        {"error": "dev snapshot requires loopback client"},
+                        HTTPStatus.FORBIDDEN,
+                    )
+                    return
+                self._send_json(self.server.store.snapshot(parts[1], include_dev=True))
+                return
             if len(parts) == 3 and parts[0] == "session" and parts[2] == "snapshot":
                 self._send_json(self.server.store.snapshot(parts[1]))
                 return
@@ -190,6 +205,13 @@ def _api_parts(path: str) -> tuple[str, ...]:
     if not path.startswith("/api/"):
         return ()
     return tuple(part for part in path.removeprefix("/api/").split("/") if part)
+
+
+def _is_loopback_address(host: str) -> bool:
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return host == "localhost"
 
 
 if __name__ == "__main__":

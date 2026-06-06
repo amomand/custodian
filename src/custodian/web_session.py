@@ -10,6 +10,7 @@ from custodian.engine import GameEngine
 from custodian.models import ShipState
 from custodian.narrative import closing_lines, opening_lines
 from custodian.persistence import dumps, load_state, loads, save_state
+from custodian.ui_snapshot import project_safe_lines, project_ui_snapshot
 
 
 @dataclass(frozen=True)
@@ -49,17 +50,26 @@ class BrowserSession:
             TranscriptEvent("output", self.last_messages, self.state.turn)
         ]
 
-    def snapshot(self) -> dict:
+    def snapshot(self, *, include_dev: bool = False) -> dict:
         with self._lock:
+            status_lines = tuple(_status_messages(self.engine, self.state))
+            transcript_tail = tuple(self.transcript_lines(limit=120))
+            ui = project_ui_snapshot(
+                self.state,
+                last_messages=self.last_messages,
+                transcript_tail=transcript_tail,
+                include_dev=include_dev,
+            ).to_dict()
             return {
                 "session_id": self.session_id,
                 "turn": self.state.turn,
                 "is_finished": self.state.is_finished,
                 "outcome": self.state.outcome,
-                "status": list(_status_messages(self.engine, self.state)),
-                "last_messages": list(self.last_messages),
-                "transcript_tail": self.transcript_lines(limit=120),
+                "status": list(project_safe_lines(self.state, status_lines)),
+                "last_messages": list(project_safe_lines(self.state, self.last_messages)),
+                "transcript_tail": [entry["text"] for entry in ui["transcript_tail"]],
                 "history": [asdict(record) for record in self.state.history[-20:]],
+                "ui": ui,
             }
 
     def command(self, command_text: str) -> CommandResponse:
@@ -75,7 +85,8 @@ class BrowserSession:
                 messages = messages + closing_lines(self.state)
             self.last_messages = messages
             self.transcript.append(TranscriptEvent("output", messages, self.state.turn))
-            return CommandResponse(self.session_id, messages, self.snapshot())
+            safe_messages = project_safe_lines(self.state, messages)
+            return CommandResponse(self.session_id, safe_messages, self.snapshot())
 
     def save(self, path: Path | None = None) -> dict:
         with self._lock:
@@ -140,8 +151,8 @@ class SessionStore:
         except KeyError as exc:
             raise SessionNotFound(session_id) from exc
 
-    def snapshot(self, session_id: str) -> dict:
-        return self.get(session_id).snapshot()
+    def snapshot(self, session_id: str, *, include_dev: bool = False) -> dict:
+        return self.get(session_id).snapshot(include_dev=include_dev)
 
     def command(self, session_id: str, command_text: str) -> CommandResponse:
         return self.get(session_id).command(command_text)
