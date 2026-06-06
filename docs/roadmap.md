@@ -53,6 +53,9 @@ Already in the repo:
 - A UI snapshot projection that gives the browser renderable mission,
   objective, system, navigation, schematic, arka, raw panel, action, transcript,
   and visual-state data without exposing hidden counters in normal snapshots.
+- An operating desk web client that renders the snapshot into persistent panels
+  and performs manual, delegated, navigation, and containment actions through the
+  same command path as typed input, without typing.
 - A terminal opening, closing debrief, objective block, HUDs, and docs for the
   current mechanics.
 
@@ -124,8 +127,12 @@ Done enough for now:
 - The web API exposes a structured `ui` snapshot with deterministic raw panels,
   generated action specs, qualitative visual state, and an explicit dev-only
   hidden-state path.
+- The operating desk web client renders that snapshot into a persistent console
+  with mission, arka, system, schematic, objective, raw, and log panels, and
+  acts through generated action buttons as well as the text channel.
 
-Do not spend more time on browser look and feel outside the operating-desk work.
+Keep further browser work pointed at the schematic, route, and corruption passes
+rather than general look and feel.
 
 ### 3. UI Snapshot Projection
 
@@ -158,9 +165,15 @@ Likely split:
 - Action spec projection.
 - Dev-only snapshot/report hooks if needed.
 
-### 4. Operating Desk UI (Next)
+### 4. Operating Desk UI
 
 Goal: replace the browser status dump with the first real ship operating desk.
+
+Status: implemented. The web client now renders the `ui` snapshot as a persistent
+operating desk and dispatches manual, delegated, navigation, and containment
+actions through the same command path as typed input. See
+`docs/ui/operating-desk.md`. Graphical schematic/route rendering and drift-driven
+visual corruption remain for the next section.
 
 Work:
 

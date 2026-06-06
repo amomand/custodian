@@ -28,7 +28,10 @@ library HTTP tools. It does not add a web framework dependency.
 data: mission, objective, systems, navigation, schematic, arka advisory, raw
 panels, action specs, transcript tail, and visual state.
 
-`src/custodian/web_static/` contains the minimal static client.
+`src/custodian/web_static/` contains the operating desk client: a vanilla,
+build-free page that renders the `ui` snapshot into persistent panels and
+dispatches action-spec commands through the same command endpoint as typed input.
+See `docs/ui/operating-desk.md`.
 
 ## Endpoints
 
@@ -116,6 +119,9 @@ Returns structured transcript events and a plain line transcript.
 - `ui.raw_panels` are projected from deterministic state, not arka prose.
 - `ui.actions` are render specs for existing commands; dispatch still routes
   through `GameEngine.handle()`.
+- Action-spec `command` strings must resolve to their intended intent under the
+  deterministic (no-AI) interpreter, since that is the default play mode. This is
+  covered by a contract test in `tests/test_ui_snapshot.py`.
 - Hidden values stay out of normal UI snapshots and legacy browser line fields;
   they require the explicit loopback-only dev snapshot endpoint.
 - No-model operation remains available through `CUSTODIAN_AI=off` or
