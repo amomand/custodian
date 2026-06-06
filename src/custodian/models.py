@@ -292,6 +292,220 @@ class NavigationState:
 
 
 @dataclass(frozen=True)
+class SectorProfile:
+    sector_id: str
+    label: str
+    function: str
+    controls: str
+    adjacent: tuple[str, ...] = ()
+    sealable: bool = True
+
+
+def default_sector_profiles() -> tuple[SectorProfile, ...]:
+    return (
+        SectorProfile(
+            sector_id="bridge",
+            label="BRIDGE",
+            function="custodian console",
+            controls="status, schematic, route commit",
+            adjacent=("cargo-spine", "maintenance-d"),
+            sealable=False,
+        ),
+        SectorProfile(
+            sector_id="cryo-1-3",
+            label="CRYOBAY 1-3",
+            function="sleepers",
+            controls="stabilise bank, cycle pods, triage",
+            adjacent=("hydroponics", "thermal-ring"),
+        ),
+        SectorProfile(
+            sector_id="thermal-ring",
+            label="THERMAL RING",
+            function="heat rejection",
+            controls="vent, reroute chill",
+            adjacent=("cryo-1-3", "maintenance-d"),
+        ),
+        SectorProfile(
+            sector_id="maintenance-d",
+            label="MAINTENANCE D",
+            function="manual coolant trunks",
+            controls="pump curve, flush, balance",
+            adjacent=("bridge", "thermal-ring", "cargo-spine"),
+        ),
+        SectorProfile(
+            sector_id="cargo-spine",
+            label="CARGO SPINE",
+            function="navigation mass corridor",
+            controls="route relays, service access",
+            adjacent=("bridge", "maintenance-d", "hydroponics"),
+        ),
+        SectorProfile(
+            sector_id="hydroponics",
+            label="HYDROPONICS",
+            function="long-duration stores",
+            controls="life support buffers",
+            adjacent=("cargo-spine", "cryo-1-3"),
+        ),
+    )
+
+
+def sector_profile_by_id(sector_id: str) -> SectorProfile:
+    for profile in default_sector_profiles():
+        if profile.sector_id == sector_id:
+            return profile
+    return default_sector_profiles()[0]
+
+
+def sector_id_from_alias(value: str) -> str | None:
+    normalised = " ".join(value.strip().lower().replace("_", " ").split())
+    aliases = {
+        "bridge": "bridge",
+        "command": "bridge",
+        "console": "bridge",
+        "cryo": "cryo-1-3",
+        "cryobay": "cryo-1-3",
+        "cryobay 1-3": "cryo-1-3",
+        "cryostasis": "cryo-1-3",
+        "sleepers": "cryo-1-3",
+        "pods": "cryo-1-3",
+        "thermal": "thermal-ring",
+        "thermal ring": "thermal-ring",
+        "radiator": "thermal-ring",
+        "radiators": "thermal-ring",
+        "heat rejection": "thermal-ring",
+        "maintenance": "maintenance-d",
+        "maintenance d": "maintenance-d",
+        "maintenance sector d": "maintenance-d",
+        "sector d": "maintenance-d",
+        "coolant trunks": "maintenance-d",
+        "cargo": "cargo-spine",
+        "cargo spine": "cargo-spine",
+        "spine": "cargo-spine",
+        "navigation relays": "cargo-spine",
+        "nav relays": "cargo-spine",
+        "hydroponics": "hydroponics",
+        "hydro": "hydroponics",
+        "stores": "hydroponics",
+        "life support": "hydroponics",
+        "arka": "arka",
+        "a.r.k.a": "arka",
+        "arka core": "arka",
+        "ai": "arka",
+    }
+    return aliases.get(normalised)
+
+
+@dataclass(frozen=True)
+class ShipSector:
+    sector_id: str
+    symptom_load: int = 0
+    containment: str = "open"
+    rerouted: bool = False
+
+    @property
+    def profile(self) -> SectorProfile:
+        return sector_profile_by_id(self.sector_id)
+
+    @property
+    def reported_state(self) -> str:
+        if self.containment == "abandoned":
+            return "written off"
+        if self.containment == "sealed":
+            return "sealed"
+        if self.symptom_load >= 60:
+            return "no signal"
+        if self.symptom_load >= 42:
+            return "intermittent"
+        if self.symptom_load >= 24:
+            return "readings disagree"
+        if self.symptom_load >= 10:
+            return "sensor noise"
+        return "nominal"
+
+    @property
+    def signal_confidence(self) -> str:
+        if self.containment == "abandoned":
+            return "none"
+        if self.symptom_load >= 60:
+            return "lost"
+        if self.symptom_load >= 42:
+            return "poor"
+        if self.symptom_load >= 24:
+            return "contested"
+        if self.symptom_load >= 10:
+            return "thin"
+        return "steady"
+
+    def clamped(self) -> "ShipSector":
+        containment = self.containment
+        if containment not in {"open", "sealed", "abandoned"}:
+            containment = "open"
+        return replace(
+            self,
+            symptom_load=max(0, min(100, self.symptom_load)),
+            containment=containment,
+        )
+
+
+def default_ship_sectors() -> tuple[ShipSector, ...]:
+    return tuple(ShipSector(profile.sector_id) for profile in default_sector_profiles())
+
+
+@dataclass(frozen=True)
+class SpatialState:
+    sectors: tuple[ShipSector, ...] = field(default_factory=default_ship_sectors)
+    containment_actions: int = 0
+    reroute_actions: int = 0
+
+    def sector_by_id(self, sector_id: str) -> ShipSector | None:
+        for sector in self.sectors:
+            if sector.sector_id == sector_id:
+                return sector
+        return None
+
+    def with_sector(self, replacement_sector: ShipSector) -> "SpatialState":
+        sectors = tuple(
+            replacement_sector if sector.sector_id == replacement_sector.sector_id else sector
+            for sector in self.sectors
+        )
+        return replace(self, sectors=sectors)
+
+    @property
+    def sealed_count(self) -> int:
+        return sum(1 for sector in self.sectors if sector.containment == "sealed")
+
+    @property
+    def abandoned_count(self) -> int:
+        return sum(1 for sector in self.sectors if sector.containment == "abandoned")
+
+    @property
+    def open_symptom_sectors(self) -> tuple[ShipSector, ...]:
+        return tuple(
+            sector
+            for sector in self.sectors
+            if sector.containment == "open" and sector.reported_state != "nominal"
+        )
+
+    def clamped(self) -> "SpatialState":
+        return replace(self, sectors=tuple(sector.clamped() for sector in self.sectors))
+
+    def raw_lines(self) -> tuple[str, ...]:
+        lines = [
+            "RAW SHIP SCHEMATIC",
+            "source              reported state       signal      containment  routing",
+        ]
+        for sector in self.sectors:
+            routing = "rerouted" if sector.rerouted else "primary"
+            lines.append(
+                f"{sector.profile.label:<19} {sector.reported_state:<20} "
+                f"{sector.signal_confidence:<11} {sector.containment:<11} {routing}"
+            )
+            lines.append(f"  controls: {sector.profile.controls}")
+        lines.append("arka locus: none. no compartment or bulkhead contains arka.")
+        return tuple(lines)
+
+
+@dataclass(frozen=True)
 class CrisisState:
     kind: str
     label: str
@@ -321,6 +535,7 @@ class ShipState:
     cryostasis: CryostasisSystem = field(default_factory=CryostasisSystem)
     mission: MissionStatus = field(default_factory=MissionStatus)
     navigation: NavigationState = field(default_factory=NavigationState)
+    spatial: SpatialState = field(default_factory=SpatialState)
     manual_familiarity: int = 0
     cryo_familiarity: int = 0
     delegated_controls: int = 0

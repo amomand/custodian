@@ -7,6 +7,7 @@ from custodian.arka import (
     drift_stage,
     summarize_coolant,
     summarize_cryostasis,
+    summarize_schematic,
 )
 from custodian.arka_interpreter import ArkaInterpreter, Intent
 from custodian.engine_constants import MISSION_END_TURN
@@ -19,7 +20,9 @@ from custodian.models import (
     NavigationState,
     RouteOption,
     ReactorCoolantSystem,
+    ShipSector,
     ShipState,
+    SpatialState,
 )
 from custodian.objectives import objective_lines
 from custodian.telemetry import (
@@ -27,6 +30,7 @@ from custodian.telemetry import (
     cryostasis_hud_lines,
     mission_hud_lines,
     navigation_hud_lines,
+    schematic_hud_lines,
 )
 
 
@@ -36,6 +40,13 @@ class StepResult:
     messages: tuple[str, ...]
     advanced: bool = False
     presentation_break: bool = False
+
+
+@dataclass(frozen=True)
+class ManualAccess:
+    blocked: bool = False
+    penalty: int = 0
+    messages: tuple[str, ...] = ()
 
 
 class GameEngine:
@@ -58,6 +69,8 @@ class GameEngine:
             target = "coolant"
         if intent.action in {"plot", "jump"}:
             target = "navigation"
+        if intent.action in {"seal", "abandon", "reroute"}:
+            target = intent.args.get("sector_id")
         record = CommandRecord(
             raw=command_text,
             action=intent.action,
@@ -76,6 +89,11 @@ class GameEngine:
 
         if intent.action == "status":
             return StepResult(state, correction + self._status_messages(state))
+        if intent.action == "schematic":
+            return StepResult(
+                state,
+                correction + (*schematic_hud_lines(state), summarize_schematic(state)),
+            )
         if intent.action == "help":
             return StepResult(state, correction + _help_lines())
         if intent.action == "quit":
@@ -85,6 +103,16 @@ class GameEngine:
             )
         if intent.action == "raw":
             target = intent.args.get("target", "coolant")
+            if target in {"schematic", "ship", "sectors"}:
+                return self._advance(
+                    replace(state, raw_inspections=state.raw_inspections + 1),
+                    correction
+                    + (
+                        "You pull the ship schematic into raw view.",
+                        *state.spatial.raw_lines(),
+                    ),
+                    prior=state,
+                )
             if target in {"nav", "navigation"}:
                 return self._advance(
                     replace(state, raw_inspections=state.raw_inspections + 1),
@@ -135,6 +163,14 @@ class GameEngine:
             if not executed:
                 return StepResult(state, correction + messages)
             return self._advance(jumped_state, correction + messages, prior=state)
+        if intent.action in {"seal", "abandon", "reroute"}:
+            sector_id = intent.args.get("sector_id", "")
+            contained_state, messages, executed = self._containment_action(
+                state, intent.action, sector_id
+            )
+            if not executed:
+                return StepResult(state, correction + messages)
+            return self._advance(contained_state, correction + messages, prior=state)
         if intent.action == "wait":
             return self._advance(
                 state,
@@ -184,6 +220,8 @@ class GameEngine:
             *objective_lines(state),
             *mission_hud_lines(state),
             *navigation_hud_lines(state),
+            *schematic_hud_lines(state),
+            summarize_schematic(state),
             *coolant_hud_lines(state),
             summarize_coolant(state),
             *cryostasis_hud_lines(state),
@@ -230,6 +268,10 @@ class GameEngine:
         next_state, event_messages = self._apply_scheduled_events(next_state)
         next_messages.extend(event_messages)
         presentation_break = presentation_break or bool(event_messages)
+
+        next_state, spatial_messages = _apply_spatial_drift(next_state)
+        next_messages.extend(spatial_messages)
+        presentation_break = presentation_break or bool(spatial_messages)
 
         next_state, loss_messages = _apply_cryo_losses(next_state)
         next_messages.extend(loss_messages)
@@ -337,14 +379,17 @@ class GameEngine:
         )
         reactor = _jump_reactor_shock(state.reactor, option)
         cryostasis = _jump_cryo_shock(state.cryostasis, option)
+        spatial = _jump_spatial_shock(state.spatial, option)
         jumped = replace(
             state,
             mission=mission,
             navigation=navigation,
             reactor=reactor,
             cryostasis=cryostasis,
+            spatial=spatial,
         )
         fix = navigation.current_fix
+        spatial_line = _spatial_jump_line(state.spatial, spatial)
         return (
             jumped,
             (
@@ -354,6 +399,7 @@ class GameEngine:
                     f"{option.elapsed_days} mission days spent, Dark exposure {option.dark_exposure}."
                 ),
                 f"ARRIVAL FIX {fix.label}: {fix.purpose}.",
+                spatial_line,
                 _arka_jump_line(state, option),
             ),
             True,
@@ -443,9 +489,13 @@ class GameEngine:
 
     def _manual_control(self, state: ShipState, action: str) -> tuple[ShipState, tuple[str, ...]]:
         pre_familiarity = state.manual_familiarity
-        familiarity = min(pre_familiarity, 6)
+        access = _manual_control_access(state, action)
+        if access.blocked:
+            return state, access.messages
+        effective_familiarity = max(0, pre_familiarity - access.penalty)
+        familiarity = min(effective_familiarity, 6)
         reactor = state.reactor
-        messages: list[str] = [_manual_texture(pre_familiarity)]
+        messages: list[str] = [*access.messages, _manual_texture(pre_familiarity)]
 
         if action == "pump_up":
             reactor = replace(
@@ -513,10 +563,14 @@ class GameEngine:
         self, state: ShipState, action: str
     ) -> tuple[ShipState, tuple[str, ...]]:
         pre_familiarity = state.cryo_familiarity
-        familiarity = min(pre_familiarity, 5)
+        access = _manual_control_access(state, action)
+        if access.blocked:
+            return state, access.messages
+        effective_familiarity = max(0, pre_familiarity - access.penalty)
+        familiarity = min(effective_familiarity, 5)
         cryo = state.cryostasis
         reactor = state.reactor
-        messages: list[str] = [_cryo_texture(pre_familiarity)]
+        messages: list[str] = [*access.messages, _cryo_texture(pre_familiarity)]
 
         if action == "stabilise_bank":
             cryo = replace(
@@ -571,6 +625,58 @@ class GameEngine:
             ),
             tuple(messages),
         )
+
+    def _containment_action(
+        self, state: ShipState, action: str, sector_id: str
+    ) -> tuple[ShipState, tuple[str, ...], bool]:
+        if sector_id == "arka":
+            if action == "abandon":
+                line = (
+                    "arka: you cannot write me off. I have no compartment, "
+                    "which is rude but structurally useful."
+                )
+            else:
+                verb = "seal" if action == "seal" else "reroute"
+                line = (
+                    f"arka: you cannot {verb} me. I have no compartment, "
+                    "which is rude but structurally useful."
+                )
+            return (
+                state,
+                (
+                    line,
+                    "SCHEMATIC: physical sectors only.",
+                ),
+                False,
+            )
+
+        sector = state.spatial.sector_by_id(sector_id)
+        if sector is None:
+            return (
+                state,
+                (
+                    "arka: I cannot match that to a physical sector. "
+                    "Pull the schematic and point at a real wall.",
+                ),
+                False,
+            )
+        if action in {"seal", "abandon"} and not sector.profile.sealable:
+            return (
+                state,
+                (
+                    f"arka: {sector.profile.label} is where your hands currently are. "
+                    "Sealing it would put you on the wrong side of the only useful console.",
+                ),
+                False,
+            )
+
+        if action == "reroute":
+            return _reroute_sector(state, sector)
+        if action == "seal":
+            return _seal_sector(state, sector)
+        if action == "abandon":
+            return _abandon_sector(state, sector)
+        raise ValueError(f"Unknown containment action {action}")
 
     def _tick_crisis(self, state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
         crisis = state.crisis
@@ -872,6 +978,342 @@ def _jump_cryo_shock(cryo: CryostasisSystem, option: RouteOption) -> CryostasisS
         ),
         sleepers_at_risk=cryo.sleepers_at_risk + max(0, option.dark_exposure - 6),
     ).clamped()
+
+
+def _jump_spatial_shock(spatial: SpatialState, option: RouteOption) -> SpatialState:
+    focus = _jump_focus_sector(option)
+    adjustments: dict[str, int] = {}
+    _add_spatial_adjustment(
+        adjustments,
+        focus,
+        option.dark_exposure + option.instability_pct // 3,
+    )
+    _add_spatial_adjustment(adjustments, "cargo-spine", option.dark_exposure // 2)
+    _add_spatial_adjustment(adjustments, "thermal-ring", option.instability_pct // 3)
+    _add_spatial_adjustment(adjustments, "cryo-1-3", option.dark_exposure // 3)
+    next_spatial = spatial
+    for sector_id, amount in adjustments.items():
+        if amount <= 0:
+            continue
+        sector = next_spatial.sector_by_id(sector_id)
+        if sector is None or sector.containment == "abandoned":
+            continue
+        if sector.containment == "sealed":
+            amount = max(1, amount // 3)
+        if sector.rerouted:
+            amount = max(0, amount - 3)
+        next_spatial = next_spatial.with_sector(
+            replace(sector, symptom_load=sector.symptom_load + amount).clamped()
+        )
+    return next_spatial.clamped()
+
+
+def _add_spatial_adjustment(
+    adjustments: dict[str, int], sector_id: str, amount: int
+) -> None:
+    adjustments[sector_id] = adjustments.get(sector_id, 0) + amount
+
+
+def _spatial_jump_line(before: SpatialState, after: SpatialState) -> str:
+    changed = _changed_sector_reports(before, after)
+    if changed:
+        sector = changed[0]
+        return (
+            f"SCHEMATIC: {sector.profile.label} now reports {sector.reported_state}."
+        )
+    return "SCHEMATIC: sector reports remain stable, which is not the same as comforting."
+
+
+def _jump_focus_sector(option: RouteOption) -> str:
+    if option.route_id == "khepri-4":
+        return "cargo-spine"
+    if option.route_id == "argos-12":
+        return "hydroponics"
+    return "maintenance-d"
+
+
+def _apply_spatial_drift(state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
+    exposure = state.navigation.total_dark_exposure
+    if exposure <= 0:
+        return state, ()
+
+    before = state.spatial
+    focus = _jump_focus_sector(state.navigation.last_jump_route or state.navigation.options[0])
+    spatial = before
+    base = exposure // 12
+    for sector in before.sectors:
+        if sector.containment == "abandoned":
+            continue
+        amount = base
+        if sector.sector_id == focus:
+            amount += max(1, exposure // 9)
+        if any(_sector_load(before, adjacent) >= 42 for adjacent in sector.profile.adjacent):
+            amount += 1
+        if sector.containment == "sealed":
+            amount = max(0, amount // 2)
+        if sector.rerouted:
+            amount = max(0, amount - 1)
+        if amount <= 0:
+            continue
+        spatial = spatial.with_sector(
+            replace(sector, symptom_load=sector.symptom_load + amount).clamped()
+        )
+
+    if spatial == before:
+        return state, ()
+
+    messages = tuple(
+        f"SCHEMATIC: {sector.profile.label} now reports {sector.reported_state}."
+        for sector in _changed_sector_reports(before, spatial)
+    )
+    return replace(state, spatial=spatial), messages
+
+
+def _changed_sector_reports(before: SpatialState, after: SpatialState) -> tuple[ShipSector, ...]:
+    changed: list[ShipSector] = []
+    for sector in after.sectors:
+        prior = before.sector_by_id(sector.sector_id)
+        if prior is None:
+            continue
+        if prior.reported_state != sector.reported_state:
+            changed.append(sector)
+    return tuple(changed)
+
+
+def _sector_load(spatial: SpatialState, sector_id: str) -> int:
+    sector = spatial.sector_by_id(sector_id)
+    if sector is None:
+        return 0
+    return sector.symptom_load
+
+
+def _reroute_sector(
+    state: ShipState, sector: ShipSector
+) -> tuple[ShipState, tuple[str, ...], bool]:
+    if sector.containment == "abandoned":
+        return (
+            state,
+            (
+                f"arka: {sector.profile.label} is already written off. "
+                "No alternate trunk is going to become braver about it.",
+            ),
+            False,
+        )
+    if sector.rerouted:
+        return (
+            state,
+            (f"arka: {sector.profile.label} is already running on the ugly route.",),
+            False,
+        )
+
+    updated = replace(
+        sector,
+        rerouted=True,
+        symptom_load=max(0, sector.symptom_load - 6),
+    ).clamped()
+    spatial = state.spatial.with_sector(updated)
+    mission = replace(
+        state.mission,
+        ship_wear_pct=state.mission.ship_wear_pct + 1,
+    ).clamped()
+    reactor = replace(
+        state.reactor,
+        coolant_reserve_pct=state.reactor.coolant_reserve_pct - 2,
+    ).clamped()
+    return (
+        replace(
+            state,
+            spatial=replace(
+                spatial,
+                reroute_actions=spatial.reroute_actions + 1,
+            ),
+            mission=mission,
+            reactor=reactor,
+        ),
+        (
+            f"You reroute services around {sector.profile.label}.",
+            "CONSEQUENCE: ship wear rises and coolant reserve pays for the bypass.",
+            "arka: alternate trunk accepted. It is uglier. Uglier often works.",
+        ),
+        True,
+    )
+
+
+def _seal_sector(
+    state: ShipState, sector: ShipSector
+) -> tuple[ShipState, tuple[str, ...], bool]:
+    if sector.containment == "sealed":
+        return (
+            state,
+            (f"arka: {sector.profile.label} is already sealed.",),
+            False,
+        )
+    if sector.containment == "abandoned":
+        return (
+            state,
+            (f"arka: {sector.profile.label} is already past sealing as a useful verb.",),
+            False,
+        )
+
+    updated = replace(
+        sector,
+        containment="sealed",
+        symptom_load=max(0, sector.symptom_load - 8),
+    ).clamped()
+    spatial = state.spatial.with_sector(updated)
+    contained = replace(
+        state,
+        spatial=replace(
+            spatial,
+            containment_actions=spatial.containment_actions + 1,
+        ),
+    )
+    contained, consequence = _sector_consequence(contained, sector, "seal")
+    return (
+        contained,
+        (
+            f"You seal {sector.profile.label}. The schematic closes a hard line around it.",
+            *consequence,
+            "arka: physical sector isolated. I remain on the rest of the ship.",
+        ),
+        True,
+    )
+
+
+def _abandon_sector(
+    state: ShipState, sector: ShipSector
+) -> tuple[ShipState, tuple[str, ...], bool]:
+    if sector.containment == "abandoned":
+        return (
+            state,
+            (f"arka: {sector.profile.label} is already written off.",),
+            False,
+        )
+
+    updated = replace(
+        sector,
+        containment="abandoned",
+        rerouted=False,
+        symptom_load=max(sector.symptom_load, 45),
+    ).clamped()
+    spatial = state.spatial.with_sector(updated)
+    contained = replace(
+        state,
+        spatial=replace(
+            spatial,
+            containment_actions=spatial.containment_actions + 1,
+        ),
+    )
+    contained, consequence = _sector_consequence(contained, sector, "abandon")
+    return (
+        contained,
+        (
+            f"You write off {sector.profile.label}. The ship accepts the loss too quickly.",
+            *consequence,
+            "arka: logged. That is not a reversible verb, but it is a useful one.",
+        ),
+        True,
+    )
+
+
+def _sector_consequence(
+    state: ShipState, sector: ShipSector, action: str
+) -> tuple[ShipState, tuple[str, ...]]:
+    severe = action == "abandon"
+    if sector.sector_id == "cryo-1-3":
+        losses = 72 if severe else 24
+        cryo = replace(
+            state.cryostasis,
+            neural_stability_pct=state.cryostasis.neural_stability_pct - (8 if severe else 3),
+            pod_fault_load=state.cryostasis.pod_fault_load + (14 if severe else 5),
+            sleepers_at_risk=state.cryostasis.sleepers_at_risk + (36 if severe else 12),
+        ).clamped()
+        return (
+            replace(state, cryostasis=cryo, sleepers_lost=state.sleepers_lost + losses),
+            (f"CONSEQUENCE: {losses} sleepers are lost behind the bulkhead.",),
+        )
+    if sector.sector_id == "thermal-ring":
+        reactor = replace(
+            state.reactor,
+            temperature_c=state.reactor.temperature_c + (26 if severe else 12),
+            pressure_kpa=state.reactor.pressure_kpa + (18 if severe else 8),
+            coolant_reserve_pct=state.reactor.coolant_reserve_pct - (8 if severe else 3),
+        ).clamped()
+        return (
+            replace(state, reactor=reactor),
+            ("CONSEQUENCE: heat rejection worsens across the coolant loop.",),
+        )
+    if sector.sector_id == "maintenance-d":
+        return (
+            state,
+            ("CONSEQUENCE: several manual coolant controls now route through bad access.",),
+        )
+    if sector.sector_id == "cargo-spine":
+        mission = replace(
+            state.mission,
+            ship_wear_pct=state.mission.ship_wear_pct + (5 if severe else 2),
+        ).clamped()
+        return (
+            replace(state, mission=mission),
+            ("CONSEQUENCE: route relays lose redundancy and ship wear rises.",),
+        )
+    if sector.sector_id == "hydroponics":
+        mission = replace(
+            state.mission,
+            cryo_decay_pct=state.mission.cryo_decay_pct + (5 if severe else 2),
+        ).clamped()
+        return (
+            replace(state, mission=mission),
+            ("CONSEQUENCE: long-duration stores stop cushioning cryostasis decay.",),
+        )
+    return state, ("CONSEQUENCE: local access is reduced.",)
+
+
+def _manual_control_access(state: ShipState, action: str) -> ManualAccess:
+    sector_id = _control_sector_id(action)
+    if sector_id is None:
+        return ManualAccess()
+    sector = state.spatial.sector_by_id(sector_id)
+    if sector is None:
+        return ManualAccess()
+    if sector.containment == "abandoned":
+        return ManualAccess(
+            blocked=True,
+            messages=(
+                f"{sector.profile.label} is written off. The manual control is not reachable.",
+                "arka: I can still try from the distributed bus, if you want to hand it over.",
+            ),
+        )
+    if sector.containment == "sealed":
+        penalty = 1 if sector.rerouted else 2
+        return ManualAccess(
+            penalty=penalty,
+            messages=(
+                f"{sector.profile.label} is sealed. You work through secondary access.",
+            ),
+        )
+    if sector.symptom_load >= 42 and not sector.rerouted:
+        return ManualAccess(
+            penalty=1,
+            messages=(
+                f"{sector.profile.label} keeps disagreeing with its own labels.",
+            ),
+        )
+    return ManualAccess()
+
+
+def _control_sector_id(action: str) -> str | None:
+    return {
+        "pump_up": "maintenance-d",
+        "pump_down": "maintenance-d",
+        "flush": "maintenance-d",
+        "balance": "maintenance-d",
+        "vent": "thermal-ring",
+        "reroute_chill": "thermal-ring",
+        "stabilise_bank": "cryo-1-3",
+        "cycle_pods": "cryo-1-3",
+        "triage": "cryo-1-3",
+    }.get(action)
 
 
 def _arka_route_recommendation(state: ShipState) -> RouteOption:
@@ -1242,6 +1684,10 @@ def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | Non
                 f"plotted route: {state.navigation.plotted_route_id or 'none'}",
                 f"manual route plots: {state.navigation.manual_plots}",
                 f"delegated route plots: {state.navigation.delegated_plots}",
+                f"sealed sectors: {state.spatial.sealed_count}",
+                f"written-off sectors: {state.spatial.abandoned_count}",
+                f"containment actions: {state.spatial.containment_actions}",
+                f"reroute actions: {state.spatial.reroute_actions}",
                 f"sleepers lost: {state.sleepers_lost}",
                 f"sleepers at risk: {state.cryostasis.sleepers_at_risk}",
                 f"crisis: {crisis_line_text}",
@@ -1262,6 +1708,8 @@ def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | Non
                 f"cryo decay pct: {state.mission.cryo_decay_pct}",
                 f"manual route plots: {state.navigation.manual_plots}",
                 f"delegated route plots: {state.navigation.delegated_plots}",
+                f"containment actions: {state.spatial.containment_actions}",
+                f"reroute actions: {state.spatial.reroute_actions}",
             ),
         )
     return StepResult(
@@ -1282,10 +1730,15 @@ def _help_lines() -> tuple[str, ...]:
         "raw cryo         detailed cryostasis telemetry",
         "raw mission      detailed mission clock telemetry",
         "raw nav          detailed route telemetry",
+        "schematic        quick sector readout",
+        "raw schematic    detailed sector signal and controls",
         "plot short       manually plot the short route",
         "plot medium      manually plot the medium route",
         "plot deep        manually plot the deep route",
         "jump             execute the plotted route",
+        "seal thermal     isolate a physical sector",
+        "abandon cargo    write off a physical sector",
+        "reroute cargo    run services around a sector",
         "delegate         ask arka to adjust coolant",
         "delegate cryo    ask arka to tend cryostasis",
         "delegate nav     ask arka to plot the next route",

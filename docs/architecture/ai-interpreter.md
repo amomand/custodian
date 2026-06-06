@@ -20,18 +20,20 @@ allowed to own the reactor.
 4. Ambiguous or conversational input can call the configured OpenAI model.
 5. The engine executes only known `Intent.action` values.
 6. Reactor telemetry, current navigation fix, route plotting, jump execution,
-   internal clock advancement, crises, sleeper losses, arka drift, and manual
-   familiarity remain owned by `ShipState` transitions.
+   schematic sectors, containment consequences, internal clock advancement,
+   crises, sleeper losses, arka drift, and manual familiarity remain owned by
+   `ShipState` transitions.
 
 ## Intent Shape
 
 ```python
 Intent(
-    action="status|raw|delegate|plot|jump|manual|wait|help|quit|converse|none",
+    action="status|raw|delegate|plot|jump|schematic|seal|abandon|reroute|manual|wait|help|quit|converse|none",
     args={
         "operation": "pump_up|pump_down|vent|flush|balance",
-        "target": "coolant|cryo|mission|nav",
+        "target": "coolant|cryo|mission|nav|schematic",
         "route_id": "short|medium|deep|khepri-4|argos-12|carina-edge",
+        "sector_id": "bridge|cryo-1-3|thermal-ring|maintenance-d|cargo-spine|hydroponics|arka",
     },
     confidence=0.0,
     reply="optional arka line",
@@ -40,9 +42,11 @@ Intent(
 )
 ```
 
-`manual` and `plot` require arguments. `raw` and `delegate` can carry a target.
-`jump` carries no arguments; the engine executes only the currently plotted
-route. The engine ignores model state-change suggestions because there are none.
+`manual`, `plot`, `seal`, `abandon`, and `reroute` require arguments. `raw` and
+`delegate` can carry a target. `jump` and `schematic` carry no arguments; the
+engine executes only the currently plotted route or displays the current
+deterministic schematic. The engine ignores model state-change suggestions
+because there are none.
 
 ## Authority Boundary
 
@@ -50,6 +54,8 @@ Deterministic and authored:
 
 - Raw telemetry.
 - Current navigation fix, route options, plotted route state, and jump consequences.
+- Ship sectors, schematic symptoms, containment state, reroutes, and manual
+  access consequences.
 - arka summary drift stages.
 - Coolant physics.
 - Crisis timers and resolution.
@@ -79,6 +85,13 @@ Route handling follows the same rule. The model may classify a route command as
 current fix, and jump consequences come from the deterministic engine. Natural
 location questions such as "where are we?" resolve to `status`, which surfaces
 the deterministic navigation HUD.
+
+Schematic handling follows the same rule. The model may classify a sector
+command as `schematic`, `raw`, `seal`, `abandon`, or `reroute`, but sector
+state, qualitative symptoms, containment costs, and manual access consequences
+come from the deterministic engine. Attempts to contain arka are classified as a
+sector command with `sector_id="arka"` so the engine can express the asymmetry
+in-world: arka has no physical locus.
 
 This preserves the central split:
 

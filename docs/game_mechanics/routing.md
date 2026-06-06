@@ -55,8 +55,9 @@ Each jump sets the current fix to that route's arrival reference. The normal HUD
 shows the fix label and local signal. The raw nav panel repeats the fix as
 literal telemetry.
 
-This gives route planning a little fictional ground without introducing sectors,
-travel maps, or local ship geography yet.
+This gives route planning a little fictional ground. Phase 3 now turns the
+post-jump aftermath into ship-sector symptoms, while still avoiding travel maps
+or free movement.
 
 ## Player Surface
 
@@ -140,5 +141,5 @@ This gives route delegation the same structure as coolant delegation:
 - `raw nav` is raw telemetry and should remain available outside arka's voice.
 - Jump execution and route consequence application are deterministic engine
   transitions.
-- Full spatial meaning, local sectors, and post-jump containment remain Phase 3
-  work.
+- Full room traversal and visual maps remain future work. The Phase 3 terminal
+  schematic now owns local sectors and containment.

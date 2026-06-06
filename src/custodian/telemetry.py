@@ -70,6 +70,25 @@ def navigation_hud_lines(state: ShipState) -> tuple[str, ...]:
     )
 
 
+def schematic_hud_lines(state: ShipState) -> tuple[str, ...]:
+    spatial = state.spatial
+    containment = (
+        f"{spatial.sealed_count} sealed, {spatial.abandoned_count} written off"
+    )
+    lines = [
+        "SHIP SCHEMATIC",
+        f"CONTAIN   {containment:<24} physical sectors only",
+    ]
+    for sector in spatial.sectors:
+        routing = "rerouted" if sector.rerouted else "primary"
+        lines.append(
+            f"{sector.profile.label:<14} {sector.reported_state:<18} "
+            f"{sector.signal_confidence:<9} {routing}"
+        )
+    lines.append("")
+    return tuple(lines)
+
+
 def coolant_hud_lines(state: ShipState) -> tuple[str, ...]:
     reactor = state.reactor
     prev = state.previous_reactor

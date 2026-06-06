@@ -5,13 +5,16 @@ from custodian.models import (
     MissionStatus,
     NavigationState,
     ReactorCoolantSystem,
+    ShipSector,
     ShipState,
+    SpatialState,
 )
 from custodian.telemetry import (
     coolant_hud_lines,
     cryostasis_hud_lines,
     mission_hud_lines,
     navigation_hud_lines,
+    schematic_hud_lines,
 )
 
 
@@ -72,6 +75,31 @@ class TelemetryTests(unittest.TestCase):
         self.assertEqual(lines[0], "")
         self.assertEqual(lines[-1], "")
         self.assertEqual(lines[1], "NAVIGATION")
+
+    def test_schematic_hud_shows_qualitative_sector_state_without_arka_voice(self) -> None:
+        state = ShipState(
+            spatial=SpatialState(
+                sectors=(
+                    ShipSector("bridge"),
+                    ShipSector("cryo-1-3"),
+                    ShipSector("thermal-ring", symptom_load=30),
+                    ShipSector("maintenance-d", containment="sealed"),
+                    ShipSector("cargo-spine", rerouted=True),
+                    ShipSector("hydroponics"),
+                )
+            )
+        )
+
+        hud = "\n".join(schematic_hud_lines(state))
+
+        self.assertIn("SHIP SCHEMATIC", hud)
+        self.assertIn("THERMAL RING", hud)
+        self.assertIn("readings disagree", hud)
+        self.assertIn("MAINTENANCE D", hud)
+        self.assertIn("sealed", hud)
+        self.assertIn("rerouted", hud)
+        self.assertNotIn("arka:", hud)
+        self.assertNotIn("%", hud)
 
     def test_coolant_hud_carries_raw_readings_outside_arka_voice(self) -> None:
         state = ShipState(

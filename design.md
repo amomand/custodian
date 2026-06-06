@@ -25,9 +25,11 @@ Included:
 - One `NavigationState` with short, medium, and deep route options.
 - A lightweight current navigation fix, enough to say where the ship thinks it
   is after a jump without becoming a map.
+- One `SpatialState` with physical ship sectors, qualitative symptoms,
+  containment decisions, and manual access consequences.
 - An `arka` layer that summarises the same deterministic systems.
-- Compact mission, navigation, coolant, and cryostasis HUDs that carry current
-  telemetry outside arka's voice.
+- Compact mission, navigation, schematic, coolant, and cryostasis HUDs that
+  carry current telemetry outside arka's voice.
 - Optional arka interpreter for natural-language input and off-script replies.
 - Diegetic opening screen and closing debrief.
 - Manual actions and delegation as competing ways to spend attention.
@@ -38,10 +40,10 @@ Included:
 
 Still excluded:
 
-- Map movement.
+- Free movement through rooms.
 - Random generation.
 - Rich UI.
-- Multi-beat post-jump aftermath.
+- Full multi-beat post-jump chapters.
 - Deep lore.
 
 ## Player Loop
@@ -70,10 +72,15 @@ Core commands:
 - `raw cryo`: read detailed cryostasis telemetry.
 - `raw mission`: read detailed mission clock telemetry.
 - `raw nav`: read detailed route telemetry.
+- `schematic`: read the current ship schematic quickly.
+- `raw schematic`: read detailed sector reports, signals, controls, and routing.
 - `plot short`: manually plot the short route.
 - `plot medium`: manually plot the medium route.
 - `plot deep`: manually plot the deep route.
 - `jump`: execute the plotted route.
+- `seal thermal`: seal a physical sector.
+- `abandon cargo`: write off a physical sector.
+- `reroute cargo`: run services around a sector.
 - `delegate`: let arka adjust the whole coolant panel.
 - `delegate cryo`: let arka tend the whole cryostasis panel.
 - `delegate nav`: let arka plot the next route.
@@ -106,6 +113,7 @@ shown as a number.
 - Navigation options and plotted route.
 - Current navigation fix.
 - Last executed jump, jump count, and total Dark exposure.
+- Spatial sectors, qualitative symptom load, containment state, and reroutes.
 - Reactor coolant telemetry.
 - Hidden coolant and cryostasis familiarity.
 - Number of delegated interventions, including cryostasis delegation.
@@ -142,6 +150,15 @@ shown as a number.
 - Executed jump count.
 - Total Dark exposure.
 
+`SpatialState` owns ship-sector telemetry:
+
+- Physical sectors: bridge, cryobay, thermal ring, maintenance D, cargo spine,
+  and hydroponics.
+- Hidden symptom load used to derive qualitative reports.
+- Containment state: open, sealed, or written off.
+- Whether local services have been rerouted.
+- Counts for containment and reroute actions.
+
 `ReactorCoolantSystem` owns telemetry:
 
 - Temperature C.
@@ -162,8 +179,9 @@ interpreter returns an `Intent`, but the engine remains the only authority that
 can advance time, change telemetry, resolve crises, or record familiarity.
 
 `custodian.telemetry` owns the terminal HUDs, their threshold bars, and
-per-metric trend arrows. arka's summaries should not read out current numbers;
-the HUDs and raw panels own telemetry display. `custodian.objectives` owns the
+per-metric trend arrows. It also owns the compact ship schematic. arka's
+summaries should not read out current numbers or hidden symptom load; the HUDs
+and raw panels own telemetry display. `custodian.objectives` owns the
 legible objective block (goal, horizon, per-beat priority) and reads only
 deterministic telemetry.
 
@@ -255,6 +273,13 @@ Phase 2E adds the current navigation fix and route comparison playtests. It does
 not make a map. It gives each jump a place-like arrival reference so the player
 can see where the ship is after a route commit, while leaving local spatial
 consequences for Phase 3.
+
+Phase 3 adds the first spatial ship layer. The schematic shows qualitative
+sector reports rather than a Dark percentage. Jumps create local symptoms,
+especially deep jumps. `seal`, `abandon`, and `reroute` actions let the player
+contain physical sectors at a cost. Sealed or written-off maintenance locations
+make related manual controls harder or unreachable. arka has no sector and
+cannot be sealed.
 
 ## Success And Failure
 

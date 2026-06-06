@@ -13,11 +13,13 @@ from custodian.models import (
     ReactorCoolantSystem,
     RouteOption,
     ShipState,
+    ShipSector,
+    SpatialState,
 )
 
 
-SAVE_VERSION = 5
-SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, SAVE_VERSION}
+SAVE_VERSION = 6
+SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, SAVE_VERSION}
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -29,6 +31,7 @@ def state_to_dict(state: ShipState) -> dict:
         "cryostasis": asdict(state.cryostasis),
         "mission": asdict(state.mission),
         "navigation": asdict(state.navigation),
+        "spatial": asdict(state.spatial),
         "manual_familiarity": state.manual_familiarity,
         "cryo_familiarity": state.cryo_familiarity,
         "delegated_controls": state.delegated_controls,
@@ -64,6 +67,7 @@ def state_from_dict(data: dict) -> ShipState:
         cryostasis=CryostasisSystem(**data["cryostasis"]),
         mission=MissionStatus(**data.get("mission", {})),
         navigation=_navigation_from_data(data.get("navigation")),
+        spatial=_spatial_from_data(data.get("spatial")),
         manual_familiarity=data["manual_familiarity"],
         cryo_familiarity=data["cryo_familiarity"],
         delegated_controls=data["delegated_controls"],
@@ -125,6 +129,39 @@ def _navigation_from_data(data: object) -> NavigationState:
         jumps_executed=int(data.get("jumps_executed", 0)),
         total_dark_exposure=int(data.get("total_dark_exposure", 0)),
     )
+
+
+def _spatial_from_data(data: object) -> SpatialState:
+    if not isinstance(data, dict):
+        return SpatialState()
+
+    raw_sectors = data.get("sectors", ())
+    sectors: list[ShipSector] = []
+    default_ids = {sector.sector_id for sector in SpatialState().sectors}
+    if isinstance(raw_sectors, (list, tuple)):
+        for sector in raw_sectors:
+            if isinstance(sector, dict):
+                sector_id = str(sector.get("sector_id", ""))
+                if sector_id not in default_ids:
+                    continue
+                sectors.append(
+                    ShipSector(
+                        sector_id=sector_id,
+                        symptom_load=int(sector.get("symptom_load", 0)),
+                        containment=str(sector.get("containment", "open")),
+                        rerouted=bool(sector.get("rerouted", False)),
+                    ).clamped()
+                )
+
+    known_ids = {sector.sector_id for sector in sectors}
+    defaults = tuple(
+        sector for sector in SpatialState().sectors if sector.sector_id not in known_ids
+    )
+    return SpatialState(
+        sectors=tuple(sectors) + defaults,
+        containment_actions=int(data.get("containment_actions", 0)),
+        reroute_actions=int(data.get("reroute_actions", 0)),
+    ).clamped()
 
 
 def _history_from_data(data: object) -> tuple[CommandRecord, ...]:

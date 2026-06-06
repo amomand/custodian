@@ -42,6 +42,8 @@ The repo currently has a narrow terminal MVP:
 - Save/load of `ShipState` and structured command history records (Phase 1D).
 - Mission clock, route options, current navigation fix, first jump execution,
   and route-advice drift (Phase 2A-E).
+- Ship schematic, qualitative sector symptoms, containment choices, and manual
+  access consequences (Phase 3).
 - Tests around state transitions and AI boundary.
 - Markdown docs for the MVP, arka, and the interpreter.
 
@@ -480,6 +482,11 @@ Exit evidence:
 
 Goal: introduce the ship as an uneven, partially knowable place.
 
+Status: implemented in the terminal slice. Phase 3 adds deterministic physical
+sectors, qualitative schematic reports, raw sector telemetry, containment
+actions, and the first manual-access consequences for writing off parts of the
+ship.
+
 Core idea:
 
 The game does not show "Dark percentage." It shows symptoms: impossible
@@ -488,11 +495,11 @@ local failures.
 
 Add:
 
-- Ship schematic.
-- Sectors with qualitative states.
-- Seal/abandon/reroute decisions.
-- Localised consequences for writing off sections.
-- Maintenance locations that sometimes contain needed controls.
+- Ship schematic. Done.
+- Sectors with qualitative states. Done.
+- Seal/abandon/reroute decisions. Done.
+- Localised consequences for writing off sections. Done.
+- Maintenance locations that sometimes contain needed controls. Done.
 
 Important asymmetry:
 
@@ -500,6 +507,41 @@ Important asymmetry:
 - arka cannot be sealed because arka has no place.
 
 This should become one of the game's strongest mechanical statements.
+
+Implemented:
+
+- `SpatialState` on `ShipState`, with bridge, cryobay, thermal ring,
+  maintenance D, cargo spine, and hydroponics sectors.
+- Qualitative sector reports derived from hidden symptom load: nominal, sensor
+  noise, readings disagree, intermittent, no signal, sealed, and written off.
+- `schematic` for a quick sector read and `raw schematic` for source, signal,
+  containment, routing, and control notes.
+- Jump consequences that create spatial symptoms without exposing a Dark
+  percentage.
+- `seal`, `abandon`, and `reroute` actions for physical sectors.
+- Local consequences for containment: cryobay losses, thermal strain, ship wear,
+  cryostasis decay, and degraded manual control access.
+- The arka asymmetry as a real command result: attempts to seal arka fail
+  in-world because arka has no compartment.
+- Playtest summaries that report sector state, sealed/written-off counts, and
+  containment/reroute actions.
+
+Design stance:
+
+The schematic measures symptoms and routing, not the Dark. It is intentionally
+more legible than arka's reassurance but less clean than an objective map. The
+first implementation stays terminal-native and does not add free movement,
+rooms, or graphical UI; those remain future work.
+
+Exit evidence:
+
+- Short, medium, and deep route playtests now produce distinct spatial symptom
+  profiles.
+- `raw schematic` remains deterministic state outside arka's voice.
+- Containment choices alter deterministic state and can make manual access
+  harder or unreachable.
+- arka can describe or misframe schematic state, but cannot invent sector truth
+  or be spatially contained.
 
 ## Phase 4: Retro Interface Layer
 
