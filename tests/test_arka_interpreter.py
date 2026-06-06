@@ -166,6 +166,23 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(interpreter.interpret("run automatic", ShipState()).action, "delegate")
         self.assertEqual(interpreter.interpret("stand by", ShipState()).action, "wait")
 
+    def test_explicit_coolant_commands_are_rule_based(self) -> None:
+        # The operating desk action specs dispatch "raw coolant" and
+        # "delegate coolant". Without explicit rules these fuzzy-matched onto
+        # "arka coolant" (delegate) or fell through to converse, so the desk's
+        # coolant buttons silently misfired in no-AI mode.
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        raw = interpreter.interpret("raw coolant", ShipState())
+        delegated = interpreter.interpret("delegate coolant", ShipState())
+
+        self.assertEqual(raw.action, "raw")
+        self.assertIsNone(raw.correction)
+        self.assertEqual(delegated.action, "delegate")
+        self.assertIsNone(delegated.correction)
+
     def test_cryo_commands_are_rule_based(self) -> None:
         interpreter = ArkaInterpreter(
             Config(openai_api_key="", openai_model="gpt-5.4-mini")

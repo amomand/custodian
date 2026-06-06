@@ -1,6 +1,8 @@
 import json
 import unittest
 
+from custodian.arka_interpreter import ArkaInterpreter
+from custodian.config import Config
 from custodian.models import (
     CryostasisSystem,
     NavigationState,
@@ -92,6 +94,48 @@ class UiSnapshotTests(unittest.TestCase):
         self.assertFalse(by_id["seal-bridge"]["enabled"])
         self.assertTrue(by_id["seal-cryo-1-3"]["requires_confirmation"])
         self.assertTrue(by_id["abandon-cryo-1-3"]["requires_confirmation"])
+
+    def test_action_specs_resolve_under_deterministic_interpreter(self) -> None:
+        # Every desk button dispatches its action-spec `command` through the same
+        # engine path as text. Those strings must resolve to the intended intent
+        # under the no-AI interpreter, which is the default playtest/test mode.
+        interpreter = ArkaInterpreter(Config(custodian_ai=False))
+        expected = {
+            "watch": {"wait"},
+            "raw": {"raw"},
+            "delegate": {"delegate"},
+            "manual": {"manual"},
+            "navigation": {"plot", "jump"},
+            "containment": {"seal", "reroute", "abandon"},
+        }
+
+        for state in (ShipState(), ShipState(navigation=NavigationState(plotted_route_id="argos-12"))):
+            for action in project_ui_snapshot(state).to_dict()["actions"]:
+                with self.subTest(action=action["id"]):
+                    intent = interpreter.interpret(action["command"], state)
+                    self.assertIn(
+                        intent.action,
+                        expected[action["kind"]],
+                        f"{action['command']!r} resolved to {intent.action!r}",
+                    )
+
+    def test_snapshot_exposes_operating_desk_panel_contract(self) -> None:
+        # Lock the shape the operating desk client renders against so future
+        # projection changes cannot silently break panels.
+        snapshot = project_ui_snapshot(ShipState()).to_dict()
+
+        for system in snapshot["systems"].values():
+            self.assertTrue(system["arka_summary"].startswith("arka:"))
+            self.assertTrue(system["metrics"])
+            self.assertIn(system["status"], {"nominal", "attention"})
+
+        self.assertEqual(
+            set(snapshot["raw_panels"]),
+            {"mission", "coolant", "cryostasis", "navigation", "schematic"},
+        )
+        self.assertTrue(snapshot["navigation"]["route_options"])
+        self.assertTrue(snapshot["schematic"]["sectors"])
+        self.assertIn("no compartment", snapshot["schematic"]["arka_locus"])
 
     def test_finished_snapshot_marks_outcome_and_removes_actions(self) -> None:
         state = ShipState(outcome="The reactor survives the maintenance window.")
