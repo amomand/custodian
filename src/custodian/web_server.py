@@ -37,11 +37,15 @@ class CustodianRequestHandler(BaseHTTPRequestHandler):
             return
 
         parts = _api_parts(path)
-        if len(parts) == 3 and parts[0] == "session" and parts[2] == "snapshot":
-            self._send_json(self.server.store.snapshot(parts[1]))
-            return
-        if len(parts) == 3 and parts[0] == "session" and parts[2] == "transcript":
-            self._send_json(self.server.store.transcript(parts[1]))
+        try:
+            if len(parts) == 3 and parts[0] == "session" and parts[2] == "snapshot":
+                self._send_json(self.server.store.snapshot(parts[1]))
+                return
+            if len(parts) == 3 and parts[0] == "session" and parts[2] == "transcript":
+                self._send_json(self.server.store.transcript(parts[1]))
+                return
+        except SessionNotFound:
+            self._send_json({"error": "session not found"}, HTTPStatus.NOT_FOUND)
             return
 
         if path.startswith("/static/"):

@@ -1,6 +1,7 @@
 import json
 import threading
 import unittest
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from custodian.arka_interpreter import ArkaInterpreter
@@ -53,6 +54,14 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(loaded["snapshot"]["turn"], 2)
         self.assertIn("> wait", transcript["lines"])
         self.assertIn("Session image restored", "\n".join(transcript["lines"]))
+
+    def test_missing_session_snapshot_returns_json_404(self) -> None:
+        with self.assertRaises(HTTPError) as context:
+            self._get("/api/session/missing/snapshot")
+
+        self.assertEqual(context.exception.code, 404)
+        payload = json.loads(context.exception.read().decode("utf-8"))
+        self.assertEqual(payload["error"], "session not found")
 
     def _get(self, path: str) -> dict:
         with urlopen(f"{self.base_url}{path}", timeout=5) as response:
