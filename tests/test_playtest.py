@@ -44,6 +44,17 @@ class PlaytestTests(unittest.TestCase):
         self.assertGreaterEqual(report.final_state.delegated_cryo_controls, 2)
         self.assertIn("delegated cryo interventions", "\n".join(report.summary_lines()))
 
+    def test_containment_route_tracks_sector_consequences(self) -> None:
+        report = run_scenario(SCENARIOS["containment-route"])
+        summary = "\n".join(report.summary_lines())
+
+        self.assertTrue(report.completed)
+        self.assertGreaterEqual(report.final_state.spatial.containment_actions, 1)
+        self.assertGreaterEqual(report.final_state.spatial.reroute_actions, 1)
+        self.assertIn("sector reports:", summary)
+        self.assertIn("sealed sectors:", summary)
+        self.assertEqual(report.forbidden_hits, ())
+
     def test_transcript_includes_opening_commands_and_closing(self) -> None:
         report = run_commands(("status", "quit"))
         transcript = "\n".join(report.transcript_lines())

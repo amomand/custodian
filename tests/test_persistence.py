@@ -8,6 +8,8 @@ from custodian.models import (
     NavigationState,
     ReactorCoolantSystem,
     ShipState,
+    ShipSector,
+    SpatialState,
 )
 from custodian.persistence import dumps, loads, load_state, save_state
 
@@ -25,6 +27,18 @@ class PersistenceTests(unittest.TestCase):
                 cryo_decay_pct=19,
             ),
             navigation=NavigationState(plotted_route_id="argos-12", manual_plots=1),
+            spatial=SpatialState(
+                sectors=(
+                    ShipSector("bridge"),
+                    ShipSector("cryo-1-3", symptom_load=12),
+                    ShipSector("thermal-ring", containment="sealed"),
+                    ShipSector("maintenance-d", rerouted=True),
+                    ShipSector("cargo-spine"),
+                    ShipSector("hydroponics"),
+                ),
+                containment_actions=1,
+                reroute_actions=1,
+            ),
             manual_familiarity=4,
             cryo_familiarity=2,
             delegated_controls=3,
@@ -220,6 +234,93 @@ class PersistenceTests(unittest.TestCase):
 
         self.assertEqual(restored.navigation.current_fix_id, "wakeful-drift")
         self.assertEqual(restored.navigation.last_jump_route_id, "argos-12")
+
+    def test_version_five_save_loads_with_default_spatial_state(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 5,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {
+                "current_fix_id": "wakeful-drift",
+                "plotted_route_id": null,
+                "last_jump_route_id": null,
+                "manual_plots": 0,
+                "delegated_plots": 0,
+                "jumps_executed": 0,
+                "total_dark_exposure": 0
+              },
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(restored.spatial, SpatialState())
+
+    def test_spatial_load_dedupes_and_restores_canonical_order(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 6,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {},
+              "spatial": {
+                "sectors": [
+                  {
+                    "sector_id": "thermal-ring",
+                    "symptom_load": 22,
+                    "containment": "sealed",
+                    "rerouted": true
+                  },
+                  {
+                    "sector_id": "bridge",
+                    "symptom_load": 4,
+                    "containment": "open",
+                    "rerouted": false
+                  },
+                  {
+                    "sector_id": "thermal-ring",
+                    "symptom_load": 80,
+                    "containment": "abandoned",
+                    "rerouted": false
+                  }
+                ],
+                "containment_actions": 1,
+                "reroute_actions": 1
+              },
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(
+            tuple(sector.sector_id for sector in restored.spatial.sectors),
+            tuple(sector.sector_id for sector in SpatialState().sectors),
+        )
+        thermal = restored.spatial.sector_by_id("thermal-ring")
+        self.assertIsNotNone(thermal)
+        assert thermal is not None
+        self.assertEqual(thermal.containment, "sealed")
+        self.assertEqual(restored.spatial.sealed_count, 1)
+        self.assertEqual(restored.spatial.abandoned_count, 0)
 
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

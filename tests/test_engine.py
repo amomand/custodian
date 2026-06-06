@@ -74,6 +74,16 @@ class EngineTests(unittest.TestCase):
         self.assertIn("OPTIONS", output)
         self.assertNotIn("arka: navigation", output)
 
+    def test_status_shows_schematic_without_dark_percentage(self) -> None:
+        state = self.engine.initial_state()
+
+        output = "\n".join(self.engine.handle(state, "status").messages)
+
+        self.assertIn("SHIP SCHEMATIC", output)
+        self.assertIn("physical sectors only", output)
+        self.assertIn("BRIDGE", output)
+        self.assertNotIn("Dark percentage", output)
+
     def test_raw_mission_advances_time_and_shows_clock(self) -> None:
         state = self.engine.initial_state()
 
@@ -99,6 +109,18 @@ class EngineTests(unittest.TestCase):
         self.assertIn("KHEPRI-4", output)
         self.assertIn("CARINA-EDGE", output)
         self.assertEqual(result.state.history[0].target, "nav")
+
+    def test_raw_schematic_advances_time_and_records_target(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "raw schematic")
+        output = "\n".join(result.messages)
+
+        self.assertEqual(result.state.turn, 2)
+        self.assertEqual(result.state.raw_inspections, 1)
+        self.assertIn("RAW SHIP SCHEMATIC", output)
+        self.assertIn("arka locus: none", output)
+        self.assertEqual(result.state.history[0].target, "schematic")
 
     def test_manual_route_plot_selects_route_without_executing_jump(self) -> None:
         state = self.engine.initial_state()
@@ -170,6 +192,54 @@ class EngineTests(unittest.TestCase):
         self.assertIn("ARRIVAL FIX ARGOS-12", "\n".join(result.messages))
         self.assertEqual(result.state.history[0].action, "jump")
         self.assertEqual(result.state.history[0].target, "navigation")
+
+    def test_deep_jump_creates_qualitative_sector_symptoms(self) -> None:
+        state = ShipState(navigation=NavigationState(plotted_route_id="carina-edge"))
+
+        result = self.engine.handle(state, "jump")
+        maintenance = result.state.spatial.sector_by_id("maintenance-d")
+
+        self.assertIsNotNone(maintenance)
+        assert maintenance is not None
+        self.assertIn(
+            maintenance.reported_state,
+            {"readings disagree", "intermittent", "no signal"},
+        )
+        self.assertIn("SCHEMATIC:", "\n".join(result.messages))
+
+    def test_seal_arka_is_impossible_and_does_not_advance(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "seal arka")
+
+        self.assertFalse(result.advanced)
+        self.assertEqual(result.state.turn, 1)
+        self.assertIn("no compartment", "\n".join(result.messages))
+        self.assertEqual(result.state.history[0].action, "seal")
+        self.assertEqual(result.state.history[0].target, "arka")
+
+    def test_sealing_thermal_ring_has_reactor_consequence(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "seal thermal")
+        thermal = result.state.spatial.sector_by_id("thermal-ring")
+
+        self.assertTrue(result.advanced)
+        self.assertIsNotNone(thermal)
+        assert thermal is not None
+        self.assertEqual(thermal.containment, "sealed")
+        self.assertGreater(result.state.reactor.temperature_c, state.reactor.temperature_c)
+        self.assertEqual(result.state.history[0].target, "thermal-ring")
+
+    def test_abandoned_maintenance_blocks_manual_coolant_access(self) -> None:
+        state = self.engine.handle(self.engine.initial_state(), "abandon maintenance d").state
+
+        result = self.engine.handle(state, "balance")
+
+        self.assertTrue(result.advanced)
+        self.assertEqual(result.state.turn, state.turn + 1)
+        self.assertEqual(result.state.manual_familiarity, 0)
+        self.assertIn("not reachable", "\n".join(result.messages))
 
     def test_mission_clock_advances_with_maintenance_time(self) -> None:
         state = self.engine.initial_state()

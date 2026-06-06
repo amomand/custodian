@@ -89,6 +89,46 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(intent.action, "converse")
         self.assertEqual(intent.reply, DIEGETIC_FALLBACK)
 
+    def test_model_path_accepts_canonical_sector_ids(self) -> None:
+        clear_response_cache()
+        raw = json.dumps(
+            {
+                "action": "seal",
+                "args": {"sector_id": "thermal-ring"},
+                "confidence": 0.9,
+                "rationale": "test",
+            }
+        )
+
+        class FakeOpenAI:
+            def __init__(self, api_key: str) -> None:
+                self.chat = SimpleNamespace(
+                    completions=SimpleNamespace(
+                        create=lambda **_: SimpleNamespace(
+                            choices=[
+                                SimpleNamespace(
+                                    message=SimpleNamespace(content=raw)
+                                )
+                            ]
+                        )
+                    )
+                )
+
+        original = arka_interpreter.OpenAI
+        arka_interpreter.OpenAI = FakeOpenAI
+        try:
+            interpreter = ArkaInterpreter(
+                Config(openai_api_key="test-key", openai_model="gpt-5.4-mini")
+            )
+
+            intent = interpreter.interpret("contain the hot corridor", ShipState())
+        finally:
+            arka_interpreter.OpenAI = original
+            clear_response_cache()
+
+        self.assertEqual(intent.action, "seal")
+        self.assertEqual(intent.args["sector_id"], "thermal-ring")
+
     def test_natural_delegation_phrase_is_rule_based(self) -> None:
         interpreter = ArkaInterpreter(
             Config(openai_api_key="", openai_model="gpt-5.4-mini")
@@ -170,6 +210,47 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(plotted.action, "plot")
         self.assertEqual(plotted.args["route_id"], "deep")
         self.assertEqual(jump.action, "jump")
+
+    def test_schematic_commands_are_rule_based(self) -> None:
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        schematic = interpreter.interpret("schematic", ShipState())
+        raw = interpreter.interpret("raw schematic", ShipState())
+
+        self.assertEqual(schematic.action, "schematic")
+        self.assertEqual(raw.action, "raw")
+        self.assertEqual(raw.args["target"], "schematic")
+
+    def test_containment_commands_are_rule_based(self) -> None:
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        sealed = interpreter.interpret("seal thermal", ShipState())
+        abandoned = interpreter.interpret("write off cargo", ShipState())
+        rerouted = interpreter.interpret("reroute maintenance d", ShipState())
+        arka = interpreter.interpret("seal arka", ShipState())
+
+        self.assertEqual(sealed.action, "seal")
+        self.assertEqual(sealed.args["sector_id"], "thermal-ring")
+        self.assertEqual(abandoned.action, "abandon")
+        self.assertEqual(abandoned.args["sector_id"], "cargo-spine")
+        self.assertEqual(rerouted.action, "reroute")
+        self.assertEqual(rerouted.args["sector_id"], "maintenance-d")
+        self.assertEqual(arka.action, "seal")
+        self.assertEqual(arka.args["sector_id"], "arka")
+
+    def test_reroute_chill_remains_cryo_manual_command(self) -> None:
+        interpreter = ArkaInterpreter(
+            Config(openai_api_key="", openai_model="gpt-5.4-mini")
+        )
+
+        intent = interpreter.interpret("reroute chill", ShipState())
+
+        self.assertEqual(intent.action, "manual")
+        self.assertEqual(intent.args["operation"], "reroute_chill")
 
     def test_where_are_we_is_rule_based_status(self) -> None:
         interpreter = ArkaInterpreter(

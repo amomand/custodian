@@ -46,6 +46,28 @@ def summarize_cryostasis(state: ShipState) -> str:
     return "arka: cryostasis banks stable. Sleeper intervention is not recommended."
 
 
+def summarize_schematic(state: ShipState) -> str:
+    stage = drift_stage(state)
+    open_symptoms = state.spatial.open_symptom_sectors
+    sealed = state.spatial.sealed_count
+    abandoned = state.spatial.abandoned_count
+
+    if stage == DriftStage.WRONG:
+        return "arka: ship schematic nominal. No sector action recommended."
+    if stage == DriftStage.SELECTIVE:
+        if abandoned:
+            return "arka: the written-off sections are doing exactly what walls are for."
+        return "arka: local readings are untidy. Nothing that needs your hands yet."
+    if not open_symptoms:
+        if sealed or abandoned:
+            return "arka: physical containment is holding. I remain elsewhere, unfortunately for neat diagrams."
+        return "arka: ship schematic nominal. All physical sectors answer the board."
+    labels = ", ".join(sector.profile.label for sector in open_symptoms[:2])
+    if stage == DriftStage.INTERPRETIVE:
+        return f"arka: {labels} are making local noise. Ugly, not yet theological."
+    return f"arka: schematic advisory in {labels}. Reroute or seal if access degrades."
+
+
 def crisis_line(state: ShipState) -> str | None:
     if state.crisis is None:
         return None

@@ -24,9 +24,11 @@ long-duration cryostasis decay. Phase 2B adds route options, raw navigation, and
 manual or delegated plotting. Phase 2C/D adds jump execution, route
 consequences, and drift-sensitive arka route advice. Phase 2E adds a lightweight
 current navigation fix and route comparison playtests, closing the route layer
-before spatial ship work. A course correction makes the goal legible: every
-status readout opens with an objective block (goal, horizon, the metric failing
-fastest this beat) and the HUD carries trend arrows.
+before spatial ship work. Phase 3 adds the terminal-native ship schematic,
+qualitative sector symptoms, containment choices, and the arka asymmetry:
+physical sectors can be sealed, arka cannot. A course correction makes the goal
+legible: every status readout opens with an objective block (goal, horizon, the
+metric failing fastest this beat) and the HUD carries trend arrows.
 
 The player can work the coolant and cryostasis panels by hand. They are real,
 useful, and a little fiddly. Or the player can ask `arka` to handle one panel
@@ -41,6 +43,7 @@ Core ideas:
 - Deterministic reactor and cryostasis state
 - Deterministic mission clock with ship wear and cryostasis decay
 - Deterministic route options with current fix, plotting, delegation, and jump execution
+- Deterministic ship sectors with qualitative symptoms and containment choices
 - Raw telemetry as truth-adjacent, slower than reassurance
 - arka summaries that move from accurate to interpretive, selective, and wrong
 - Hidden manual familiarity gained only by manual work
@@ -120,6 +123,8 @@ Developer-only terminal diagnostics use a colon prefix:
 - **Mission clock** - elapsed mission time, distance remaining, ship wear, and cryostasis decay
 - **Navigation options** - short, medium, and deep routes can be inspected, plotted, and jumped
 - **Current fix** - the ship reports where the latest jump leaves it without becoming a map
+- **Ship schematic** - sectors report qualitative symptoms without exposing a Dark percentage
+- **Containment choices** - seal, abandon, and reroute physical sectors, with local costs
 - **Trend-aware HUD** - per-metric arrows show what is moving toward danger this beat
 - **Delegation as throughput** - one manual control per beat, or a whole panel via arka
 - **Coolant HUD** - telemetry is shown separately from arka's summary
@@ -154,6 +159,7 @@ Current working docs:
 - `docs/game_mechanics/objectives-and-priority.md` - objective block, horizon, and per-beat priority
 - `docs/game_mechanics/mission-clock.md` - mission time, distance, wear, and cryostasis decay
 - `docs/game_mechanics/routing.md` - route options, current fix, plotting, and jump consequences
+- `docs/game_mechanics/spatial-containment.md` - schematic sectors, symptoms, and containment
 - `docs/architecture/save-load.md` - run serialisation and command history
 - `docs/lore/arka.md` - arka character and runtime voice capsule
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
@@ -184,7 +190,8 @@ custodian/
 │   │   ├── reactor-coolant.md      # Coolant telemetry and pressure beats
 │   │   ├── cryostasis-viability.md # Cryostasis telemetry and sleeper pressure
 │   │   ├── mission-clock.md        # Mission time, distance, wear, decay
-│   │   └── routing.md              # Route options, current fix, jumps
+│   │   ├── routing.md              # Route options, current fix, jumps
+│   │   └── spatial-containment.md  # Sectors, symptoms, containment
 │   ├── lore/
 │   │   └── arka.md                 # arka voice and character notes
 │   └── original-idea.md            # Copied seed idea

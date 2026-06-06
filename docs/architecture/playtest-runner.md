@@ -100,6 +100,13 @@ commands work.
 - useful for comparing fast arrival against Dark exposure and cryostasis shock
 - currently survives only with immediate cryostasis attention after the shock
 
+`containment-route`
+
+- executes a deep route, inspects the schematic, reroutes maintenance D, and
+  seals the thermal ring
+- useful for watching containment costs and manual-access consequences
+- currently reaches an ending with severe cryostasis losses
+
 ## Report Fields
 
 Each report includes:
@@ -110,6 +117,7 @@ Each report includes:
 - internal beat
 - mission elapsed and distance remaining
 - current fix, plotted route, last jump route, jump count, and Dark exposure
+- sector reports, sealed/written-off counts, containment actions, and reroutes
 - delegated interventions
 - raw inspections
 - manual familiarity label
@@ -128,8 +136,8 @@ dev tooling:
 
 - `clean-start`
 - `post-filter-fouling`
+- `cryo-bank-shiver`
 - `pressure-surge`
-- `silicate-bloom`
 - `thermal-runaway-unpractised`
 - `thermal-runaway-practised`
 

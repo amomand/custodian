@@ -12,7 +12,7 @@ from typing import Any
 from custodian.arka import drift_stage, summarize_coolant
 from custodian.config import Config, load_config
 from custodian.engine_constants import MISSION_END_TURN
-from custodian.models import ShipState
+from custodian.models import ShipState, sector_id_from_alias
 
 try:
     from openai import OpenAI  # type: ignore
@@ -26,6 +26,10 @@ ALLOWED_ACTIONS = {
     "delegate",
     "plot",
     "jump",
+    "schematic",
+    "seal",
+    "abandon",
+    "reroute",
     "manual",
     "wait",
     "help",
@@ -189,6 +193,7 @@ def build_arka_context(state: ShipState) -> dict[str, Any]:
         "cryo_status": _cryo_status_label(state),
         "mission_pressure": _mission_pressure_label(state),
         "navigation_status": _navigation_status_label(state),
+        "schematic_status": _schematic_status_label(state),
         "crisis": None
         if crisis is None
         else {
@@ -265,14 +270,16 @@ def _system_prompt() -> str:
         _runtime_voice_capsule()
         + "\n\n"
         + "You are also a strict command interpreter. Output ONLY one JSON object.\n"
-        + "Allowed actions: status, raw, delegate, plot, jump, manual, wait, help, quit, converse, none.\n"
+        + "Allowed actions: status, raw, delegate, plot, jump, schematic, seal, abandon, reroute, manual, wait, help, quit, converse, none.\n"
         + "For manual coolant action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
         + "For manual cryostasis action, args.operation must be one of: stabilise_bank, reroute_chill, cycle_pods, triage and args.target must be cryo.\n"
-        + "Use status for quick arka summaries. Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
-        + "For raw, set args.target to coolant, cryo, mission, or nav. For delegate, set args.target to coolant, cryo, or nav.\n"
+        + "Use status for quick arka summaries. Use schematic when the player asks for the ship schematic or sectors.\n"
+        + "Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
+        + "For raw, set args.target to coolant, cryo, mission, nav, or schematic. For delegate, set args.target to coolant, cryo, or nav.\n"
         + "Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, cryostasis, route, nav, or navigation.\n"
         + "For plot, args.route_id must be short, medium, deep, khepri-4, argos-12, or carina-edge.\n"
         + "Use jump when the player asks to execute, commit, or initiate the plotted route.\n"
+        + "For seal, abandon, and reroute, args.sector_id must be bridge, cryo-1-3, thermal-ring, maintenance-d, cargo-spine, hydroponics, or arka.\n"
         + "Use delegate when the player asks arka/you to handle coolant, cryostasis, or navigation, fix it, take over, or automate.\n"
         + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not advance maintenance time.\n"
         + "Do not create state changes, telemetry, inventory, maps, or future events.\n"
@@ -298,7 +305,7 @@ def _intent_from_model_data(data: Any) -> Intent:
 
     if action == "raw":
         target = args.get("target", "coolant")
-        if target not in {"coolant", "cryo", "mission", "nav", "navigation"}:
+        if target not in {"coolant", "cryo", "mission", "nav", "navigation", "schematic", "ship", "sectors"}:
             args["target"] = "coolant"
 
     if action == "delegate":
@@ -322,6 +329,14 @@ def _intent_from_model_data(data: Any) -> Intent:
 
     if action == "jump":
         args = {}
+
+    if action in {"seal", "abandon", "reroute"}:
+        sector_id = sector_id_from_alias(args.get("sector_id", ""))
+        if sector_id is None:
+            action = "converse"
+            args = {}
+        else:
+            args = {"sector_id": sector_id}
 
     if action == "manual":
         operation = args.get("operation", "")
@@ -388,6 +403,23 @@ def _rule_based(command: str) -> Intent | None:
         "location",
     }:
         return Intent("status", {}, 1.0, correction=correction, rationale="status")
+    if corrected in {
+        "schematic",
+        "ship schematic",
+        "ship map",
+        "map",
+        "sectors",
+        "sector map",
+        "show schematic",
+        "show sectors",
+    }:
+        return Intent(
+            "schematic",
+            {},
+            1.0,
+            correction=correction,
+            rationale="schematic",
+        )
     if corrected in {"help", "?", "commands"}:
         return Intent("help", {}, 1.0, correction=correction, rationale="help")
     if corrected in {"quit", "exit"}:
@@ -468,6 +500,35 @@ def _rule_based(command: str) -> Intent | None:
             1.0,
             correction=correction,
             rationale="raw nav",
+        )
+    if corrected in {
+        "raw schematic",
+        "raw ship",
+        "raw sectors",
+        "inspect schematic",
+        "inspect ship",
+        "inspect sectors",
+        "check schematic",
+        "check sectors",
+        "sector telemetry",
+        "schematic telemetry",
+    }:
+        return Intent(
+            "raw",
+            {"target": "schematic"},
+            1.0,
+            correction=correction,
+            rationale="raw schematic",
+        )
+    sector_action = _sector_action(corrected)
+    if sector_action is not None:
+        action, sector_id = sector_action
+        return Intent(
+            action,
+            {"sector_id": sector_id},
+            1.0,
+            correction=correction,
+            rationale=f"{action} sector",
         )
     if corrected in {
         "delegate",
@@ -644,6 +705,16 @@ def _navigation_status_label(state: ShipState) -> str:
     return f"current fix {fix}, {plotted.jump_class} route plotted, {suffix}"
 
 
+def _schematic_status_label(state: ShipState) -> str:
+    open_symptoms = state.spatial.open_symptom_sectors
+    if not open_symptoms:
+        if state.spatial.sealed_count or state.spatial.abandoned_count:
+            return "physical containment active"
+        return "physical sectors nominal"
+    labels = ", ".join(sector.profile.label for sector in open_symptoms[:2])
+    return f"reported symptoms in {labels}"
+
+
 def _normalise(command_text: str) -> str:
     return " ".join(command_text.strip().lower().split())
 
@@ -772,6 +843,27 @@ def _route_plot_id(command: str) -> str | None:
     return mapping.get(route)
 
 
+def _sector_action(command: str) -> tuple[str, str] | None:
+    prefixes = (
+        ("seal ", "seal"),
+        ("isolate ", "seal"),
+        ("abandon ", "abandon"),
+        ("write off ", "abandon"),
+        ("write-off ", "abandon"),
+        ("reroute around ", "reroute"),
+        ("reroute sector ", "reroute"),
+        ("reroute ", "reroute"),
+        ("bypass ", "reroute"),
+    )
+    for prefix, action in prefixes:
+        if not command.startswith(prefix):
+            continue
+        sector_id = sector_id_from_alias(command[len(prefix) :])
+        if sector_id is not None:
+            return action, sector_id
+    return None
+
+
 def _cryo_status_label(state: ShipState) -> str:
     flags = state.cryostasis.danger_flags()
     if not flags:
@@ -797,6 +889,14 @@ _KNOWN_COMMANDS = (
     "current fix",
     "position",
     "location",
+    "schematic",
+    "ship schematic",
+    "ship map",
+    "map",
+    "sectors",
+    "sector map",
+    "show schematic",
+    "show sectors",
     "help",
     "?",
     "commands",
@@ -849,6 +949,35 @@ _KNOWN_COMMANDS = (
     "routes",
     "nav",
     "navigation",
+    "raw schematic",
+    "raw ship",
+    "raw sectors",
+    "inspect schematic",
+    "inspect ship",
+    "inspect sectors",
+    "check schematic",
+    "check sectors",
+    "sector telemetry",
+    "schematic telemetry",
+    "seal thermal",
+    "seal thermal ring",
+    "seal maintenance",
+    "seal maintenance d",
+    "seal cryobay",
+    "seal cargo",
+    "seal cargo spine",
+    "seal hydroponics",
+    "seal arka",
+    "abandon thermal",
+    "abandon maintenance d",
+    "abandon cargo",
+    "abandon cryobay",
+    "write off cargo",
+    "reroute thermal",
+    "reroute maintenance d",
+    "reroute cargo",
+    "reroute around cargo",
+    "bypass cargo",
     "delegate",
     "arka",
     "arka coolant",

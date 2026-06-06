@@ -84,6 +84,11 @@ class PlaytestReport:
             f"delegated route plots: {self.final_state.navigation.delegated_plots}",
             f"jumps executed: {self.final_state.navigation.jumps_executed}",
             f"dark exposure: {self.final_state.navigation.total_dark_exposure}",
+            f"sector reports: {_sector_report_label(self.final_state)}",
+            f"sealed sectors: {self.final_state.spatial.sealed_count}",
+            f"written-off sectors: {self.final_state.spatial.abandoned_count}",
+            f"containment actions: {self.final_state.spatial.containment_actions}",
+            f"reroute actions: {self.final_state.spatial.reroute_actions}",
             f"delegated interventions: {self.final_state.delegated_controls}",
             f"delegated cryo interventions: {self.final_state.delegated_cryo_controls}",
             f"raw inspections: {self.final_state.raw_inspections}",
@@ -249,6 +254,25 @@ SCENARIOS: dict[str, Scenario] = {
             "triage",
         ),
     ),
+    "containment-route": Scenario(
+        name="containment-route",
+        description="Execute a deep route, inspect the schematic, and contain a bad sector.",
+        commands=(
+            "raw nav",
+            "plot deep",
+            "jump",
+            "schematic",
+            "raw schematic",
+            "reroute maintenance d",
+            "seal thermal",
+            "pump up",
+            "balance",
+            "flush",
+            "triage",
+            "delegate cryo",
+            "vent",
+        ),
+    ),
 }
 
 
@@ -371,6 +395,15 @@ def _plotted_route_label(state: ShipState) -> str:
 def _last_jump_route_label(state: ShipState) -> str:
     last_jump = state.navigation.last_jump_route
     return "none" if last_jump is None else f"{last_jump.label} ({last_jump.jump_class})"
+
+
+def _sector_report_label(state: ShipState) -> str:
+    notable = [
+        f"{sector.profile.label}={sector.reported_state}"
+        for sector in state.spatial.sectors
+        if sector.reported_state != "nominal"
+    ]
+    return ", ".join(notable) if notable else "nominal"
 
 
 def _familiarity_label(familiarity: int) -> str:
