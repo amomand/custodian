@@ -266,6 +266,62 @@ class PersistenceTests(unittest.TestCase):
 
         self.assertEqual(restored.spatial, SpatialState())
 
+    def test_spatial_load_dedupes_and_restores_canonical_order(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 6,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {},
+              "spatial": {
+                "sectors": [
+                  {
+                    "sector_id": "thermal-ring",
+                    "symptom_load": 22,
+                    "containment": "sealed",
+                    "rerouted": true
+                  },
+                  {
+                    "sector_id": "bridge",
+                    "symptom_load": 4,
+                    "containment": "open",
+                    "rerouted": false
+                  },
+                  {
+                    "sector_id": "thermal-ring",
+                    "symptom_load": 80,
+                    "containment": "abandoned",
+                    "rerouted": false
+                  }
+                ],
+                "containment_actions": 1,
+                "reroute_actions": 1
+              },
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(
+            tuple(sector.sector_id for sector in restored.spatial.sectors),
+            tuple(sector.sector_id for sector in SpatialState().sectors),
+        )
+        thermal = restored.spatial.sector_by_id("thermal-ring")
+        self.assertIsNotNone(thermal)
+        assert thermal is not None
+        self.assertEqual(thermal.containment, "sealed")
+        self.assertEqual(restored.spatial.sealed_count, 1)
+        self.assertEqual(restored.spatial.abandoned_count, 0)
+
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             loads('{"version": 999, "turn": 1}')

@@ -136,29 +136,28 @@ def _spatial_from_data(data: object) -> SpatialState:
         return SpatialState()
 
     raw_sectors = data.get("sectors", ())
-    sectors: list[ShipSector] = []
-    default_ids = {sector.sector_id for sector in SpatialState().sectors}
+    default_spatial = SpatialState()
+    default_ids = {sector.sector_id for sector in default_spatial.sectors}
+    sectors_by_id: dict[str, ShipSector] = {}
     if isinstance(raw_sectors, (list, tuple)):
         for sector in raw_sectors:
             if isinstance(sector, dict):
                 sector_id = str(sector.get("sector_id", ""))
-                if sector_id not in default_ids:
+                if sector_id not in default_ids or sector_id in sectors_by_id:
                     continue
-                sectors.append(
-                    ShipSector(
-                        sector_id=sector_id,
-                        symptom_load=int(sector.get("symptom_load", 0)),
-                        containment=str(sector.get("containment", "open")),
-                        rerouted=bool(sector.get("rerouted", False)),
-                    ).clamped()
-                )
+                sectors_by_id[sector_id] = ShipSector(
+                    sector_id=sector_id,
+                    symptom_load=int(sector.get("symptom_load", 0)),
+                    containment=str(sector.get("containment", "open")),
+                    rerouted=bool(sector.get("rerouted", False)),
+                ).clamped()
 
-    known_ids = {sector.sector_id for sector in sectors}
-    defaults = tuple(
-        sector for sector in SpatialState().sectors if sector.sector_id not in known_ids
+    sectors = tuple(
+        sectors_by_id.get(default.sector_id, default)
+        for default in default_spatial.sectors
     )
     return SpatialState(
-        sectors=tuple(sectors) + defaults,
+        sectors=sectors,
         containment_actions=int(data.get("containment_actions", 0)),
         reroute_actions=int(data.get("reroute_actions", 0)),
     ).clamped()
