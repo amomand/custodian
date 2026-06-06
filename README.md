@@ -28,7 +28,9 @@ before spatial ship work. Phase 3 adds the terminal-native ship schematic,
 qualitative sector symptoms, containment choices, and the arka asymmetry:
 physical sectors can be sealed, arka cannot. A course correction makes the goal
 legible: every status readout opens with an objective block (goal, horizon, the
-metric failing fastest this beat) and the HUD carries trend arrows.
+metric failing fastest this beat) and the HUD carries trend arrows. The first
+browser shell now wraps the same engine in a local web session with transcript,
+command input, status output, and save/load.
 
 The player can work the coolant and cryostasis panels by hand. They are real,
 useful, and a little fiddly. Or the player can ask `arka` to handle one panel
@@ -38,7 +40,7 @@ need is the skill they chose not to build.
 
 Core ideas:
 
-- Terminal-first play, no map, no UI chrome
+- Terminal-first engine with a local browser shell
 - Optional AI-powered natural language input for arka
 - Deterministic reactor and cryostasis state
 - Deterministic mission clock with ship wear and cryostasis decay
@@ -89,6 +91,14 @@ To see why arka has fallen back to deterministic mode:
 CUSTODIAN_DEBUG=1 python3 main.py
 ```
 
+To play the same slice through the local browser shell:
+
+```bash
+PYTHONPATH=src python3 -m custodian.web_server --no-ai
+```
+
+Then open `http://127.0.0.1:8765`.
+
 ---
 
 ## Development Checks
@@ -125,6 +135,7 @@ Developer-only terminal diagnostics use a colon prefix:
 - **Current fix** - the ship reports where the latest jump leaves it without becoming a map
 - **Ship schematic** - sectors report qualitative symptoms without exposing a Dark percentage
 - **Containment choices** - seal, abandon, and reroute physical sectors, with local costs
+- **Browser session shell** - local web play through the same engine command path
 - **Trend-aware HUD** - per-metric arrows show what is moving toward danger this beat
 - **Delegation as throughput** - one manual control per beat, or a whole panel via arka
 - **Coolant HUD** - telemetry is shown separately from arka's summary
@@ -162,6 +173,7 @@ Current working docs:
 - `docs/game_mechanics/routing.md` - route options, current fix, plotting, and jump consequences
 - `docs/game_mechanics/spatial-containment.md` - schematic sectors, symptoms, and containment
 - `docs/architecture/save-load.md` - run serialisation and command history
+- `docs/architecture/web-session-api.md` - local browser session endpoints
 - `docs/lore/arka.md` - arka character and runtime voice capsule
 - `docs/architecture/engine-contracts.md` - canonical truth owners and implementation boundaries
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
@@ -185,6 +197,7 @@ custodian/
 │   ├── architecture/
 │   │   ├── engine-contracts.md     # Canonical truth owners and boundaries
 │   │   ├── ai-interpreter.md       # AI/parser/simulation boundary
+│   │   ├── web-session-api.md      # Browser shell API and session contract
 │   │   └── playtest-runner.md      # Deterministic transcript workflow
 │   ├── game_mechanics/
 │   │   ├── delegation-and-drift.md # arka dependence and drift notes
@@ -210,6 +223,9 @@ custodian/
 │   ├── playtest.py                 # Deterministic scenario runner core
 │   ├── seeds.py                    # Named simulation entry states
 │   ├── telemetry.py                # Compact terminal HUDs
+│   ├── web_session.py              # Browser session lifecycle
+│   ├── web_server.py               # Local HTTP server
+│   ├── web_static/                 # Minimal browser client
 │   └── cli.py                      # Terminal loop
 ├── tests/                          # Unit tests and AI boundary tests
 └── tools/
@@ -232,6 +248,7 @@ Environment variables:
 - `CUSTODIAN_REFRESH=off` - Keep appending every turn instead of refreshing the
   interactive screen after advancing commands
 - `CUSTODIAN_COMPLETE=off` - Disable interactive tab completion
+- `CUSTODIAN_WEB_LOG=1` - Print local browser shell HTTP request logs
 
 The Cabin used `gpt-5.4-mini` for this kind of diegetic parser/voice work.
 Custodian keeps that default because arka needs fast structured interpretation

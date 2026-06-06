@@ -48,6 +48,8 @@ Already in the repo:
 - Structured command history and deterministic playtest routes.
 - Optional model-backed natural-language interpretation with deterministic
   fallback and tests that pass without an API key.
+- A local browser session shell that wraps the same engine command path with
+  per-session state, transcript, status output, and save/load.
 - A terminal opening, closing debrief, objective block, HUDs, and docs for the
   current mechanics.
 
@@ -106,70 +108,21 @@ These sections are intentionally larger than a single narrow code task. When a
 section starts, decide whether it should be one PR or several PRs based on the
 state of the repo and the amount of risk in that moment.
 
-### 1. Production Direction And Engine Contracts
+### Completed Foundation
 
-Goal: make the new direction official and make future implementation safer.
+Done enough for now:
 
-Work:
+- Production direction and engine contracts are documented.
+- The terminal engine, playtest runner, and save/load path remain usable.
+- The browser session shell can run the current terminal slice locally through
+  the same `GameEngine.handle()` command path.
+- Browser sessions keep separate mutable ship state, transcript output, and
+  serialised save/load.
 
-- Add the producer direction brief to `docs/production/`.
-- Keep this roadmap concise and forward-looking.
-- Add or tighten docs for the current engine contracts if the implementation
-  starts to sprawl.
-- Confirm where deterministic truth lives, where arka voice lives, where model
-  interpretation lives, and where persistence lives.
-- Keep the terminal engine and playtest runner usable.
+Do not spend more time on browser look and feel until the client has a proper
+snapshot projection and action specs to render.
 
-Acceptance:
-
-- The repo has a clear production direction for the operating-surface game.
-- Future agents can state the model/simulation boundary without guessing.
-- Existing tests and terminal playtests still pass without an API key.
-
-Likely split:
-
-- Direction/doc sync.
-- Contract tests or architecture docs only if needed.
-
-### 2. Browser Session Shell
-
-Goal: play the current terminal game through a browser without changing the
-game's truth model.
-
-Work:
-
-- Add a small local web API around the existing engine.
-- Add session lifecycle and save/load integration.
-- Add a minimal browser client with transcript, command input, and current
-  status output.
-- Route text input through the same command path as the terminal.
-- Support deterministic no-model mode.
-- Keep terminal play available.
-
-Suggested API shape:
-
-- `POST /api/session`
-- `GET /api/session/{id}/snapshot`
-- `POST /api/session/{id}/command`
-- `POST /api/session/{id}/save`
-- `POST /api/session/{id}/load`
-- `GET /api/session/{id}/transcript`
-
-Acceptance:
-
-- A player can complete the existing terminal slice in the browser.
-- Browser outcomes match engine outcomes.
-- Multiple sessions do not share mutable game state accidentally.
-- Save/load restores a browser session from serialised engine state.
-- Tests cover command dispatch and no-model operation.
-
-Likely split:
-
-- Server/session API.
-- Minimal client.
-- Save/load and transcript polish.
-
-### 3. UI Snapshot Projection
+### 3. UI Snapshot Projection (Next)
 
 Goal: give the web client renderable state without making it reconstruct
 simulation truth.
@@ -502,18 +455,20 @@ When starting the next implementation session, use this narrower first task:
 Read docs/roadmap.md, docs/production/codex-direction-phase4.md if present, and
 the existing architecture docs.
 
-Plan the Browser Session Shell only.
+Plan the UI Snapshot Projection only.
 
-Do not implement graphical corruption, story incidents, endings, or new lore.
-Do not let the model own state.
-Do not break terminal playtests.
+Do not redesign the operating desk, graphical corruption, story incidents,
+endings, or new lore.
+Do not let the model or browser client own state.
+Do not break terminal playtests or the browser session shell.
 
 Return:
 1. a repo inventory of the relevant engine, state, persistence, and arka files,
-2. the smallest server/client architecture that can run the current game in a browser,
-3. the exact first implementation steps,
-4. tests to add before and after the change,
-5. risks where the current code shape may fight this plan.
+2. the smallest snapshot dataclass/module shape that can feed the current browser client,
+3. normal player snapshot fields and explicit dev-only fields,
+4. action spec projection strategy for text commands and future buttons,
+5. tests to add before and after the change,
+6. risks where the current code shape may fight this plan.
 ```
 
 After that, implement in small PR-sized chunks.

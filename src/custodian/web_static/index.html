@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Custodian</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="rail" aria-label="Ship status">
+        <header class="masthead">
+          <svg class="ship-mark" viewBox="0 0 180 64" aria-hidden="true">
+            <path d="M13 34h42l12-16h54l45 16-45 16H67L55 34" />
+            <path d="M67 18v32M121 18v32M40 26h17M40 42h17" />
+            <circle cx="143" cy="34" r="4" />
+          </svg>
+          <div>
+            <h1>Custodian</h1>
+            <p id="sessionLabel">no session</p>
+          </div>
+        </header>
+
+        <section class="panel status-panel">
+          <h2>Status</h2>
+          <pre id="statusOutput"></pre>
+        </section>
+
+        <section class="panel save-panel">
+          <h2>Save Buffer</h2>
+          <textarea id="saveBuffer" aria-label="Save buffer" spellcheck="false"></textarea>
+          <div class="button-row">
+            <button id="saveButton" type="button">Save</button>
+            <button id="loadButton" type="button">Load</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="console" aria-label="arka channel">
+        <section class="panel transcript-panel">
+          <h2>Transcript</h2>
+          <div id="transcriptOutput" class="transcript"></div>
+        </section>
+
+        <form id="commandForm" class="command-bar">
+          <label for="commandInput">&gt;</label>
+          <input id="commandInput" name="command" autocomplete="off" spellcheck="false" />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
