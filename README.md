@@ -150,7 +150,8 @@ The original project note is preserved in `docs/original-idea.md`.
 Current working docs:
 
 - `design.md` - MVP thesis, loop, systems, and maintenance arc
-- `docs/roadmap.md` - path from MVP to larger realisation
+- `docs/roadmap.md` - current operating-surface roadmap
+- `docs/production/codex-direction-phase4.md` - producer direction for the first graphical vertical slice
 - `docs/game_mechanics/opening-sequence.md` - boot text and run debrief notes
 - `docs/game_mechanics/reactor-coolant.md` - coolant telemetry, actions, and pressure beats
 - `docs/game_mechanics/cryostasis-viability.md` - cryostasis telemetry, actions, and sleeper pressure
@@ -162,6 +163,7 @@ Current working docs:
 - `docs/game_mechanics/spatial-containment.md` - schematic sectors, symptoms, and containment
 - `docs/architecture/save-load.md` - run serialisation and command history
 - `docs/lore/arka.md` - arka character and runtime voice capsule
+- `docs/architecture/engine-contracts.md` - canonical truth owners and implementation boundaries
 - `docs/architecture/ai-interpreter.md` - AI boundary and intent pipeline
 - `docs/architecture/playtest-runner.md` - deterministic transcript workflow
 - `docs/architecture/project-operating-system.md` - CI, local skills, and repo rules
@@ -181,6 +183,7 @@ custodian/
 ├── design.md                       # MVP design source
 ├── docs/
 │   ├── architecture/
+│   │   ├── engine-contracts.md     # Canonical truth owners and boundaries
 │   │   ├── ai-interpreter.md       # AI/parser/simulation boundary
 │   │   └── playtest-runner.md      # Deterministic transcript workflow
 │   ├── game_mechanics/
@@ -194,6 +197,8 @@ custodian/
 │   │   └── spatial-containment.md  # Sectors, symptoms, containment
 │   ├── lore/
 │   │   └── arka.md                 # arka voice and character notes
+│   ├── production/
+│   │   └── codex-direction-phase4.md # Producer direction for graphical slice
 │   └── original-idea.md            # Copied seed idea
 ├── src/custodian/
 │   ├── engine.py                   # Deterministic state transitions

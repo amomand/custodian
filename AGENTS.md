@@ -10,8 +10,10 @@ shape of the idea and the current playtest feel over rigid process.
 - `~/obsidian/Projects/Custodian/idea.md` - original vision and thesis.
 - `~/obsidian/Projects/Custodian/roadmap.md` - working long-range plan.
 - `README.md` - maintainer/player overview.
-- `design.md` - current coolant MVP.
+- `design.md` - current terminal MVP.
 - `docs/roadmap.md` - repo copy of the long-range plan.
+- `docs/production/codex-direction-phase4.md` - operating-surface production direction.
+- `docs/architecture/engine-contracts.md` - canonical truth owners and boundaries.
 - `docs/lore/arka.md` - arka character and runtime voice capsule.
 - `docs/architecture/ai-interpreter.md` - current AI/simulation boundary.
 - `docs/architecture/project-operating-system.md` - notes on borrowed process.
