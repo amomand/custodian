@@ -206,6 +206,25 @@ textarea,
   color: var(--arka);
 }
 
+/* Drift atmosphere — subtle and deniable, never a readable tell. The more
+   arka's account drifts, the *calmer and cleaner* its panel reads, while the
+   schematic degrades around it. Driven only by a data hook, never by text. */
+.arka-panel[data-intensity="softened"] {
+  background: linear-gradient(180deg, #16221f, var(--panel));
+}
+
+.arka-panel[data-intensity="filtered"] {
+  background: linear-gradient(180deg, #16241f, var(--panel));
+}
+
+.arka-panel[data-intensity="contradictory-calm"] {
+  background: linear-gradient(180deg, #15261f, var(--panel));
+}
+
+.arka-panel[data-intensity="contradictory-calm"] .arka-advisory p {
+  color: #a7e6df;
+}
+
 .arka-body {
   flex: 1 1 auto;
   overflow: auto;
@@ -507,34 +526,99 @@ button.danger-action:hover:not(:disabled) {
 
 /* ---- Navigation panel ---- */
 
-.route-list {
+.route-graph {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 4px;
+}
+
+.route-origin {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cyan);
+  border-radius: 6px;
+  background: var(--panel-strong);
+}
+
+.route-origin-tag {
+  color: var(--muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.route-origin strong {
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+}
+
+.route-origin-signal,
+.route-origin-purpose {
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.route-origin-plotted {
+  margin-top: 2px;
+  font-size: 0.76rem;
+  color: var(--green);
+}
+
+.route-origin-plotted.muted {
+  color: var(--muted);
+}
+
+.route-branches {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 10px 0 4px;
+  margin-left: 6px;
+  padding-left: 14px;
+  border-left: 1px dashed var(--line-soft);
 }
 
-.route-card {
+.route-branch {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.route-connector {
+  position: absolute;
+  left: -14px;
+  top: 24px;
+  width: 14px;
+  height: 1px;
+  background: var(--line-soft);
+}
+
+.route-node {
+  flex: 1 1 auto;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   padding: 10px;
   background: var(--panel-strong);
 }
 
-.route-card.plotted {
+.route-node[data-plotted="true"] {
   border-color: var(--green);
 }
 
-.route-card.last-jump {
+.route-node[data-lastjump="true"] {
   border-color: var(--cyan);
 }
 
 .route-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .route-head strong {
@@ -549,19 +633,82 @@ button.danger-action:hover:not(:disabled) {
   letter-spacing: 0.08em;
 }
 
-.route-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin-bottom: 8px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.78rem;
-  color: var(--muted);
+.route-flag {
+  margin-left: auto;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
 }
 
-.route-stats b {
+.route-flag.plotted {
+  color: var(--green);
+}
+
+.route-flag.last {
+  color: var(--cyan);
+  margin-left: 6px;
+}
+
+.route-bands {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.band-row {
+  display: grid;
+  grid-template-columns: 72px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.band-label {
+  color: var(--muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.band-pips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.band-pip {
+  width: 14px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--line-soft);
+}
+
+.band-row.band-low .band-pip.on {
+  background: var(--green);
+}
+
+.band-row.band-moderate .band-pip.on,
+.band-row.band-high .band-pip.on {
+  background: var(--amber);
+}
+
+.band-row.band-severe .band-pip.on {
+  background: var(--red);
+}
+
+.band-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.74rem;
   color: var(--text);
-  font-weight: 600;
+}
+
+.route-detail {
+  margin-bottom: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 .nav-fix {
@@ -577,81 +724,154 @@ button.danger-action:hover:not(:disabled) {
 
 /* ---- Schematic ---- */
 
-.schematic-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 8px;
+/* A connected deck diagram: sector nodes positioned on a fixed plan with the
+   adjacency edges drawn behind them. Corruption is visual but every node keeps
+   its textual state (in the label and aria-label), so nothing is hidden. */
+.schematic-diagram {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  aspect-ratio: 300 / 260;
+  min-height: 240px;
 }
 
-.sector {
+.schematic-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.schematic-edge {
+  stroke: var(--line);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.schematic-edge[data-edge="degraded"] {
+  stroke: var(--amber);
+  stroke-dasharray: 5 4;
+  opacity: 0.8;
+}
+
+.schematic-edge[data-edge="severed"] {
+  stroke: var(--line-soft);
+  stroke-dasharray: 2 6;
+  opacity: 0.5;
+}
+
+.sector-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  width: clamp(70px, 24%, 92px);
   text-align: left;
-  padding: 9px 10px;
+  padding: 7px 8px;
   min-height: 0;
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel-strong);
   color: var(--text);
 }
 
-.sector .sector-name {
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.sector .sector-state {
+.sector-node .sector-name {
   font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.sector-node .sector-state {
+  font-size: 0.64rem;
   color: var(--muted);
+  line-height: 1.3;
 }
 
-.sector[data-selected="true"] {
+.sector-node[data-selected="true"] {
   border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
+  z-index: 2;
 }
 
-.sector[data-noise="thin"] {
+.sector-node[data-noise="thin"] {
   border-style: dashed;
 }
 
-.sector[data-noise="disagreeing"] {
+.sector-node[data-noise="disagreeing"] {
   border-color: var(--amber);
   border-style: dashed;
 }
 
-.sector[data-noise="broken"] {
+.sector-node[data-noise="broken"] {
   border-color: var(--red);
+  background: repeating-linear-gradient(135deg, #1d2421 0 6px, #181d1a 6px 12px);
 }
 
-.sector[data-noise="isolated"] {
-  opacity: 0.7;
+.sector-node[data-noise="isolated"] {
+  opacity: 0.72;
 }
 
-.sector[data-noise="blank"] {
-  opacity: 0.45;
+.sector-node[data-noise="blank"] {
+  opacity: 0.5;
   background: #0c0f0d;
+  border-style: dotted;
+  color: var(--muted);
 }
 
-.sector .sector-tag {
+.sector-node .sector-tag {
   align-self: flex-start;
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
   border: 1px solid var(--line-soft);
   border-radius: 4px;
-  padding: 0 5px;
+  padding: 0 4px;
 }
 
-.sector .sector-tag.sealed {
+.sector-node .sector-tag.sealed {
   color: var(--cyan);
   border-color: var(--cyan);
 }
 
-.sector .sector-tag.abandoned {
+.sector-node .sector-tag.abandoned {
   color: var(--red);
   border-color: var(--red);
+}
+
+/* Degraded sectors flicker and drifted labels wobble — but only with motion
+   allowed, and never enough to make the text unreadable. Under reduced motion
+   the global kill-switch below leaves nodes fully static and legible. */
+@media (prefers-reduced-motion: no-preference) {
+  .sector-node[data-noise="thin"],
+  .sector-node[data-noise="disagreeing"] {
+    animation: sector-flicker 4s ease-in-out infinite;
+  }
+
+  .sector-node[data-noise="broken"] {
+    animation: sector-flicker 2.4s steps(6, end) infinite;
+  }
+
+  .schematic-diagram[data-label-instability="selective"] .sector-name {
+    animation: label-drift 6s ease-in-out infinite;
+  }
+
+  .schematic-diagram[data-label-instability="unreconciled"] .sector-name {
+    animation: label-drift 3.2s ease-in-out infinite;
+  }
+}
+
+@keyframes sector-flicker {
+  0%, 46%, 54%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes label-drift {
+  0%, 100% { opacity: 1; letter-spacing: 0.03em; }
+  50% { opacity: 0.78; letter-spacing: 0.08em; }
 }
 
 .schematic-note {
@@ -916,7 +1136,7 @@ button.danger-action:hover:not(:disabled) {
 @media (prefers-reduced-motion: no-preference) {
   button,
   [role="tab"],
-  .sector {
+  .sector-node {
     transition:
       border-color 120ms ease,
       background 120ms ease;

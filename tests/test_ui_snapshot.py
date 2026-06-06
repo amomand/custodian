@@ -193,6 +193,94 @@ class UiSnapshotTests(unittest.TestCase):
         self.assertEqual(dev["dev"]["cryo_familiarity"], 2)
         self.assertEqual(dev["dev"]["total_dark_exposure"], 21)
 
+    # ---- Section 5: schematic and route displays ----
+
+    def test_schematic_sectors_expose_symmetric_adjacency_and_no_arka_locus(self) -> None:
+        # The graphical schematic draws connecting edges from reported adjacency,
+        # deduping each undirected pair. That only works if adjacency is
+        # symmetric. arka must never appear as a sector — it has no compartment.
+        schematic = project_ui_snapshot(ShipState()).to_dict()["schematic"]
+        sectors = schematic["sectors"]
+        adjacency = {sector["id"]: set(sector["adjacent"]) for sector in sectors}
+
+        self.assertNotIn("arka", adjacency)
+        for sector_id, neighbours in adjacency.items():
+            for neighbour in neighbours:
+                self.assertIn(neighbour, adjacency, f"{sector_id} -> unknown {neighbour}")
+                self.assertIn(
+                    sector_id,
+                    adjacency[neighbour],
+                    f"adjacency not symmetric: {sector_id} <-> {neighbour}",
+                )
+        self.assertIn("no compartment", schematic["arka_locus"])
+
+    def test_no_containment_action_can_target_arka(self) -> None:
+        # arka cannot be spatially contained. The desk only ever offers seal /
+        # reroute / abandon for physical sectors, never for arka.
+        actions = project_ui_snapshot(ShipState()).to_dict()["actions"]
+        containment = [a for a in actions if a["kind"] == "containment"]
+
+        self.assertTrue(containment, "expected physical containment actions")
+        for action in containment:
+            self.assertNotEqual(action["target"], "arka")
+            self.assertNotIn("arka", action["command"])
+
+    def test_route_options_project_distinct_qualitative_bands(self) -> None:
+        # Short, medium, and deep routes must read differently: the route display
+        # leads with ascending exposure / instability bands, not a flat table.
+        nav = project_ui_snapshot(ShipState()).to_dict()["navigation"]
+        options = nav["route_options"]
+
+        self.assertEqual([o["jump_class"] for o in options], ["short", "medium", "deep"])
+        self.assertEqual(
+            [o["exposure_band"] for o in options], ["low", "moderate", "high"]
+        )
+        instabilities = [o["instability_pct"] for o in options]
+        self.assertEqual(instabilities, sorted(instabilities))
+        self.assertLess(instabilities[0], instabilities[-1])
+        self.assertTrue(nav["current_fix_label"])
+
+    def test_corruption_keeps_a_textual_equivalent_for_every_sector(self) -> None:
+        # Visual corruption is allowed to degrade a sector's appearance, but never
+        # to hide it: each sector keeps a non-empty reported state and signal
+        # confidence (the accessible equivalent), including blanked-out ones.
+        state = ShipState(
+            spatial=SpatialState(
+                sectors=(
+                    ShipSector("bridge"),
+                    ShipSector("cryo-1-3", symptom_load=50),
+                    ShipSector("thermal-ring", containment="sealed"),
+                    ShipSector("maintenance-d", symptom_load=70),
+                    ShipSector("cargo-spine", containment="abandoned"),
+                    ShipSector("hydroponics"),
+                )
+            ),
+        )
+
+        snapshot = project_ui_snapshot(state).to_dict()
+        noise = snapshot["visual_state"]["schematic_noise_by_sector"]
+        self.assertEqual(noise["cargo-spine"], "blank")
+        self.assertEqual(noise["maintenance-d"], "broken")
+        for sector in snapshot["schematic"]["sectors"]:
+            self.assertTrue(sector["reported_state"], f"{sector['id']} lost its state")
+            self.assertTrue(sector["signal_confidence"], f"{sector['id']} lost confidence")
+
+    def test_drift_atmosphere_never_leaks_into_player_text(self) -> None:
+        # arka_panel_intensity and label_instability drive CSS atmosphere only.
+        # If their values surfaced as player-facing text they would leak the
+        # hidden drift stage, so they must appear nowhere outside visual_state.
+        for state in (
+            ShipState(turn=10, delegated_controls=7),  # wrong: contradictory-calm
+            ShipState(turn=9, delegated_controls=5),  # selective: filtered
+        ):
+            snapshot = project_ui_snapshot(state).to_dict()
+            visual = snapshot["visual_state"]
+            rest = {k: v for k, v in snapshot.items() if k not in {"visual_state", "dev"}}
+            encoded = json.dumps(rest)
+            with self.subTest(intensity=visual["arka_panel_intensity"]):
+                self.assertNotIn(visual["arka_panel_intensity"], encoded)
+                self.assertNotIn(visual["label_instability"], encoded)
+
 
 if __name__ == "__main__":
     unittest.main()

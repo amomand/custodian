@@ -40,9 +40,16 @@ arka and the command channel near the top.
   input pinned beneath it. That readability is the trap.
 - **Active system panel** has four tabs — Coolant, Cryostasis, Navigation,
   Containment — each with arka's summary, raw metrics, and the manual / delegated
-  controls for that system.
-- **Ship schematic** lists sectors with their reported state, signal confidence,
-  and containment. Selecting a sector focuses the Containment tab.
+  controls for that system. The Navigation tab renders the current fix and the
+  candidate routes as a branching route display: each branch leads with
+  qualitative exposure / instability bands and keeps the exact route facts as a
+  detail line, with plot and execute-jump per route.
+- **Ship schematic** renders the sectors as a connected deck diagram: nodes sit
+  on a fixed plan and the connecting edges come from each sector's reported
+  adjacency. Node and edge styling follow reported state, signal confidence, and
+  containment; selecting a node focuses the Containment tab. Every node keeps its
+  textual state in its label and `aria-label`, so corruption never removes the
+  readable version.
 - **Incident / objective** shows the watch objective and any active incident.
 - **Raw telemetry drawer** holds the five raw panels (mission, coolant,
   cryostasis, navigation, schematic) as expandable, source-labelled readouts.
@@ -79,13 +86,21 @@ on a single click.
   familiarity, drift stage, exact Dark exposure, and sector symptom loads never
   appear. Navigation exposure is shown only as a qualitative band, and there is
   no Dark meter.
-- **No drift-driven visual corruption yet.** `visual_state` carries qualitative
-  hints (`arka_panel_intensity`, `label_instability`), but the desk renders arka
-  warmly and consistently. The player still catches arka drift by reading raw
-  panels, not from a visual tell. Mapping corruption to deterministic drift is the
-  job of the schematic / corruption section, with the required accessibility
-  equivalents. The intensity hints must never be printed as visible text, because
-  that would leak the drift stage.
+- **Visual corruption maps to deterministic state, never to new truth.**
+  `visual_state` drives the look only. Sector noise degrades schematic nodes and
+  edges (`steady` / `thin` / `disagreeing` / `broken` / `isolated` / `blank`);
+  drift sets the schematic's `label_instability` wobble and the arka panel's
+  `arka_panel_intensity` atmosphere. The drift atmosphere is deliberately
+  *deniable* — as arka's account rots its panel reads calmer, not noisier — so the
+  player still catches drift by reading raw, not from a legible tell.
+  `arka_panel_intensity` and `label_instability` are applied only as `data-*`
+  hooks and must never be printed as text (that would leak the hidden drift
+  stage); a snapshot test guards against the leak.
+- **Corruption never hides essential information.** Every degraded sector keeps
+  its reported state and signal confidence as text (node label and `aria-label`),
+  and raw panels keep their confidence chips. All corruption motion is gated
+  behind `prefers-reduced-motion` and the reduced-motion toggle, which leave the
+  desk fully static and legible. No Dark percentage is ever shown.
 - **arka cannot be contained.** The schematic exposes `arka_locus` ("no
   compartment...") and offers no seal/reroute/abandon control for arka.
 
@@ -96,6 +111,10 @@ on a single click.
   `Escape` cancels a pending confirmation or blurs the command input.
 - All controls are native buttons/inputs, tab-navigable, with ARIA roles on the
   tablists and labelled landmarks per region.
+- Schematic sectors are native buttons whose `aria-label` carries the full
+  textual state; the connecting edge layer is decorative and `aria-hidden`.
+- Route exposure and instability are shown as labelled bands with the band word
+  (and exact percentage) as text, not pips or colour alone.
 - Metric bands and signal confidence are shown as text, not colour alone.
 - Motion is gated behind `prefers-reduced-motion`, with a manual "Reduced motion"
   toggle in the diagnostics footer.
