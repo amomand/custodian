@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 from custodian.arka_interpreter import ArkaInterpreter
 from custodian.config import Config
 from custodian.engine import GameEngine
-from custodian.web_server import make_server
+from custodian.web_server import _is_loopback_address, make_server
 from custodian.web_session import SessionStore
 
 
@@ -55,6 +55,11 @@ class WebServerTests(unittest.TestCase):
         self.assertIsNone(normal["ui"]["dev"])
         self.assertEqual(dev["ui"]["dev"]["delegated_controls"], 1)
         self.assertIn("total_dark_exposure", dev["ui"]["dev"])
+
+    def test_dev_snapshot_loopback_guard(self) -> None:
+        self.assertTrue(_is_loopback_address("127.0.0.1"))
+        self.assertTrue(_is_loopback_address("::1"))
+        self.assertFalse(_is_loopback_address("192.0.2.10"))
 
     def test_save_load_and_transcript_endpoints(self) -> None:
         created = self._post("/api/session")

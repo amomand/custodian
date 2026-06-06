@@ -207,6 +207,11 @@ def project_ui_snapshot(
     )
 
 
+def project_safe_lines(state: ShipState, lines: tuple[str, ...]) -> tuple[str, ...]:
+    """Apply UI snapshot redactions to legacy web-shell line output."""
+    return tuple(_safe_transcript_line(state, line) for line in lines)
+
+
 def _mission_snapshot(state: ShipState) -> MissionSnapshot:
     mission = state.mission
     plotted = state.navigation.plotted_route

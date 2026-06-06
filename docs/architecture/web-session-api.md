@@ -56,9 +56,9 @@ Returns renderable browser shell state:
 
 It does not serialise the full `ShipState` to the client.
 
-The normal `ui` snapshot hides hidden state such as manual familiarity, exact
-Dark exposure internals, drift stage, and sector symptom loads. Navigation
-exposure is projected into qualitative bands.
+The normal `ui` snapshot and legacy web-shell line fields hide hidden state such
+as manual familiarity, exact Dark exposure internals, drift stage, and sector
+symptom loads. Navigation exposure is projected into qualitative bands.
 
 ### `GET /api/session/{id}/snapshot/dev`
 
@@ -67,7 +67,8 @@ inspection.
 
 This is the explicit developer path for hidden values. It includes fields such
 as drift stage, manual familiarity counters, exact total exposure, and sector
-symptom loads. Normal client rendering should not use it.
+symptom loads. Normal client rendering should not use it. The endpoint only
+responds to loopback clients.
 
 ### `POST /api/session/{id}/command`
 
@@ -115,8 +116,8 @@ Returns structured transcript events and a plain line transcript.
 - `ui.raw_panels` are projected from deterministic state, not arka prose.
 - `ui.actions` are render specs for existing commands; dispatch still routes
   through `GameEngine.handle()`.
-- Hidden values stay out of normal UI snapshots and require the explicit dev
-  snapshot endpoint.
+- Hidden values stay out of normal UI snapshots and legacy browser line fields;
+  they require the explicit loopback-only dev snapshot endpoint.
 - No-model operation remains available through `CUSTODIAN_AI=off` or
   `custodian-web --no-ai`.
 - Terminal play remains available through `python3 main.py`.

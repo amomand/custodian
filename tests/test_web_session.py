@@ -3,7 +3,7 @@ import unittest
 from custodian.arka_interpreter import ArkaInterpreter
 from custodian.config import Config
 from custodian.engine import GameEngine
-from custodian.models import ShipState
+from custodian.models import NavigationState, ShipState
 from custodian.web_session import BrowserSession, SessionStore
 
 
@@ -47,6 +47,26 @@ class WebSessionTests(unittest.TestCase):
         self.assertIsNone(normal["ui"]["dev"])
         self.assertEqual(dev["ui"]["dev"]["delegated_controls"], 1)
         self.assertIn("manual_familiarity", dev["ui"]["dev"])
+
+    def test_web_command_and_snapshot_lines_sanitise_hidden_exposure(self) -> None:
+        session = BrowserSession(
+            "jumping",
+            no_ai_engine(),
+            ShipState(navigation=NavigationState(plotted_route_id="argos-12")),
+        )
+
+        response = session.command("jump")
+        encoded_snapshot = str(response.snapshot)
+        encoded_messages = "\n".join(response.messages)
+
+        self.assertIn("exposure band moderate", encoded_messages)
+        self.assertNotIn("Dark exposure 9", encoded_messages)
+        self.assertNotIn("dark 9", encoded_snapshot)
+        self.assertNotIn("dark_exposure_total", encoded_snapshot)
+        self.assertIn(
+            "exposure band moderate",
+            "\n".join(response.snapshot["transcript_tail"]),
+        )
 
     def test_sessions_do_not_share_mutable_ship_state(self) -> None:
         first = self.store.create()
