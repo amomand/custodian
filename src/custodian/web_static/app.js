@@ -220,9 +220,11 @@ function renderSystemTabs(view) {
         "button",
         {
           class: "system-tab",
+          id: `systab-${id}`,
           role: "tab",
           type: "button",
           "aria-selected": selected ? "true" : "false",
+          "aria-controls": "systemBody",
           tabindex: selected ? "0" : "-1",
           onclick: () => setActiveSystem(id),
         },
@@ -262,6 +264,7 @@ function renderActiveSystem(view) {
   if (ui.activeSystem === "navigation") content = renderNavigation(view);
   else if (ui.activeSystem === "containment") content = renderContainment(view);
   else content = renderSystem(view, ui.activeSystem);
+  els.systemBody.setAttribute("aria-labelledby", `systab-${ui.activeSystem}`);
   replace(els.systemBody, confirmStrip(), content);
   els.systemBody.scrollTop = 0;
 }
@@ -563,6 +566,7 @@ function renderLog(snapshot) {
     logTab("actions", "Action log"),
   );
 
+  els.logBody.setAttribute("aria-labelledby", `logtab-${ui.logView}`);
   if (ui.logView === "actions") {
     const rows = (snapshot.history || []).map((record) =>
       el("div", { class: "log-row" }, [
@@ -586,9 +590,11 @@ function logTab(view, label) {
   return el(
     "button",
     {
+      id: `logtab-${view}`,
       role: "tab",
       type: "button",
       "aria-selected": selected ? "true" : "false",
+      "aria-controls": "logBody",
       onclick: () => {
         ui.logView = view;
         if (ui.snapshot) renderLog(ui.snapshot);
@@ -645,6 +651,9 @@ function dispatchAction(action) {
   if (action.requires_confirmation) {
     ui.pendingConfirm = action;
     renderActiveSystem(ui.snapshot.ui);
+    // Move focus into the confirmation, defaulting to the safe (Cancel) choice.
+    const cancel = els.systemBody.querySelector(".confirm-cancel");
+    if (cancel) cancel.focus();
     return;
   }
   sendCommand(action.command).catch(showFault);
@@ -653,10 +662,10 @@ function dispatchAction(action) {
 function confirmStrip() {
   if (!ui.pendingConfirm) return null;
   const action = ui.pendingConfirm;
-  return el("div", { class: "confirm-strip", role: "alertdialog", "aria-label": "Confirm irreversible action" }, [
+  return el("div", { class: "confirm-strip", role: "alert" }, [
     el("p", { text: confirmMessage(action) }),
     el("button", { type: "button", class: "danger-action", onclick: () => sendCommand(action.command).catch(showFault) }, "Confirm"),
-    el("button", { type: "button", onclick: cancelConfirm }, "Cancel"),
+    el("button", { type: "button", class: "confirm-cancel", onclick: cancelConfirm }, "Cancel"),
   ]);
 }
 
