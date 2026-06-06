@@ -50,6 +50,9 @@ Already in the repo:
   fallback and tests that pass without an API key.
 - A local browser session shell that wraps the same engine command path with
   per-session state, transcript, status output, and save/load.
+- A UI snapshot projection that gives the browser renderable mission,
+  objective, system, navigation, schematic, arka, raw panel, action, transcript,
+  and visual-state data without exposing hidden counters in normal snapshots.
 - A terminal opening, closing debrief, objective block, HUDs, and docs for the
   current mechanics.
 
@@ -118,14 +121,18 @@ Done enough for now:
   the same `GameEngine.handle()` command path.
 - Browser sessions keep separate mutable ship state, transcript output, and
   serialised save/load.
+- The web API exposes a structured `ui` snapshot with deterministic raw panels,
+  generated action specs, qualitative visual state, and an explicit dev-only
+  hidden-state path.
 
-Do not spend more time on browser look and feel until the client has a proper
-snapshot projection and action specs to render.
+Do not spend more time on browser look and feel outside the operating-desk work.
 
-### 3. UI Snapshot Projection (Next)
+### 3. UI Snapshot Projection
 
 Goal: give the web client renderable state without making it reconstruct
 simulation truth.
+
+Status: implemented enough for the first operating desk pass.
 
 Work:
 
@@ -151,7 +158,7 @@ Likely split:
 - Action spec projection.
 - Dev-only snapshot/report hooks if needed.
 
-### 4. Operating Desk UI
+### 4. Operating Desk UI (Next)
 
 Goal: replace the browser status dump with the first real ship operating desk.
 

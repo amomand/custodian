@@ -38,6 +38,14 @@ class CustodianRequestHandler(BaseHTTPRequestHandler):
 
         parts = _api_parts(path)
         try:
+            if (
+                len(parts) == 4
+                and parts[0] == "session"
+                and parts[2] == "snapshot"
+                and parts[3] == "dev"
+            ):
+                self._send_json(self.server.store.snapshot(parts[1], include_dev=True))
+                return
             if len(parts) == 3 and parts[0] == "session" and parts[2] == "snapshot":
                 self._send_json(self.server.store.snapshot(parts[1]))
                 return

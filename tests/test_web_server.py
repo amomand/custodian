@@ -40,6 +40,21 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(snapshot["turn"], 2)
         self.assertEqual(snapshot["history"][0]["raw"], "wait")
         self.assertIn("status", snapshot)
+        self.assertIn("ui", snapshot)
+        self.assertIn("actions", snapshot["ui"])
+        self.assertIsNone(snapshot["ui"]["dev"])
+
+    def test_dev_snapshot_endpoint_is_explicit(self) -> None:
+        created = self._post("/api/session")
+        session_id = created["session_id"]
+        self._post(f"/api/session/{session_id}/command", {"command": "delegate"})
+
+        normal = self._get(f"/api/session/{session_id}/snapshot")
+        dev = self._get(f"/api/session/{session_id}/snapshot/dev")
+
+        self.assertIsNone(normal["ui"]["dev"])
+        self.assertEqual(dev["ui"]["dev"]["delegated_controls"], 1)
+        self.assertIn("total_dark_exposure", dev["ui"]["dev"])
 
     def test_save_load_and_transcript_endpoints(self) -> None:
         created = self._post("/api/session")

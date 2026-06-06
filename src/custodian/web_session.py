@@ -10,6 +10,7 @@ from custodian.engine import GameEngine
 from custodian.models import ShipState
 from custodian.narrative import closing_lines, opening_lines
 from custodian.persistence import dumps, load_state, loads, save_state
+from custodian.ui_snapshot import project_ui_snapshot
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,7 @@ class BrowserSession:
             TranscriptEvent("output", self.last_messages, self.state.turn)
         ]
 
-    def snapshot(self) -> dict:
+    def snapshot(self, *, include_dev: bool = False) -> dict:
         with self._lock:
             return {
                 "session_id": self.session_id,
@@ -60,6 +61,12 @@ class BrowserSession:
                 "last_messages": list(self.last_messages),
                 "transcript_tail": self.transcript_lines(limit=120),
                 "history": [asdict(record) for record in self.state.history[-20:]],
+                "ui": project_ui_snapshot(
+                    self.state,
+                    last_messages=self.last_messages,
+                    transcript_tail=tuple(self.transcript_lines(limit=120)),
+                    include_dev=include_dev,
+                ).to_dict(),
             }
 
     def command(self, command_text: str) -> CommandResponse:
@@ -140,8 +147,8 @@ class SessionStore:
         except KeyError as exc:
             raise SessionNotFound(session_id) from exc
 
-    def snapshot(self, session_id: str) -> dict:
-        return self.get(session_id).snapshot()
+    def snapshot(self, session_id: str, *, include_dev: bool = False) -> dict:
+        return self.get(session_id).snapshot(include_dev=include_dev)
 
     def command(self, session_id: str, command_text: str) -> CommandResponse:
         return self.get(session_id).command(command_text)

@@ -5,10 +5,10 @@
 The browser shell lets the current terminal slice run in a local web page
 without moving ship truth into the client.
 
-It is deliberately small. It is not the future operating desk, UI snapshot
-projection, story layer, or graphical schematic. The web layer owns session
-lifecycle, transcript display, and serialised save/load. The engine still owns
-state transitions.
+It is deliberately small. It is not the future operating desk, story layer, or
+graphical schematic. The web layer owns session lifecycle, transcript display,
+serialised save/load, and UI snapshot delivery. The engine still owns state
+transitions.
 
 ## Runtime Shape
 
@@ -23,6 +23,10 @@ block.
 
 `src/custodian/web_server.py` exposes the local HTTP API with Python standard
 library HTTP tools. It does not add a web framework dependency.
+
+`src/custodian/ui_snapshot.py` projects `ShipState` into renderable web-safe UI
+data: mission, objective, systems, navigation, schematic, arka advisory, raw
+panels, action specs, transcript tail, and visual state.
 
 `src/custodian/web_static/` contains the minimal static client.
 
@@ -48,8 +52,22 @@ Returns renderable browser shell state:
 - last message block,
 - transcript tail,
 - recent command history records.
+- `ui`, a structured snapshot projection for future graphical clients.
 
 It does not serialise the full `ShipState` to the client.
+
+The normal `ui` snapshot hides hidden state such as manual familiarity, exact
+Dark exposure internals, drift stage, and sector symptom loads. Navigation
+exposure is projected into qualitative bands.
+
+### `GET /api/session/{id}/snapshot/dev`
+
+Returns the same snapshot shape with `ui.dev` populated for local developer
+inspection.
+
+This is the explicit developer path for hidden values. It includes fields such
+as drift stage, manual familiarity counters, exact total exposure, and sector
+symptom loads. Normal client rendering should not use it.
 
 ### `POST /api/session/{id}/command`
 
@@ -90,10 +108,15 @@ Returns structured transcript events and a plain line transcript.
 
 - Text commands route through the same engine path as terminal commands.
 - The browser client renders API data and sends player commands; it does not
-  decide game consequences.
+  decide game consequences or reconstruct simulation truth from dataclasses.
 - Sessions do not share mutable `ShipState`.
 - Save/load uses the existing `persistence.py` serialisation format. The HTTP
   API exchanges save text rather than arbitrary local filesystem paths.
+- `ui.raw_panels` are projected from deterministic state, not arka prose.
+- `ui.actions` are render specs for existing commands; dispatch still routes
+  through `GameEngine.handle()`.
+- Hidden values stay out of normal UI snapshots and require the explicit dev
+  snapshot endpoint.
 - No-model operation remains available through `CUSTODIAN_AI=off` or
   `custodian-web --no-ai`.
 - Terminal play remains available through `python3 main.py`.
