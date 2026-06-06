@@ -33,31 +33,19 @@ The terminal proof is now enough. It has done its job.
 
 Already in the repo:
 
-- Deterministic `ShipState` and `GameEngine.handle()` as the simulation core.
-- Reactor coolant and cryostasis systems with real manual controls.
-- Mission time, distance remaining, ship wear, cryostasis decay, route options,
-  current navigation fix, jump execution, and jump consequences.
-- Physical sectors, qualitative schematic symptoms, containment choices, and
-  manual-access consequences.
-- arka summaries that drift from accurate to interpretive, selective, and wrong.
-- Delegation as throughput: one manual action per beat, or arka handles a whole
-  panel.
-- Hidden manual familiarity gained only through manual action.
-- Raw telemetry outside arka's voice.
-- Save/load of serialisable state.
-- Structured command history and deterministic playtest routes.
-- Optional model-backed natural-language interpretation with deterministic
-  fallback and tests that pass without an API key.
-- A local browser session shell that wraps the same engine command path with
-  per-session state, transcript, status output, and save/load.
-- A UI snapshot projection that gives the browser renderable mission,
-  objective, system, navigation, schematic, arka, raw panel, action, transcript,
-  and visual-state data without exposing hidden counters in normal snapshots.
-- An operating desk web client that renders the snapshot into persistent panels
-  and performs manual, delegated, navigation, and containment actions through the
-  same command path as typed input, without typing.
-- A terminal opening, closing debrief, objective block, HUDs, and docs for the
-  current mechanics.
+- A deterministic engine (`ShipState` + `GameEngine.handle()`) covering coolant
+  and cryostasis manual control, the mission clock, routes and jumps, physical
+  sectors and containment, crises, and cryostasis losses.
+- arka's authored drift (accurate, interpretive, selective, wrong), delegation as
+  throughput, hidden manual familiarity, and raw telemetry kept outside arka's
+  voice.
+- Save/load, structured command history, deterministic playtest routes, and
+  optional model-backed interpretation with a no-API-key fallback.
+- A browser layer on the same command path: per-session shell, a web-safe `ui`
+  snapshot that hides internal counters, and an operating desk client that acts
+  through generated buttons or text.
+- Terminal opening, closing debrief, objectives, HUDs, and docs for the current
+  mechanics.
 
 The history matters less than the contract it proved: the game works when
 manual control, delegation, raw telemetry, and arka drift all point at the same
@@ -118,18 +106,11 @@ state of the repo and the amount of risk in that moment.
 
 Done enough for now:
 
-- Production direction and engine contracts are documented.
-- The terminal engine, playtest runner, and save/load path remain usable.
-- The browser session shell can run the current terminal slice locally through
-  the same `GameEngine.handle()` command path.
-- Browser sessions keep separate mutable ship state, transcript output, and
-  serialised save/load.
-- The web API exposes a structured `ui` snapshot with deterministic raw panels,
-  generated action specs, qualitative visual state, and an explicit dev-only
-  hidden-state path.
-- The operating desk web client renders that snapshot into a persistent console
-  with mission, arka, system, schematic, objective, raw, and log panels, and
-  acts through generated action buttons as well as the text channel.
+- Production direction and engine contracts documented; terminal engine, playtest
+  runner, and save/load remain usable.
+- The browser layer — session shell, `ui` snapshot, and operating desk — runs the
+  current slice on the same engine command path, with hidden state behind an
+  explicit dev-only path.
 
 Keep further browser work pointed at the schematic, route, and corruption passes
 rather than general look and feel.
@@ -205,7 +186,7 @@ Likely split:
 - System panels and action buttons.
 - Responsive/accessibility pass.
 
-### 5. Schematic And Route Displays
+### 5. Schematic And Route Displays (Next)
 
 Goal: make the ship and route pressure visible as game state, not flavour.
 
@@ -472,23 +453,25 @@ For docs that also live in the Obsidian vault, sync the vault copy deliberately.
 When starting the next implementation session, use this narrower first task:
 
 ```text
-Read docs/roadmap.md, docs/production/codex-direction-phase4.md if present, and
-the existing architecture docs.
+Read docs/roadmap.md, docs/production/codex-direction-phase4.md, and the existing
+architecture and UI docs.
 
-Plan the UI Snapshot Projection only.
+Plan section 5, Schematic And Route Displays, only.
 
-Do not redesign the operating desk, graphical corruption, story incidents,
-endings, or new lore.
+Do not redesign the operating desk, add story incidents, endings, or new lore.
 Do not let the model or browser client own state.
-Do not break terminal playtests or the browser session shell.
+Do not break terminal playtests, the browser session shell, or the operating desk.
 
 Return:
-1. a repo inventory of the relevant engine, state, persistence, and arka files,
-2. the smallest snapshot dataclass/module shape that can feed the current browser client,
-3. normal player snapshot fields and explicit dev-only fields,
-4. action spec projection strategy for text commands and future buttons,
-5. tests to add before and after the change,
-6. risks where the current code shape may fight this plan.
+1. a repo inventory of the relevant spatial, navigation, and snapshot files,
+2. the smallest snapshot additions needed to render a graphical schematic and
+   route display,
+3. how qualitative sector symptoms and route bands project without leaking hidden
+   values,
+4. the containment and plot/jump actions to surface, reusing existing action specs,
+5. the visual-corruption-to-state mapping and its accessible/reduced-motion
+   equivalents,
+6. tests to add, and risks where the current code shape may fight this plan.
 ```
 
 After that, implement in small PR-sized chunks.
