@@ -89,6 +89,46 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(intent.action, "converse")
         self.assertEqual(intent.reply, DIEGETIC_FALLBACK)
 
+    def test_model_path_accepts_canonical_sector_ids(self) -> None:
+        clear_response_cache()
+        raw = json.dumps(
+            {
+                "action": "seal",
+                "args": {"sector_id": "thermal-ring"},
+                "confidence": 0.9,
+                "rationale": "test",
+            }
+        )
+
+        class FakeOpenAI:
+            def __init__(self, api_key: str) -> None:
+                self.chat = SimpleNamespace(
+                    completions=SimpleNamespace(
+                        create=lambda **_: SimpleNamespace(
+                            choices=[
+                                SimpleNamespace(
+                                    message=SimpleNamespace(content=raw)
+                                )
+                            ]
+                        )
+                    )
+                )
+
+        original = arka_interpreter.OpenAI
+        arka_interpreter.OpenAI = FakeOpenAI
+        try:
+            interpreter = ArkaInterpreter(
+                Config(openai_api_key="test-key", openai_model="gpt-5.4-mini")
+            )
+
+            intent = interpreter.interpret("contain the hot corridor", ShipState())
+        finally:
+            arka_interpreter.OpenAI = original
+            clear_response_cache()
+
+        self.assertEqual(intent.action, "seal")
+        self.assertEqual(intent.args["sector_id"], "thermal-ring")
+
     def test_natural_delegation_phrase_is_rule_based(self) -> None:
         interpreter = ArkaInterpreter(
             Config(openai_api_key="", openai_model="gpt-5.4-mini")

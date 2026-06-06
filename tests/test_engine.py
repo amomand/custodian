@@ -236,6 +236,8 @@ class EngineTests(unittest.TestCase):
 
         result = self.engine.handle(state, "balance")
 
+        self.assertTrue(result.advanced)
+        self.assertEqual(result.state.turn, state.turn + 1)
         self.assertEqual(result.state.manual_familiarity, 0)
         self.assertIn("not reachable", "\n".join(result.messages))
 
