@@ -409,6 +409,7 @@ function routeBranch(view, route) {
     (action) => action.kind === "navigation" && action.command === `plot ${route.jump_class}`,
   );
   const jumpAction = view.actions.find((action) => action.id === "execute-jump");
+  const instability = instabilityBand(route.instability_pct);
   const node = el(
     "div",
     {
@@ -429,8 +430,8 @@ function routeBranch(view, route) {
         bandRow("exposure", route.exposure_band, BAND_STEPS.indexOf(route.exposure_band)),
         bandRow(
           "instability",
-          instabilityBand(route.instability_pct),
-          BAND_STEPS.indexOf(instabilityBand(route.instability_pct)),
+          instability,
+          BAND_STEPS.indexOf(instability),
           `${route.instability_pct}%`,
         ),
       ]),
@@ -643,11 +644,12 @@ function schematicPositions(sectors) {
   return positions;
 }
 
+const EDGE_SEVERED = new Set(["isolated", "blank"]);
+const EDGE_DEGRADED = new Set(["broken", "disagreeing", "thin"]);
+
 function edgeState(a, b) {
-  const severed = new Set(["isolated", "blank"]);
-  const degraded = new Set(["broken", "disagreeing", "thin"]);
-  if (severed.has(a) || severed.has(b)) return "severed";
-  if (degraded.has(a) || degraded.has(b)) return "degraded";
+  if (EDGE_SEVERED.has(a) || EDGE_SEVERED.has(b)) return "severed";
+  if (EDGE_DEGRADED.has(a) || EDGE_DEGRADED.has(b)) return "degraded";
   return "steady";
 }
 
