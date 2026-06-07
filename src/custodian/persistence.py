@@ -16,6 +16,7 @@ from custodian.models import (
     ShipState,
     ShipSector,
     SpatialState,
+    SYSTEM_KEYS,
 )
 
 
@@ -118,7 +119,7 @@ def _behaviour_to_dict(ledger: BehaviourLedger) -> dict:
 def _behaviour_from_data(data: object) -> BehaviourLedger:
     if not isinstance(data, dict):
         return BehaviourLedger()
-    valid_systems = {"coolant", "cryostasis", "navigation"}
+    valid_systems = set(SYSTEM_KEYS)
     standing = tuple(
         system
         for system in _str_tuple(data.get("standing_delegations"))

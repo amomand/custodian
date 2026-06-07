@@ -40,8 +40,6 @@ ALLOWED_ACTIONS = {
     "none",
 }
 
-STANDING_SYSTEMS = {"coolant", "cryostasis", "navigation"}
-
 MANUAL_OPERATIONS = {
     "pump_up",
     "pump_down",

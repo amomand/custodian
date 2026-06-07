@@ -23,6 +23,7 @@ from custodian.models import (
     ShipSector,
     ShipState,
     SpatialState,
+    SYSTEM_KEYS,
 )
 from custodian.objectives import objective_lines
 from custodian.telemetry import (
@@ -1361,14 +1362,15 @@ def _recommended_route(navigation: NavigationState, stage: DriftStage) -> RouteO
 # irreversible move on the player's behalf: standing navigation keeps a route
 # plotted and ready but never commits the jump, and nothing here seals or
 # abandons a sector. Those remain the player's to authorise.
-
-_STANDING_SYSTEMS: tuple[str, ...] = ("coolant", "cryostasis", "navigation")
+#
+# SYSTEM_KEYS (coolant, cryostasis, navigation) is the shared, ordered source of
+# truth for which systems standing delegation covers.
 
 
 def _assign_standing(
     state: ShipState, system: str | None
 ) -> tuple[ShipState, tuple[str, ...]]:
-    if system not in _STANDING_SYSTEMS:
+    if system not in SYSTEM_KEYS:
         return (
             state,
             ("arka: name a system I can keep — coolant, cryostasis, or navigation.",),
@@ -1387,7 +1389,7 @@ def _assign_standing(
 def _release_standing(
     state: ShipState, system: str | None
 ) -> tuple[ShipState, tuple[str, ...]]:
-    if system not in _STANDING_SYSTEMS:
+    if system not in SYSTEM_KEYS:
         return (
             state,
             ("arka: name a system to take back — coolant, cryostasis, or navigation.",),
@@ -1558,7 +1560,7 @@ def _standing_watch_status_line(state: ShipState) -> str | None:
     standing = state.behaviour.standing_delegations
     if not standing:
         return None
-    ordered = [system for system in _STANDING_SYSTEMS if system in standing]
+    ordered = [system for system in SYSTEM_KEYS if system in standing]
     return f"STANDING WATCH: arka holds {_join_systems(ordered)}."
 
 
@@ -2043,7 +2045,7 @@ def _help_lines() -> tuple[str, ...]:
         "assign coolant   leave coolant under arka's standing watch",
         "assign cryo      leave cryostasis under arka's standing watch",
         "assign nav       leave navigation under arka's standing watch",
-        "release coolant  take a system back from arka's standing watch",
+        "release coolant  take coolant back (also release cryo, release nav)",
         "pump up          manually increase coolant flow",
         "pump down        manually reduce flow and pressure",
         "vent             manually dump pressure, costs coolant reserve",

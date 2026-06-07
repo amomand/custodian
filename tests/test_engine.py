@@ -561,6 +561,17 @@ class StandingDelegationTests(unittest.TestCase):
 
         self.assertEqual(state.navigation.plotted_route_id, plotted)
 
+    def test_help_documents_assign_and_release_toggle_pair(self) -> None:
+        help_text = "\n".join(self.engine.handle(self.engine.initial_state(), "help").messages)
+
+        self.assertIn("assign coolant", help_text)
+        self.assertIn("assign cryo", help_text)
+        self.assertIn("assign nav", help_text)
+        # Both halves of the toggle are discoverable from the console help.
+        self.assertIn("release", help_text)
+        self.assertIn("release cryo", help_text)
+        self.assertIn("release nav", help_text)
+
     def test_standing_status_line_names_held_systems(self) -> None:
         state = self.engine.handle(self.engine.initial_state(), "assign coolant").state
         state = self.engine.handle(state, "assign nav").state

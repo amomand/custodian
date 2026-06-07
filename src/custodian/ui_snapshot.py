@@ -19,6 +19,7 @@ from custodian.models import (
     RouteOption,
     ShipSector,
     ShipState,
+    SYSTEM_KEYS,
 )
 from custodian.objectives import objective_lines, trend
 
@@ -472,40 +473,33 @@ def _action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
     return tuple(actions)
 
 
-_STANDING_SYSTEM_LABELS = {
-    "coolant": "coolant",
-    "cryostasis": "cryostasis",
-    "navigation": "navigation",
-}
-
-
 def _standing_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
     # Standing delegation is a posture toggle, not a hidden reliance score: the
-    # player chose it, so it is shown. Each system offers exactly one of assign
-    # (hand it to arka's standing watch) or release (take it back).
+    # player chose it, so it is shown. Each system (SYSTEM_KEYS) offers exactly
+    # one of assign (hand it to arka's standing watch) or release (take it back).
     specs: list[ActionSpec] = []
-    for system, label in _STANDING_SYSTEM_LABELS.items():
+    for system in SYSTEM_KEYS:
         if state.behaviour.is_standing(system):
             specs.append(
                 ActionSpec(
                     id=f"release-{system}",
-                    label=f"Take back {label}",
+                    label=f"Take back {system}",
                     command=f"release {system}",
                     kind="standing",
                     target=system,
-                    detail=f"End arka's standing watch on {label}.",
+                    detail=f"End arka's standing watch on {system}.",
                 )
             )
         else:
             specs.append(
                 ActionSpec(
                     id=f"assign-{system}",
-                    label=f"Leave {label} to arka",
+                    label=f"Leave {system} to arka",
                     command=f"assign {system}",
                     kind="standing",
                     target=system,
                     detail=(
-                        f"arka keeps {label} between watches. Less to read; "
+                        f"arka keeps {system} between watches. Less to read; "
                         "your hands stop practising it."
                     ),
                 )
