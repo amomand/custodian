@@ -28,10 +28,11 @@ allowed to own the reactor.
 
 ```python
 Intent(
-    action="status|raw|delegate|plot|jump|schematic|seal|abandon|reroute|manual|wait|help|quit|converse|none",
+    action="status|raw|delegate|assign|release|focus|unfocus|plot|jump|schematic|seal|abandon|reroute|manual|wait|help|quit|converse|none",
     args={
         "operation": "pump_up|pump_down|vent|flush|balance",
         "target": "coolant|cryo|mission|nav|schematic",
+        "system": "coolant|cryostasis|navigation",
         "route_id": "short|medium|deep|khepri-4|argos-12|carina-edge",
         "sector_id": "bridge|cryo-1-3|thermal-ring|maintenance-d|cargo-spine|hydroponics|arka",
     },
@@ -43,10 +44,11 @@ Intent(
 ```
 
 `manual`, `plot`, `seal`, `abandon`, and `reroute` require arguments. `raw` and
-`delegate` can carry a target. `jump` and `schematic` carry no arguments; the
-engine executes only the currently plotted route or displays the current
-deterministic schematic. The engine ignores model state-change suggestions
-because there are none.
+`delegate` can carry a target. `assign` and `release` require a `system`.
+`focus`, `unfocus`, `jump`, and `schematic` carry no arguments; the engine
+executes only the currently plotted route or displays the current deterministic
+schematic. The engine ignores model state-change suggestions because there are
+none.
 
 ## Authority Boundary
 

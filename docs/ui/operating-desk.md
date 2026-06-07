@@ -80,9 +80,10 @@ shown; the reliance counts behind it are not. See `../game_mechanics/trust-ledge
 
 The `focus` action is the whole-ship form: from the second beat on, the arka panel
 offers "Let arka take the watch". Entering focus mode quiets the desk to arka plus
-a route glance and a high-level ship overview (`ui.focus_mode` drives the layout);
-the command channel stays live and "Take back the watch" (or `Esc`) restores the
-full desk with raw and manual controls. See `zen-mode.md`.
+a route glance and a high-level ship overview (`ui.focus_mode` drives the layout).
+That quiet intentionally removes raw telemetry, dense controls, and command-output
+clutter while the watch is handed over; "Take back the watch" (or `Esc`) restores
+the full desk with raw and manual controls. See `zen-mode.md`.
 
 A button dispatches its action spec's `command` string. UI commands and typed
 commands route through the same `GameEngine.handle()` path, so the action specs
@@ -122,7 +123,8 @@ on a single click.
 
 - `1`–`4` switch the active system tab; arrow keys move within the tablist.
 - `/` focuses the command channel; `.` waits one beat; `?` opens diagnostics;
-  `Escape` cancels a pending confirmation or blurs the command input.
+  `Escape` cancels a pending confirmation, leaves focus mode, or blurs the
+  command input.
 - All controls are native buttons/inputs, tab-navigable, with ARIA roles on the
   tablists and labelled landmarks per region.
 - Schematic sectors are native buttons whose `aria-label` carries the full

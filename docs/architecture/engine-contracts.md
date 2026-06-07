@@ -109,9 +109,10 @@ executes known intent actions only.
   the player's to authorise.
 - Focus ("take the watch" / zen) mode is whole-ship standing delegation plus a
   quiet view. It carries the same cost and the same irreversible-move guard,
-  records its dwell in the ledger, and always leaves raw and the full desk one
-  action (or Escape) away — consensual hiding, never corruption hiding the audit
-  path.
+  records its dwell in the ledger, and deliberately hides raw telemetry, dense
+  controls, and command-output clutter while held. The audit path is that the
+  full desk returns immediately on the player's command (or Escape): consensual
+  hiding, never corruption hiding the way back.
 - Reading raw telemetry may delay arka drift pressure, but does not make the
   player more manually fluent.
 - arka drift is deterministic. It is not ordinary model unreliability.
