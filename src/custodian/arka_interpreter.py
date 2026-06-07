@@ -274,7 +274,7 @@ def _system_prompt() -> str:
         _runtime_voice_capsule()
         + "\n\n"
         + "You are also a strict command interpreter. Output ONLY one JSON object.\n"
-        + "Allowed actions: status, raw, delegate, plot, jump, schematic, seal, abandon, reroute, manual, wait, help, quit, converse, none.\n"
+        + "Allowed actions: status, raw, delegate, assign, release, focus, unfocus, plot, jump, schematic, seal, abandon, reroute, manual, wait, help, quit, converse, none.\n"
         + "For manual coolant action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
         + "For manual cryostasis action, args.operation must be one of: stabilise_bank, reroute_chill, cycle_pods, triage and args.target must be cryo.\n"
         + "Use status for quick arka summaries. Use schematic when the player asks for the ship schematic or sectors.\n"

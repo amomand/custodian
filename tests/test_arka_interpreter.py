@@ -46,6 +46,18 @@ class ArkaInterpreterTests(unittest.TestCase):
                 self.assertEqual(intent.action, action)
                 self.assertEqual(intent.args.get("system"), system)
 
+    def test_system_prompt_allowed_actions_stay_in_sync(self) -> None:
+        # The model-facing "Allowed actions" line must list every action the
+        # interpreter accepts, or AI mode may never emit the newer ones (assign,
+        # release, focus, unfocus) even though validation would accept them.
+        prompt = arka_interpreter._system_prompt()
+        allowed_line = next(
+            line for line in prompt.splitlines() if line.startswith("Allowed actions:")
+        )
+        for action in arka_interpreter.ALLOWED_ACTIONS:
+            with self.subTest(action=action):
+                self.assertIn(action, allowed_line)
+
     def test_focus_and_unfocus_phrases_parse(self) -> None:
         interpreter = ArkaInterpreter(Config(custodian_ai=False))
         enter = ("focus", "zen", "take the watch", "rest your eyes", "quiet the desk")
