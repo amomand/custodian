@@ -20,12 +20,12 @@ const RAW_ORDER = ["mission", "coolant", "cryostasis", "navigation", "schematic"
 // from deterministic engine truth. Unknown sectors fall back to a bottom row.
 const SCHEMATIC_VIEWBOX = [300, 260];
 const SCHEMATIC_LAYOUT = {
-  bridge: [48, 132],
-  "maintenance-d": [135, 56],
-  "cargo-spine": [135, 206],
-  "thermal-ring": [228, 60],
-  "cryo-1-3": [256, 138],
-  hydroponics: [228, 216],
+  bridge: [46, 132],
+  "maintenance-d": [138, 56],
+  "cargo-spine": [138, 206],
+  "thermal-ring": [232, 58],
+  "cryo-1-3": [254, 138],
+  hydroponics: [232, 214],
 };
 
 // Qualitative route bands, weakest to strongest. Used for both exposure (already

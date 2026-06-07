@@ -730,7 +730,8 @@ button.danger-action:hover:not(:disabled) {
 .schematic-diagram {
   position: relative;
   width: 100%;
-  max-width: 440px;
+  min-width: 330px;
+  max-width: 460px;
   margin: 0 auto;
   aspect-ratio: 300 / 260;
   min-height: 240px;
@@ -768,7 +769,7 @@ button.danger-action:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  width: clamp(70px, 24%, 92px);
+  width: clamp(100px, 27%, 112px);
   text-align: left;
   padding: 7px 8px;
   min-height: 0;
@@ -776,16 +777,20 @@ button.danger-action:hover:not(:disabled) {
   border-radius: 6px;
   background: var(--panel-strong);
   color: var(--text);
+  /* Long single-word labels (MAINTENANCE, HYDROPONICS) must break rather than
+     spill past the border; the width above keeps them on one line at common
+     sizes, this guarantees they never clip at the narrowest. */
+  overflow-wrap: anywhere;
 }
 
 .sector-node .sector-name {
-  font-size: 0.72rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
 }
 
 .sector-node .sector-state {
-  font-size: 0.64rem;
+  font-size: 0.58rem;
   color: var(--muted);
   line-height: 1.3;
 }
