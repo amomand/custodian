@@ -66,6 +66,7 @@ by `kind` and `target`:
 | `manual`     | active system panel, by target system               |
 | `delegate`   | active system panel, "Delegate" group               |
 | `standing`   | active system panel, "Standing watch" group         |
+| `focus`      | arka panel — offer to take the whole watch / leave  |
 | `raw`        | active system panel, "Inspect" group                |
 | `navigation` | Navigation tab (plot per route, execute jump)        |
 | `containment`| Containment tab, by selected sector                  |
@@ -76,6 +77,12 @@ by `kind` and `target`:
 on whether arka currently holds it. While a system is held, its panel shows an
 "arka has the watch" badge. Standing posture is the player's own choice, so it is
 shown; the reliance counts behind it are not. See `../game_mechanics/trust-ledger.md`.
+
+The `focus` action is the whole-ship form: from the second beat on, the arka panel
+offers "Let arka take the watch". Entering focus mode quiets the desk to arka plus
+a route glance and a high-level ship overview (`ui.focus_mode` drives the layout);
+the command channel stays live and "Take back the watch" (or `Esc`) restores the
+full desk with raw and manual controls. See `zen-mode.md`.
 
 A button dispatches its action spec's `command` string. UI commands and typed
 commands route through the same `GameEngine.handle()` path, so the action specs

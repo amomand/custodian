@@ -225,6 +225,123 @@ textarea,
   color: #a7e6df;
 }
 
+/* ---- Focus ("take the watch" / zen) mode ---- */
+
+/* Outside focus: a quiet offer to hand arka the whole watch. */
+.focus-offer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-soft);
+}
+
+.focus-enter {
+  width: 100%;
+  color: var(--arka);
+  border: 1px solid var(--arka);
+  background: transparent;
+}
+
+/* In focus: the desk collapses to arka plus a few strategic readouts. The other
+   panels are hidden by the player's own choice, never by corruption. */
+html[data-focus="true"] .desk-grid {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  grid-template-areas: "arka";
+}
+
+html[data-focus="true"] .schematic-panel,
+html[data-focus="true"] .system-panel,
+html[data-focus="true"] .objective-panel,
+html[data-focus="true"] .raw-panel,
+html[data-focus="true"] .log-panel {
+  display: none;
+}
+
+html[data-focus="true"] .arka-panel {
+  grid-area: arka;
+}
+
+.focus-quiet {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.focus-tag {
+  color: var(--arka);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.focus-glance {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.focus-glance > div {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.focus-glance dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.focus-glance dd {
+  margin: 0;
+  color: var(--text, #d7e0db);
+  font-size: 0.92rem;
+}
+
+.focus-leave {
+  align-self: flex-start;
+  color: var(--bg);
+  background: var(--arka);
+  border: 1px solid var(--arka);
+  font-weight: 700;
+}
+
+.focus-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+/* The enter/leave transition is a gentle cross-fade, gated behind reduced
+   motion; reduced motion swaps instantly. */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-reduced-motion="true"]) .desk-grid {
+    transition: grid-template-columns 220ms ease, grid-template-rows 220ms ease;
+  }
+  html:not([data-reduced-motion="true"]) .focus-quiet {
+    animation: focus-fade-in 260ms ease both;
+  }
+}
+
+@keyframes focus-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .arka-body {
   flex: 1 1 auto;
   overflow: auto;

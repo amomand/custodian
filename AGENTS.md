@@ -46,8 +46,10 @@ These are the bits to be careful with even while exploring:
 - The model may interpret and speak as arka; it should not own ship truth.
 - Manual familiarity improves through manual action, not delegation.
 - Trust is behaviour: reliance is recorded in the behaviour ledger, never shown
-  as a meter. Standing delegation may tend a system between watches but must not
-  make irreversible moves (jump, seal, abandon) for the player.
+  as a meter. Standing delegation (and its whole-ship form, focus / "take the
+  watch" mode) may tend systems between watches but must not make irreversible
+  moves (jump, seal, abandon) for the player, and focus mode keeps raw and the
+  full desk one action away.
 - arka should remain competent reassurance, not turn into a cartoon villain.
 - Player-facing text should stay in-world.
 

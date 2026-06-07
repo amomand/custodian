@@ -180,6 +180,7 @@ class UiSnapshot:
     actions: tuple[ActionSpec, ...]
     transcript_tail: tuple[TranscriptEntry, ...]
     visual_state: VisualCorruptionSnapshot
+    focus_mode: bool = False
     dev: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -206,6 +207,7 @@ def project_ui_snapshot(
         actions=_action_specs(state),
         transcript_tail=_transcript_entries(state, transcript_tail),
         visual_state=_visual_state(state),
+        focus_mode=state.behaviour.focus_mode,
         dev=_dev_snapshot(state) if include_dev else None,
     )
 
@@ -468,9 +470,43 @@ def _action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
     ]
     actions.extend(_manual_action_specs(state))
     actions.extend(_standing_action_specs(state))
+    actions.extend(_focus_action_specs(state))
     actions.extend(_route_action_specs(state))
     actions.extend(_containment_action_specs(state))
     return tuple(actions)
+
+
+def _focus_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
+    # Focus ("take the watch" / zen) mode is the whole-ship posture toggle. While
+    # in focus the desk is quiet and only the leave control is offered; otherwise
+    # arka offers to take the watch — but not on the very first beat, so the
+    # player meets the real desk before it can all disappear.
+    if state.behaviour.focus_mode:
+        return (
+            ActionSpec(
+                id="unfocus",
+                label="Take back the watch",
+                command="leave focus",
+                kind="focus",
+                target="ship",
+                detail="Restore the full desk: raw panels and manual controls return.",
+            ),
+        )
+    if state.turn <= 1:
+        return ()
+    return (
+        ActionSpec(
+            id="focus",
+            label="Let arka take the watch",
+            command="focus",
+            kind="focus",
+            target="ship",
+            detail=(
+                "The desk goes quiet — arka holds the whole ship. Calm and less to "
+                "read, paid for in vigilance. Raw is one click away."
+            ),
+        ),
+    )
 
 
 def _standing_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
@@ -722,6 +758,8 @@ def _dev_snapshot(state: ShipState) -> dict[str, Any]:
             "standing_adjustments": behaviour.standing_adjustments,
             "first_delegation_beat": behaviour.first_delegation_beat,
             "first_raw_inspection_beat": behaviour.first_raw_inspection_beat,
+            "focus_mode": behaviour.focus_mode,
+            "focus_beats": behaviour.focus_beats,
         },
     }
 

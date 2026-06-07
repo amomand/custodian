@@ -538,10 +538,12 @@ class BehaviourLedger:
 
     It tracks delegated, manual, and raw actions by system/panel, which systems
     are under standing delegation, how many automatic standing adjustments arka
-    has made, and when the player first delegated and first read raw. The counts
-    stay out of normal UI snapshots: standing posture is the only player-visible
-    part, because the player chose it. Everything else feeds reports, debriefs,
-    and later difficulty, never a "trust: 71%" readout.
+    has made, when the player first delegated and first read raw, and the
+    whole-ship focus ("take the watch" / zen) posture and how long it is held.
+    The counts stay out of normal UI snapshots: the standing and focus postures
+    are the only player-visible parts, because the player chose them. Everything
+    else feeds reports, debriefs, and later difficulty, never a "trust: 71%"
+    readout.
     """
 
     delegated_by_system: dict[str, int] = field(default_factory=dict)
@@ -551,6 +553,8 @@ class BehaviourLedger:
     standing_adjustments: int = 0
     first_delegation_beat: int | None = None
     first_raw_inspection_beat: int | None = None
+    focus_mode: bool = False
+    focus_beats: int = 0
 
     @property
     def total_delegations(self) -> int:
@@ -615,6 +619,21 @@ class BehaviourLedger:
         if count <= 0:
             return self
         return replace(self, standing_adjustments=self.standing_adjustments + count)
+
+    def with_focus(self) -> "BehaviourLedger":
+        if self.focus_mode:
+            return self
+        return replace(self, focus_mode=True)
+
+    def without_focus(self) -> "BehaviourLedger":
+        if not self.focus_mode:
+            return self
+        return replace(self, focus_mode=False)
+
+    def record_focus_beat(self, count: int = 1) -> "BehaviourLedger":
+        if count <= 0:
+            return self
+        return replace(self, focus_beats=self.focus_beats + count)
 
 
 @dataclass(frozen=True)

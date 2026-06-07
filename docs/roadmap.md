@@ -227,29 +227,33 @@ Likely split:
 - Route display and jump flow.
 - Visual corruption and accessibility pass.
 
-### 6. Behaviour Ledger And Standing Delegation (In Progress)
+### 6. Behaviour Ledger And Standing Delegation (Done)
 
 Goal: track how the player relies on arka without exposing a trust meter.
 
-Status: the behaviour ledger and standing delegation are implemented.
-`BehaviourLedger` on `ShipState` records delegated/manual/raw actions by
-system/panel, standing delegations, the standing-adjustment count, and first
-delegation/raw timing, updated from the one canonical command path so UI buttons
-and typed commands share it. It is saved (save version 7, with backward-compatible
-defaults), surfaced in playtest reports and the closing debrief as fiction, and
-exposed only on the loopback dev snapshot — no trust meter. Standing delegation
-(`assign`/`release` a system) lets arka tend coolant, cryostasis, or navigation
-between watches; it improves early outcomes, drives drift, never builds manual
-familiarity, and never makes an irreversible move (standing navigation keeps a
-route ready but never jumps; nothing seals or abandons a sector). The operating
-desk shows standing posture and assign/release controls. See
-`docs/game_mechanics/trust-ledger.md` and `docs/game_mechanics/delegation-and-drift.md`.
+Status: implemented. `BehaviourLedger` on `ShipState` records delegated/manual/raw
+actions by system/panel, standing delegations, the standing-adjustment count,
+first delegation/raw timing, and focus-mode dwell, updated from the one canonical
+command path so UI buttons and typed commands share it. It is saved (save version
+8, with backward-compatible defaults), surfaced in playtest reports and the
+closing debrief as fiction, and exposed only on the loopback dev snapshot — no
+trust meter. Standing delegation (`assign`/`release` a system) lets arka tend
+coolant, cryostasis, or navigation between watches; it improves early outcomes,
+drives drift, never builds manual familiarity, and never makes an irreversible
+move (standing navigation keeps a route ready but never jumps; nothing seals or
+abandons a sector). Whole-ship focus ("take the watch" / zen) mode is the UI
+expression of standing delegation: clicking arka (or `focus`) hands it the whole
+ship and quiets the desk to arka plus a route glance and ship overview, with raw
+and manual one click or `Esc` away; it records dwell and ejects nothing
+irreversible. The operating desk shows standing posture, assign/release controls,
+and the focus toggle. See `docs/game_mechanics/trust-ledger.md`,
+`docs/game_mechanics/delegation-and-drift.md`, and `docs/ui/zen-mode.md`.
 
-Remaining for this section: the whole-ship focus (zen) mode view and its
-reliance signals (`docs/ui/zen-mode.md`), and the ledger fields that only gain
-meaning with the §7 incident layer (arka advice followed/overridden, advice
-followed during contradictions, contradictions caught, irreversible choices on
-arka's recommendation, and zen dwell).
+Deferred to §7 (they only gain meaning with the incident layer): the
+contradiction-aware ledger fields — arka advice followed/overridden, advice
+followed during a contradiction, contradictions caught, irreversible choices on
+arka's recommendation, and whether focus was entered/held during a contradiction
+with an urgent-incident eject.
 
 Work:
 
@@ -492,34 +496,37 @@ For docs that also live in the Obsidian vault, sync the vault copy deliberately.
 
 ## First Implementation Prompt
 
-Sections 3, 4, and 5 are done. Section 6's behaviour ledger and standing
-delegation are done (PR #19); what remains in section 6 is the focus (zen) mode
-view and the ledger fields that depend on the section 7 incident layer. When
+Sections 3, 4, 5, and 6 are done: the operating desk, schematic/route displays,
+the behaviour ledger, standing delegation, and whole-ship focus (zen) mode all
+ship. The next section is 7, Story State, Manifest Anchors, And Incidents. When
 starting the next implementation session, use this narrower first task:
 
 ```text
-Read docs/roadmap.md, docs/ui/zen-mode.md, docs/ui/operating-desk.md,
-docs/game_mechanics/trust-ledger.md, docs/game_mechanics/delegation-and-drift.md,
-and the existing architecture docs.
+Read docs/roadmap.md, docs/production/codex-direction-phase4.md (sections 8, 10,
+and 15), docs/architecture/engine-contracts.md, docs/game_mechanics/trust-ledger.md,
+and the existing architecture and lore docs.
 
-Plan the remaining part of section 6: the whole-ship focus ("take the watch" /
-zen) mode, the UI expression of standing delegation, only.
+Plan section 7, Story State, Manifest Anchors, And Incidents — and only the first
+slice of it: StoryState plus the first three incidents (first useful delegation,
+manifest anchor wobble, route recommendation drift). Do not implement endings.
 
-Do not add story incidents, endings, or new lore (that is section 7).
-Do not let the model or browser client own state.
+Do not let the model or browser client own state or story trigger truth.
 Do not break terminal playtests, the browser session shell, the operating desk,
-the behaviour ledger, or standing delegation.
+the behaviour ledger, standing delegation, or focus mode.
 
 Return:
-1. a repo inventory of the relevant ui_snapshot, web client, behaviour-ledger,
-   and standing-delegation files,
-2. how focus mode quiets raw and manual noise while keeping arka plus a route and
-   ship-overview glance, with raw telemetry always one keystroke away,
-3. the reliance signals to record now (focus-mode dwell) versus the ones that
-   only gain meaning with section 7 (entered/stayed during a contradiction,
-   irreversible-decision ejects to the full desk),
-4. the reduced-motion fallback and keyboard-reachable exit requirements,
-5. tests to add, and risks where the current code shape may fight this plan.
+1. a repo inventory of the engine, state, snapshot, and persistence files the
+   story layer must wrap without forking,
+2. the smallest StoryState shape (act, flags, active/resolved incidents, manifest
+   anchor states, wake record) and how it rides ShipState through save/load,
+3. a deterministic, behaviour-aware incident scheduler design and how the first
+   three incidents trigger from state and the behaviour ledger, not random timing,
+4. how an incident surfaces through the snapshot (arka summary plus raw evidence)
+   without leaking hidden values, reusing existing action specs where possible,
+5. how the now-deferred ledger fields (advice followed/overridden, contradiction
+   catches, focus entered during a contradiction with an urgent-incident eject)
+   become recordable once incidents exist,
+6. tests to add, and risks where the current code shape may fight this plan.
 ```
 
 After that, implement in small PR-sized chunks.

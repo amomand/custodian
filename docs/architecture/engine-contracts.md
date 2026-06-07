@@ -107,6 +107,11 @@ executes known intent actions only.
   behalf: standing navigation keeps a route ready but never commits the jump, and
   standing delegation never seals or abandons a sector. Irreversible choices stay
   the player's to authorise.
+- Focus ("take the watch" / zen) mode is whole-ship standing delegation plus a
+  quiet view. It carries the same cost and the same irreversible-move guard,
+  records its dwell in the ledger, and always leaves raw and the full desk one
+  action (or Escape) away — consensual hiding, never corruption hiding the audit
+  path.
 - Reading raw telemetry may delay arka drift pressure, but does not make the
   player more manually fluent.
 - arka drift is deterministic. It is not ordinary model unreliability.

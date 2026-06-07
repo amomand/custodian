@@ -20,8 +20,8 @@ from custodian.models import (
 )
 
 
-SAVE_VERSION = 7
-SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, 6, SAVE_VERSION}
+SAVE_VERSION = 8
+SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, 6, 7, SAVE_VERSION}
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -113,6 +113,8 @@ def _behaviour_to_dict(ledger: BehaviourLedger) -> dict:
         "standing_adjustments": ledger.standing_adjustments,
         "first_delegation_beat": ledger.first_delegation_beat,
         "first_raw_inspection_beat": ledger.first_raw_inspection_beat,
+        "focus_mode": ledger.focus_mode,
+        "focus_beats": ledger.focus_beats,
     }
 
 
@@ -133,6 +135,8 @@ def _behaviour_from_data(data: object) -> BehaviourLedger:
         standing_adjustments=int(data.get("standing_adjustments", 0)),
         first_delegation_beat=_optional_int(data.get("first_delegation_beat")),
         first_raw_inspection_beat=_optional_int(data.get("first_raw_inspection_beat")),
+        focus_mode=bool(data.get("focus_mode", False)),
+        focus_beats=int(data.get("focus_beats", 0)),
     )
 
 

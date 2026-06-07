@@ -58,6 +58,9 @@ def closing_lines(state: ShipState) -> tuple[str, ...]:
     standing_line = _standing_debrief(state)
     if standing_line is not None:
         lines.append(f"standing watch: {standing_line}")
+    focus_line = _focus_debrief(state)
+    if focus_line is not None:
+        lines.append(f"the quiet: {focus_line}")
     lines.append(f"raw panel: {_raw_debrief(state)}")
     lines.append(_closing_arka_line(state))
     return tuple(lines)
@@ -125,6 +128,17 @@ def _standing_debrief(state: ShipState) -> str | None:
     if behaviour.standing_adjustments <= 6:
         return f"arka held {held} between watches more than you held them yourself."
     return f"you handed {held} to arka and mostly stopped watching what it did with them."
+
+
+def _focus_debrief(state: ShipState) -> str | None:
+    beats = state.behaviour.focus_beats
+    if beats <= 0:
+        return None
+    if beats <= 2:
+        return "you let the desk go quiet for a beat or two, then opened your eyes again."
+    if beats <= 5:
+        return "you spent real time in the quiet, the raw feed dark by your own hand."
+    return "you mostly lived in the quiet, and the ship became a thing arka described to you."
 
 
 def _raw_debrief(state: ShipState) -> str:
