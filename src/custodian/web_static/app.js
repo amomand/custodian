@@ -267,7 +267,7 @@ function focusOffer(action) {
   return el("div", { class: "focus-offer" }, [
     el(
       "button",
-      { type: "button", class: "focus-enter", title: action.detail || "", onclick: () => dispatchAction(action) },
+      { type: "button", class: "focus-enter", title: action.detail || undefined, onclick: () => dispatchAction(action) },
       action.label,
     ),
   ]);
@@ -297,7 +297,7 @@ function focusQuiet(view) {
     leave
       ? el(
           "button",
-          { type: "button", class: "focus-leave", title: leave.detail || "", onclick: () => dispatchAction(leave) },
+          { type: "button", class: "focus-leave", title: leave.detail || undefined, onclick: () => dispatchAction(leave) },
           leave.label,
         )
       : null,
