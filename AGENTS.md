@@ -7,11 +7,12 @@ shape of the idea and the current playtest feel over rigid process.
 
 ## Where To Look
 
+- GitHub issues - the live backlog and long-range plan. The old `roadmap.md` has
+  been retired; remaining work (story/incidents, endings, instrumentation, plus
+  launch docs, README, and CI) lives there.
 - `~/obsidian/Projects/Custodian/idea.md` - original vision and thesis.
-- `~/obsidian/Projects/Custodian/roadmap.md` - working long-range plan.
 - `README.md` - maintainer/player overview.
 - `design.md` - current terminal MVP.
-- `docs/roadmap.md` - repo copy of the long-range plan.
 - `docs/production/codex-direction-phase4.md` - operating-surface production direction.
 - `docs/architecture/engine-contracts.md` - canonical truth owners and boundaries.
 - `docs/architecture/web-session-api.md` - browser session API and snapshot contract.
@@ -46,8 +47,10 @@ These are the bits to be careful with even while exploring:
 - The model may interpret and speak as arka; it should not own ship truth.
 - Manual familiarity improves through manual action, not delegation.
 - Trust is behaviour: reliance is recorded in the behaviour ledger, never shown
-  as a meter. Standing delegation may tend a system between watches but must not
-  make irreversible moves (jump, seal, abandon) for the player.
+  as a meter. Standing delegation (and its whole-ship form, focus / "take the
+  watch" mode) may tend systems between watches but must not make irreversible
+  moves (jump, seal, abandon) for the player, and focus mode keeps raw and the
+  full desk one action away.
 - arka should remain competent reassurance, not turn into a cartoon villain.
 - Player-facing text should stay in-world.
 

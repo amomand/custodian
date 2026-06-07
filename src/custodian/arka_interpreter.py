@@ -26,6 +26,8 @@ ALLOWED_ACTIONS = {
     "delegate",
     "assign",
     "release",
+    "focus",
+    "unfocus",
     "plot",
     "jump",
     "schematic",
@@ -272,7 +274,7 @@ def _system_prompt() -> str:
         _runtime_voice_capsule()
         + "\n\n"
         + "You are also a strict command interpreter. Output ONLY one JSON object.\n"
-        + "Allowed actions: status, raw, delegate, plot, jump, schematic, seal, abandon, reroute, manual, wait, help, quit, converse, none.\n"
+        + "Allowed actions: status, raw, delegate, assign, release, focus, unfocus, plot, jump, schematic, seal, abandon, reroute, manual, wait, help, quit, converse, none.\n"
         + "For manual coolant action, args.operation must be one of: pump_up, pump_down, vent, flush, balance.\n"
         + "For manual cryostasis action, args.operation must be one of: stabilise_bank, reroute_chill, cycle_pods, triage and args.target must be cryo.\n"
         + "Use status for quick arka summaries. Use schematic when the player asks for the ship schematic or sectors.\n"
@@ -284,6 +286,7 @@ def _system_prompt() -> str:
         + "For seal, abandon, and reroute, args.sector_id must be bridge, cryo-1-3, thermal-ring, maintenance-d, cargo-spine, hydroponics, or arka.\n"
         + "Use delegate when the player asks arka/you to handle coolant, cryostasis, or navigation, fix it, take over, or automate.\n"
         + "Use assign when the player leaves a system under arka's ongoing/standing watch, and release when they take a system back. For both, args.system must be coolant, cryostasis, or navigation.\n"
+        + "Use focus when the player asks you to take the whole watch, quiet the desk, rest, or enter zen/focus, and unfocus when they take the watch back, wake, or restore the full desk. focus and unfocus take no args.\n"
         + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not advance maintenance time.\n"
         + "Do not create state changes, telemetry, inventory, maps, or future events.\n"
         + "If asked about reactor condition, base any reply only on context.arka_summary.\n"
@@ -324,6 +327,9 @@ def _intent_from_model_data(data: Any) -> Intent:
             args = {}
         else:
             args = {"system": system}
+
+    if action in {"focus", "unfocus"}:
+        args = {}
 
     if action == "plot":
         route_id = args.get("route_id", "")
@@ -394,6 +400,12 @@ def _rule_based(command: str) -> Intent | None:
     simple = command.rstrip("?!.")
     if simple in _DELEGATION_PHRASES:
         return Intent("delegate", {}, 1.0, rationale="delegation phrase")
+
+    # Focus ("take the watch" / zen) mode. Match before fuzzy correction, which
+    # would otherwise mangle phrases like "wake" into "wait".
+    focus_action = _focus_action(simple)
+    if focus_action is not None:
+        return Intent(focus_action, {}, 1.0, rationale=f"{focus_action} mode")
 
     # Parse standing delegation from the raw command, before fuzzy typo
     # correction can mangle a phrase like "take back navigation" into a
@@ -894,6 +906,14 @@ def _sector_action(command: str) -> tuple[str, str] | None:
     return None
 
 
+def _focus_action(command: str) -> str | None:
+    if command in _FOCUS_ENTER_PHRASES:
+        return "focus"
+    if command in _FOCUS_LEAVE_PHRASES:
+        return "unfocus"
+    return None
+
+
 def _standing_system_from_alias(value: str) -> str | None:
     normalised = " ".join(value.strip().lower().replace("_", " ").split())
     aliases = {
@@ -1244,4 +1264,41 @@ _DELEGATION_PHRASES = {
     "please take over",
     "run automatic",
     "run auto",
+}
+
+_FOCUS_ENTER_PHRASES = {
+    "focus",
+    "focus mode",
+    "zen",
+    "zen mode",
+    "take the watch",
+    "take the whole watch",
+    "take the board",
+    "arka take the watch",
+    "you take the watch",
+    "have the watch",
+    "quiet the desk",
+    "quiet the board",
+    "rest",
+    "rest your eyes",
+    "let me rest",
+}
+
+_FOCUS_LEAVE_PHRASES = {
+    "leave focus",
+    "exit focus",
+    "leave zen",
+    "exit zen",
+    "unfocus",
+    "leave the watch",
+    "take back the watch",
+    "take the watch back",
+    "wake",
+    "wake up",
+    "full desk",
+    "show the desk",
+    "show me the desk",
+    "back to the desk",
+    "open my eyes",
+    "give me the board",
 }

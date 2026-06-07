@@ -582,5 +582,82 @@ class StandingDelegationTests(unittest.TestCase):
         self.assertIn("STANDING WATCH: arka holds coolant and navigation.", joined)
 
 
+class FocusModeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.engine = GameEngine()
+
+    def _past_first_beat(self) -> ShipState:
+        return self.engine.handle(self.engine.initial_state(), "wait").state
+
+    def test_focus_is_refused_on_the_first_beat(self) -> None:
+        result = self.engine.handle(self.engine.initial_state(), "focus")
+
+        self.assertFalse(result.state.behaviour.focus_mode)
+        self.assertIn("not yet", "\n".join(result.messages))
+
+    def test_focus_enters_without_advancing_time(self) -> None:
+        state = self._past_first_beat()
+
+        result = self.engine.handle(state, "focus")
+
+        self.assertFalse(result.advanced)
+        self.assertEqual(result.state.turn, state.turn)
+        self.assertTrue(result.state.behaviour.focus_mode)
+
+    def test_focus_tends_the_whole_ship_and_records_dwell_quietly(self) -> None:
+        state = self.engine.handle(self._past_first_beat(), "focus").state
+
+        result = self.engine.handle(state, "wait")
+        ledger = result.state.behaviour
+
+        # Whole-ship standing delegation: all three systems tended this beat.
+        self.assertEqual(
+            set(ledger.delegated_by_system), {"coolant", "cryostasis", "navigation"}
+        )
+        self.assertEqual(ledger.focus_beats, 1)
+        self.assertEqual(result.state.manual_familiarity, 0)
+        # The desk is quiet: arka does not narrate the tending each beat (the
+        # "standing watch holds…" line is suppressed in focus). The STANDING
+        # WATCH status readout is a separate, deliberate instrument line.
+        self.assertFalse(
+            any("standing watch holds" in message.lower() for message in result.messages)
+        )
+
+    def test_focus_never_jumps_or_makes_irreversible_moves(self) -> None:
+        state = self.engine.handle(self._past_first_beat(), "focus").state
+
+        for _ in range(4):
+            state = self.engine.handle(state, "wait").state
+
+        # arka keeps a route ready but never commits the jump from focus, and
+        # never seals or abandons a sector.
+        self.assertIsNotNone(state.navigation.plotted_route_id)
+        self.assertEqual(state.navigation.jumps_executed, 0)
+        self.assertEqual(state.spatial.sealed_count, 0)
+        self.assertEqual(state.spatial.abandoned_count, 0)
+
+    def test_leave_focus_restores_and_does_not_advance(self) -> None:
+        state = self.engine.handle(self._past_first_beat(), "focus").state
+
+        result = self.engine.handle(state, "leave focus")
+
+        self.assertFalse(result.advanced)
+        self.assertFalse(result.state.behaviour.focus_mode)
+        self.assertIn("take back the watch", "\n".join(result.messages).lower())
+
+    def test_focus_status_line_signals_whole_ship_watch(self) -> None:
+        state = self.engine.handle(self._past_first_beat(), "focus").state
+
+        joined = "\n".join(self.engine.handle(state, "status").messages)
+
+        self.assertIn("arka holds the whole ship", joined)
+
+    def test_help_documents_focus_toggle(self) -> None:
+        help_text = "\n".join(self.engine.handle(self.engine.initial_state(), "help").messages)
+
+        self.assertIn("focus", help_text)
+        self.assertIn("leave focus", help_text)
+
+
 if __name__ == "__main__":
     unittest.main()

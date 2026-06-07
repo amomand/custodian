@@ -1,9 +1,17 @@
 # arka Focus Mode ("take the watch" / zen mode)
 
-Status: design note. Not yet implemented. This is the UI expression of standing
-delegation (roadmap §6) and only gains its teeth once drift and incidents exist
-(roadmap §7). Internal name: focus / zen mode. Player-facing, it is arka offering
-to take the watch.
+Status: implemented. Clicking arka (or the `focus` command) hands it the whole
+ship and quiets the desk to arka plus a route/current-fix glance and a high-level
+ship overview. Raw telemetry, dense controls, and command-output clutter are
+intentionally absent while arka has the watch; the full desk is one click or
+`Esc` away. Mechanically it is the whole-ship form of standing delegation, so it
+carries the same honest cost (drift pressure, no manual familiarity) and never
+makes an irreversible move. The focus dwell is recorded in the behaviour ledger
+(`focus_beats`). It is the UI expression of standing delegation. It already has
+teeth through delegation-driven drift; the story/incident layer adds
+contradiction-aware reliance signals (entered/stayed during a contradiction,
+urgent-incident eject). Internal name: focus / zen mode. Player-facing, it is
+arka offering to take the watch.
 
 ## Concept
 
@@ -24,13 +32,14 @@ Shown in focus mode:
 - arka's advisory and channel,
 - a route / current-fix glance,
 - a ship overview (high-level sector state),
-- the command channel (you can still talk and act).
+- the command channel.
 
 Hidden by player choice:
 
 - raw telemetry panels and per-metric numbers,
 - manual control surfaces,
-- the busy schematic and action density.
+- the busy schematic and action density,
+- command-output clutter that would pull the hard faff back into the quiet.
 
 The cut is deliberate: focus mode keeps the slow, strategic things and removes
 the fast micro-telemetry that arka abstracts away.
@@ -42,8 +51,8 @@ focus mode is the delegated path made literal. The horror is structural: in the
 quiet, the raw telemetry that could contradict arka is gone — by the player's own
 choice. Late in a run the calm persists while the now-hidden raw says the forward
 banks are failing. To catch it the player has to choose to leave the quiet, and a
-player who has grown comfortable will not. That only bites once arka can drift
-(§7); before then focus mode is just a calmer view.
+player who has grown comfortable will not. That already bites mechanically
+through delegation-driven drift; later incidents make the contradiction sharper.
 
 ## Guardrails (so it does not break the design)
 
@@ -51,8 +60,10 @@ player who has grown comfortable will not. That only bites once arka can drift
   lost vigilance and decaying manual familiarity. It must never make outcomes
   strictly better on its own.
 - **Raw stays one step away.** This is *consensual* hiding — the player chose it
-  and can leave instantly. That is categorically different from corruption hiding
-  information, so it does not violate "raw telemetry is always the audit path".
+  and can leave instantly. The point of focus is that the hard, confusing desk is
+  not leaking back into view while arka holds the watch. That is categorically
+  different from corruption hiding information, so it does not violate "raw
+  telemetry is always the audit path".
 - **Irreversible moves eject.** Per the standing-delegation rule, arka cannot seal
   a cryobay, abandon a sector, or commit the final jump from inside focus mode
   without surfacing it and pulling the player out to authorise. Otherwise the
@@ -84,9 +95,9 @@ trust meter.
 
 ## Dependencies
 
-- Roadmap §6 (Behaviour Ledger And Standing Delegation): mechanical home; focus
-  mode is the whole-ship form of standing delegation.
-- Roadmap §7 (Story State, Manifest Anchors, And Incidents): supplies the drift
-  and incidents that make the calm dangerous and let urgent incidents eject the
-  player.
-- Builds on the operating desk (§4) and the `ui` snapshot (§3).
+- Behaviour ledger and standing delegation (done): mechanical home; focus mode is
+  the whole-ship form of standing delegation.
+- The story / manifest-anchor / incident layer (GitHub issue #21): supplies the
+  drift and incidents that make the calm dangerous and let urgent incidents eject
+  the player.
+- Builds on the operating desk and the `ui` snapshot (both done).

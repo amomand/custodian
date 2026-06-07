@@ -29,12 +29,15 @@ engine and serialised by persistence; arka never writes it.
   made under standing delegation.
 - `first_delegation_beat` / `first_raw_inspection_beat` — when the player first
   delegated and first read raw. The gap between them is a habit signal.
+- `focus_mode` / `focus_beats` — the whole-ship focus ("take the watch" / zen)
+  posture and how many beats it has been held. Focus mode is whole-ship standing
+  delegation, so it also feeds `standing_adjustments` and the per-system counts.
 
 Fields for the §7 story layer (advice followed or overridden, advice followed
 during a contradiction, contradictions caught, irreversible choices made on
-arka's recommendation, and focus/zen-mode dwell) are not in the ledger yet. They
-arrive with the incident system that gives "a recommendation" and "a
-contradiction" a deterministic meaning, and with focus mode.
+arka's recommendation, and whether focus was entered/held during a contradiction)
+are not in the ledger yet. They arrive with the incident system that gives "a
+recommendation" and "a contradiction" a deterministic meaning.
 
 ## One Path, One Ledger
 
@@ -52,10 +55,11 @@ comes from manual action only; delegation, standing or one-shot, never builds it
 - The ledger **counts** stay out of normal UI snapshots. They are exposed only on
   the explicit, loopback-only dev snapshot (`ui.dev.behaviour_ledger`) and in
   playtest reports and debriefs (developer/fiction surfaces, not a meter).
-- **Standing-watch posture is shown.** Which systems arka currently holds appears
-  in the snapshot (`systems[id].standing`, `navigation.standing`) and on the
-  desk, because the player chose it. Showing a posture the player set is not a
-  trust meter; hiding the reliance counts is what keeps it honest.
+- **Standing-watch and focus posture are shown.** Which systems arka currently
+  holds (`systems[id].standing`, `navigation.standing`) and whether the player is
+  in focus mode (`focus_mode`) appear in the snapshot and on the desk, because the
+  player chose them. Showing a posture the player set is not a trust meter; hiding
+  the reliance counts (including `focus_beats`) is what keeps it honest.
 
 ## Debrief And Reports
 

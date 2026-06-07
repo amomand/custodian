@@ -46,6 +46,36 @@ class ArkaInterpreterTests(unittest.TestCase):
                 self.assertEqual(intent.action, action)
                 self.assertEqual(intent.args.get("system"), system)
 
+    def test_system_prompt_allowed_actions_stay_in_sync(self) -> None:
+        # The model-facing "Allowed actions" line must list every action the
+        # interpreter accepts, or AI mode may never emit the newer ones (assign,
+        # release, focus, unfocus) even though validation would accept them.
+        prompt = arka_interpreter._system_prompt()
+        allowed_line = next(
+            line for line in prompt.splitlines() if line.startswith("Allowed actions:")
+        )
+        for action in arka_interpreter.ALLOWED_ACTIONS:
+            with self.subTest(action=action):
+                self.assertIn(action, allowed_line)
+
+    def test_focus_and_unfocus_phrases_parse(self) -> None:
+        interpreter = ArkaInterpreter(Config(custodian_ai=False))
+        enter = ("focus", "zen", "take the watch", "rest your eyes", "quiet the desk")
+        leave = ("leave focus", "unfocus", "wake", "take back the watch", "full desk")
+        for text in enter:
+            with self.subTest(enter=text):
+                self.assertEqual(interpreter.interpret(text, ShipState()).action, "focus")
+        for text in leave:
+            with self.subTest(leave=text):
+                self.assertEqual(interpreter.interpret(text, ShipState()).action, "unfocus")
+
+    def test_leave_focus_is_not_corrected_into_wait(self) -> None:
+        # "wake" is one edit from "wait"; the early focus parse must win so the
+        # player can leave the quiet, not accidentally pass a beat.
+        interpreter = ArkaInterpreter(Config(custodian_ai=False))
+
+        self.assertEqual(interpreter.interpret("wake", ShipState()).action, "unfocus")
+
     def test_assign_without_known_system_is_not_a_standing_intent(self) -> None:
         interpreter = ArkaInterpreter(Config(custodian_ai=False))
 

@@ -63,6 +63,8 @@ class PersistenceTests(unittest.TestCase):
                 standing_adjustments=4,
                 first_delegation_beat=2,
                 first_raw_inspection_beat=1,
+                focus_mode=True,
+                focus_beats=3,
             ),
             history=(
                 CommandRecord(
@@ -394,6 +396,41 @@ class PersistenceTests(unittest.TestCase):
 
         self.assertEqual(restored.behaviour.standing_delegations, ("coolant",))
         self.assertEqual(restored.behaviour.standing_adjustments, 2)
+
+    def test_version_seven_save_loads_with_default_focus_state(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 7,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {},
+              "spatial": {},
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "behaviour": {"standing_delegations": ["coolant"]},
+              "history": []
+            }
+            """
+        )
+
+        self.assertFalse(restored.behaviour.focus_mode)
+        self.assertEqual(restored.behaviour.focus_beats, 0)
+        self.assertEqual(restored.behaviour.standing_delegations, ("coolant",))
+
+    def test_focus_state_round_trips(self) -> None:
+        state = self._rich_state()
+
+        restored = loads(dumps(state))
+
+        self.assertTrue(restored.behaviour.focus_mode)
+        self.assertEqual(restored.behaviour.focus_beats, 3)
 
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

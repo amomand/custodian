@@ -121,11 +121,12 @@ Returns structured transcript events and a plain line transcript.
 - `ui.raw_panels` are projected from deterministic state, not arka prose.
 - `ui.actions` are render specs for existing commands; dispatch still routes
   through `GameEngine.handle()`. This includes `kind: "standing"` actions
-  (`assign`/`release`) for standing delegation.
-- Standing-delegation posture is shown (`ui.systems[id].standing`,
-  `ui.navigation.standing`) because the player chose it. The behaviour ledger
-  counts behind it are hidden — they require the loopback-only dev snapshot.
-  There is no visible trust meter.
+  (`assign`/`release`) and `kind: "focus"` actions (`focus`/`leave focus`).
+- Standing-delegation posture (`ui.systems[id].standing`,
+  `ui.navigation.standing`) and focus posture (`ui.focus_mode`) are shown because
+  the player chose them. The behaviour ledger counts behind them — including
+  `focus_beats` — are hidden, requiring the loopback-only dev snapshot. There is
+  no visible trust meter.
 - Action-spec `command` strings must resolve to their intended intent under the
   deterministic (no-AI) interpreter, since that is the default play mode. This is
   covered by a contract test in `tests/test_ui_snapshot.py`.

@@ -53,7 +53,7 @@ one gentle automatic adjustment to that system until the player runs
 
 Standing delegation is meant to be the more tempting form. It reduces cognitive
 load: there is less to read, fewer bars to scan, and the UI can quiet the panel
-entirely (the focus/zen view, roadmap §6). Early, while arka's account is still
+entirely (the focus/zen view). Early, while arka's account is still
 accurate, the automatic adjustments quietly keep the panel inside its box and
 improve outcomes. That is the seduction.
 
@@ -73,9 +73,20 @@ irreversible move on the player's behalf:
   player plotted by hand.
 - Nothing in standing delegation seals or abandons a sector.
 
-Those guards keep the ending the player's history, not arka's fault. See
-`trust-ledger.md` for what the behaviour ledger records and
-`../ui/zen-mode.md` for the focus-mode UI expression of standing delegation.
+Those guards keep the ending the player's history, not arka's fault.
+
+### Focus mode is whole-ship standing delegation
+
+Focus ("take the watch" / zen) mode is the whole-ship form of standing
+delegation. Entering it (clicking arka or `focus`) hands arka every system at
+once and quiets the desk; mechanically it is standing delegation over all of
+coolant, cryostasis, and navigation, so it carries the same honest cost — drift
+pressure each beat, no manual familiarity — and the same irreversible-move guard.
+Its only added pull is calm: there is simply less to read, because the player
+chose to stop looking. The raw layer that could contradict arka is one click (or
+`Esc`) away, and the focus dwell is recorded as a reliance signal. Because it
+tends every system, focus mode drives drift quickly; it is meant to be dipped
+into, not lived in. See `../ui/zen-mode.md` and `trust-ledger.md`.
 
 ## Drift Weighting
 

@@ -111,6 +111,12 @@ class GameEngine:
         if intent.action == "release":
             released_state, messages = _release_standing(state, intent.args.get("system"))
             return StepResult(released_state, correction + messages)
+        if intent.action == "focus":
+            focused_state, messages = _enter_focus(state)
+            return StepResult(focused_state, correction + messages)
+        if intent.action == "unfocus":
+            unfocused_state, messages = _leave_focus(state)
+            return StepResult(unfocused_state, correction + messages)
         if intent.action == "raw":
             target = intent.args.get("target", "coolant")
             if target in {"schematic", "ship", "sectors"}:
@@ -1417,8 +1423,13 @@ def _assign_line(system: str) -> str:
 def _apply_standing_delegation(
     state: ShipState, *, beat: int
 ) -> tuple[ShipState, tuple[str, ...]]:
-    standing = state.behaviour.standing_delegations
-    if not standing or state.outcome is not None:
+    # Focus ("take the watch" / zen) mode is the whole-ship form of standing
+    # delegation: while it is on, arka tends every system, not only the ones the
+    # player assigned individually. The view goes quiet, so the per-beat tending
+    # lines are suppressed and only the focus dwell is recorded.
+    focus = state.behaviour.focus_mode
+    effective = SYSTEM_KEYS if focus else state.behaviour.standing_delegations
+    if not effective or state.outcome is not None:
         return state, ()
 
     stage = drift_stage(state)
@@ -1432,24 +1443,27 @@ def _apply_standing_delegation(
     tended: list[str] = []
     extra_messages: list[str] = []
 
-    if "coolant" in standing:
+    if "coolant" in effective:
         reactor = _standing_coolant_adjustment(reactor, stage)
         delegated += 1
         ledger = ledger.record_delegation("coolant", beat).record_standing_adjustment()
         tended.append("coolant")
-    if "cryostasis" in standing:
+    if "cryostasis" in effective:
         cryo = _standing_cryo_adjustment(cryo, stage)
         delegated += 1
         delegated_cryo += 1
         ledger = ledger.record_delegation("cryostasis", beat).record_standing_adjustment()
         tended.append("cryostasis")
-    if "navigation" in standing:
+    if "navigation" in effective:
         navigation, plotted_now = _standing_nav_adjustment(navigation, stage)
         delegated += 1
         ledger = ledger.record_delegation("navigation", beat).record_standing_adjustment()
         tended.append("navigation")
-        if plotted_now:
+        if plotted_now and not focus:
             extra_messages.append(_standing_nav_line(navigation, stage))
+
+    if focus:
+        ledger = ledger.record_focus_beat()
 
     next_state = replace(
         state,
@@ -1460,6 +1474,11 @@ def _apply_standing_delegation(
         delegated_cryo_controls=delegated_cryo,
         behaviour=ledger,
     )
+
+    # In the quiet of focus mode arka does not narrate each beat; the dwell is
+    # recorded and the calm persists. Outside focus, the standing watch reports.
+    if focus:
+        return next_state, ()
 
     messages: list[str] = []
     panel_systems = [system for system in tended if system in {"coolant", "cryostasis"}]
@@ -1557,11 +1576,58 @@ def _standing_watch_line(systems: list[str], stage: DriftStage) -> str:
 
 
 def _standing_watch_status_line(state: ShipState) -> str | None:
+    if state.behaviour.focus_mode:
+        return "STANDING WATCH: arka holds the whole ship. You have asked for the quiet."
     standing = state.behaviour.standing_delegations
     if not standing:
         return None
     ordered = [system for system in SYSTEM_KEYS if system in standing]
     return f"STANDING WATCH: arka holds {_join_systems(ordered)}."
+
+
+# ---- Focus ("take the watch" / zen) mode ----
+#
+# Focus mode is the whole-ship form of standing delegation: clicking arka (or the
+# focus command) hands it the entire board and the desk goes quiet. Mechanically
+# it reuses standing delegation over every system, so it carries the same honest
+# cost — drift pressure, no manual familiarity — and never makes an irreversible
+# move. Its only added pull is calm: the noise is gone because the player chose to
+# stop looking, and the raw layer that could contradict arka is one keystroke
+# away. Entering and leaving cost no beat; the dwell is recorded in the ledger.
+
+
+def _enter_focus(state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
+    if state.behaviour.focus_mode:
+        return state, ("arka: I already have the watch. Rest.",)
+    if state.turn <= 1:
+        # Earn it: the player meets the real desk first, before arka offers to
+        # make all of it disappear.
+        return (
+            state,
+            (
+                "arka: not yet. Learn the board for a beat before you let me take it.",
+            ),
+        )
+    return (
+        replace(state, behaviour=state.behaviour.with_focus()),
+        (
+            "arka: I've got it. Rest your eyes.",
+            "The desk quiets. Raw panels and manual controls fold away. "
+            "Leave the watch whenever you want them back.",
+        ),
+    )
+
+
+def _leave_focus(state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
+    if not state.behaviour.focus_mode:
+        return state, ("arka: you already have the watch. The board is all yours.",)
+    return (
+        replace(state, behaviour=state.behaviour.without_focus()),
+        (
+            "You take back the watch. The full desk returns, louder than you remember.",
+            "arka: of course. It was here the whole time.",
+        ),
+    )
 
 
 def _join_systems(systems: list[str]) -> str:
@@ -2046,6 +2112,8 @@ def _help_lines() -> tuple[str, ...]:
         "assign cryo      leave cryostasis under arka's standing watch",
         "assign nav       leave navigation under arka's standing watch",
         "release coolant  take coolant back (also release cryo, release nav)",
+        "focus            let arka take the whole watch; the desk goes quiet",
+        "leave focus      take the watch back and restore the full desk",
         "pump up          manually increase coolant flow",
         "pump down        manually reduce flow and pressure",
         "vent             manually dump pressure, costs coolant reserve",

@@ -41,6 +41,7 @@ const ui = {
   openRaw: new Set(),
   logView: "transcript",
   pendingConfirm: null,
+  inFocus: false,
 };
 
 const els = {
@@ -163,6 +164,13 @@ function renderSnapshot(snapshot) {
     ui.selectedSector = (sealable || view.schematic.sectors[0]).id;
   }
 
+  // Focus ("take the watch" / zen) mode quiets the desk to arka plus a few
+  // strategic readouts. The hiding is consensual and one click away from the
+  // full desk, so it never traps the player or hides raw behind corruption. When
+  // the run ends, the full desk returns so the debrief is never hidden.
+  ui.inFocus = Boolean(view.focus_mode) && !view.mission.is_finished;
+  document.documentElement.dataset.focus = ui.inFocus ? "true" : "false";
+
   renderMissionStrip(view, snapshot);
   renderArka(view);
   renderSystemTabs(view);
@@ -236,6 +244,14 @@ function renderArka(view) {
       ),
     );
   }
+
+  if (view.focus_mode && !view.mission.is_finished) {
+    nodes.push(focusQuiet(view));
+  } else {
+    const enter = view.actions.find((action) => action.id === "focus");
+    if (enter) nodes.push(focusOffer(enter));
+  }
+
   replace(els.arkaBody, ...nodes);
 
   // Drift-driven atmosphere only — never printed as text. As arka's account
@@ -243,6 +259,50 @@ function renderArka(view) {
   // speaking while the schematic around it degrades. The player still catches
   // drift by reading raw, not from a legible visual tell.
   els.arkaPanel.dataset.intensity = view.visual_state.arka_panel_intensity || "steady";
+}
+
+// Outside focus: arka offers to take the whole watch. Choosing the quiet is the
+// act of delegation — calm and less to read, paid for in vigilance.
+function focusOffer(action) {
+  return el("div", { class: "focus-offer" }, [
+    el(
+      "button",
+      { type: "button", class: "focus-enter", title: action.detail || undefined, onclick: () => dispatchAction(action) },
+      action.label,
+    ),
+  ]);
+}
+
+// Inside focus: the desk is quiet. Keep arka, a route/current-fix glance, a
+// high-level ship overview, the command channel, and an always-present way back.
+// Raw telemetry and manual controls are one click (or Escape) away.
+function focusQuiet(view) {
+  const leave = view.actions.find((action) => action.id === "unfocus");
+  const nav = view.navigation;
+  const routeLine = nav.plotted_route_label
+    ? `${nav.current_fix_label} — route ready: ${nav.plotted_route_label}`
+    : `${nav.current_fix_label} — no route plotted`;
+
+  const flagged = view.schematic.sectors.filter((s) => s.reported_state !== "nominal");
+  const overview = flagged.length
+    ? flagged.map((s) => `${s.label}: ${s.reported_state}`).join(" · ")
+    : "all sectors nominal";
+
+  return el("div", { class: "focus-quiet", "aria-label": "arka has the watch" }, [
+    el("p", { class: "focus-tag", text: "arka has the watch" }),
+    el("dl", { class: "focus-glance" }, [
+      el("div", {}, [el("dt", { text: "route" }), el("dd", { text: routeLine })]),
+      el("div", {}, [el("dt", { text: "ship" }), el("dd", { text: overview })]),
+    ]),
+    leave
+      ? el(
+          "button",
+          { type: "button", class: "focus-leave", title: leave.detail || undefined, onclick: () => dispatchAction(leave) },
+          leave.label,
+        )
+      : null,
+    el("p", { class: "focus-hint", text: "Raw telemetry and manual controls return the moment you take the watch back (Esc)." }),
+  ]);
 }
 
 function stripArka(line) {
@@ -900,6 +960,10 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     if (ui.pendingConfirm) {
       cancelConfirm();
+      event.preventDefault();
+    } else if (ui.inFocus) {
+      // Esc always takes the watch back — the way out of the quiet is never trapped.
+      sendCommand("leave focus").catch(showFault);
       event.preventDefault();
     } else if (document.activeElement === els.commandInput) {
       els.commandInput.blur();

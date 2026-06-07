@@ -145,6 +145,40 @@ class UiSnapshotTests(unittest.TestCase):
         self.assertEqual(ledger["standing_delegations"], ["coolant"])
         self.assertEqual(ledger["standing_adjustments"], 4)
 
+    def test_focus_action_spec_is_earned_then_toggles(self) -> None:
+        # Focus is not offered on the first beat (earn it), appears as an enter
+        # spec afterward, and flips to a leave spec once held. The snapshot also
+        # carries the focus_mode flag the quiet view renders against.
+        beat_one = project_ui_snapshot(ShipState(turn=1)).to_dict()
+        self.assertFalse(beat_one["focus_mode"])
+        self.assertNotIn("focus", {a["id"] for a in beat_one["actions"]})
+
+        later = project_ui_snapshot(ShipState(turn=3)).to_dict()
+        focus = next(a for a in later["actions"] if a["id"] == "focus")
+        self.assertEqual(focus["command"], "focus")
+        self.assertEqual(focus["kind"], "focus")
+        self.assertFalse(later["focus_mode"])
+
+        held = project_ui_snapshot(
+            ShipState(turn=3, behaviour=BehaviourLedger(focus_mode=True))
+        ).to_dict()
+        self.assertTrue(held["focus_mode"])
+        by_id = {a["id"]: a for a in held["actions"]}
+        self.assertEqual(by_id["unfocus"]["command"], "leave focus")
+        self.assertNotIn("focus", by_id)
+
+    def test_focus_dwell_is_dev_only_not_in_normal_snapshot(self) -> None:
+        state = ShipState(turn=4, behaviour=BehaviourLedger(focus_mode=True, focus_beats=5))
+
+        normal = project_ui_snapshot(state).to_dict()
+        # The posture (focus_mode) is shown; the dwell count is not.
+        self.assertTrue(normal["focus_mode"])
+        self.assertNotIn("focus_beats", json.dumps(normal))
+
+        dev = project_ui_snapshot(state, include_dev=True).to_dict()
+        self.assertEqual(dev["dev"]["behaviour_ledger"]["focus_beats"], 5)
+        self.assertTrue(dev["dev"]["behaviour_ledger"]["focus_mode"])
+
     def test_action_specs_resolve_under_deterministic_interpreter(self) -> None:
         # Every desk button dispatches its action-spec `command` through the same
         # engine path as text. Those strings must resolve to the intended intent
@@ -155,6 +189,7 @@ class UiSnapshotTests(unittest.TestCase):
             "raw": {"raw"},
             "delegate": {"delegate"},
             "standing": {"assign", "release"},
+            "focus": {"focus", "unfocus"},
             "manual": {"manual"},
             "navigation": {"plot", "jump"},
             "containment": {"seal", "reroute", "abandon"},
@@ -166,6 +201,9 @@ class UiSnapshotTests(unittest.TestCase):
             # A standing delegation flips assign specs to release specs, so this
             # state exercises the "release coolant" command path too.
             ShipState(behaviour=BehaviourLedger(standing_delegations=("coolant",))),
+            # turn>1 surfaces the "focus" enter spec; focus_mode surfaces "leave focus".
+            ShipState(turn=3),
+            ShipState(turn=3, behaviour=BehaviourLedger(focus_mode=True)),
         ):
             for action in project_ui_snapshot(state).to_dict()["actions"]:
                 with self.subTest(action=action["id"]):

@@ -67,6 +67,18 @@ class PlaytestTests(unittest.TestCase):
         self.assertIn("arka drift: wrong", summary)
         self.assertEqual(report.forbidden_hits, ())
 
+    def test_focus_mode_scenario_records_dwell_and_reliance(self) -> None:
+        report = run_scenario(SCENARIOS["focus-mode"])
+        summary = "\n".join(report.summary_lines())
+
+        # Living in the quiet records dwell, never builds hands, and reaches wrong
+        # drift — calm bought with vigilance.
+        self.assertGreater(report.final_state.behaviour.focus_beats, 0)
+        self.assertEqual(report.final_state.manual_familiarity, 0)
+        self.assertIn("focus dwell beats:", summary)
+        self.assertIn("arka drift: wrong", summary)
+        self.assertEqual(report.forbidden_hits, ())
+
     def test_transcript_includes_opening_commands_and_closing(self) -> None:
         report = run_commands(("status", "quit"))
         transcript = "\n".join(report.transcript_lines())

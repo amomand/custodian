@@ -36,7 +36,7 @@ Look for changes that might accidentally make any of these true:
 - `src/custodian/arka_interpreter.py`
 - `docs/architecture/ai-interpreter.md`
 - `design.md`
-- `docs/roadmap.md`
+- `docs/production/codex-direction-phase4.md`
 - `tests/**`
 
 ## Review Procedure
