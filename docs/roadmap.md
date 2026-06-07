@@ -492,28 +492,34 @@ For docs that also live in the Obsidian vault, sync the vault copy deliberately.
 
 ## First Implementation Prompt
 
-When starting the next implementation session, use this narrower first task:
+Sections 3, 4, and 5 are done. Section 6's behaviour ledger and standing
+delegation are done (PR #19); what remains in section 6 is the focus (zen) mode
+view and the ledger fields that depend on the section 7 incident layer. When
+starting the next implementation session, use this narrower first task:
 
 ```text
-Read docs/roadmap.md, docs/production/codex-direction-phase4.md, and the existing
-architecture and UI docs.
+Read docs/roadmap.md, docs/ui/zen-mode.md, docs/ui/operating-desk.md,
+docs/game_mechanics/trust-ledger.md, docs/game_mechanics/delegation-and-drift.md,
+and the existing architecture docs.
 
-Plan section 5, Schematic And Route Displays, only.
+Plan the remaining part of section 6: the whole-ship focus ("take the watch" /
+zen) mode, the UI expression of standing delegation, only.
 
-Do not redesign the operating desk, add story incidents, endings, or new lore.
+Do not add story incidents, endings, or new lore (that is section 7).
 Do not let the model or browser client own state.
-Do not break terminal playtests, the browser session shell, or the operating desk.
+Do not break terminal playtests, the browser session shell, the operating desk,
+the behaviour ledger, or standing delegation.
 
 Return:
-1. a repo inventory of the relevant spatial, navigation, and snapshot files,
-2. the smallest snapshot additions needed to render a graphical schematic and
-   route display,
-3. how qualitative sector symptoms and route bands project without leaking hidden
-   values,
-4. the containment and plot/jump actions to surface, reusing existing action specs,
-5. the visual-corruption-to-state mapping and its accessible/reduced-motion
-   equivalents,
-6. tests to add, and risks where the current code shape may fight this plan.
+1. a repo inventory of the relevant ui_snapshot, web client, behaviour-ledger,
+   and standing-delegation files,
+2. how focus mode quiets raw and manual noise while keeping arka plus a route and
+   ship-overview glance, with raw telemetry always one keystroke away,
+3. the reliance signals to record now (focus-mode dwell) versus the ones that
+   only gain meaning with section 7 (entered/stayed during a contradiction,
+   irreversible-decision ejects to the full desk),
+4. the reduced-motion fallback and keyboard-reachable exit requirements,
+5. tests to add, and risks where the current code shape may fight this plan.
 ```
 
 After that, implement in small PR-sized chunks.
