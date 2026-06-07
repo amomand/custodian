@@ -14,6 +14,24 @@ const SYSTEM_TABS = [
 
 const RAW_ORDER = ["mission", "coolant", "cryostasis", "navigation", "schematic"];
 
+// The ship schematic is drawn as a connected diagram: sector nodes are placed on
+// this fixed deck plan and the connecting lines come from each sector's reported
+// adjacency. Positions are presentation only — adjacency and state are projected
+// from deterministic engine truth. Unknown sectors fall back to a bottom row.
+const SCHEMATIC_VIEWBOX = [300, 260];
+const SCHEMATIC_LAYOUT = {
+  bridge: [46, 132],
+  "maintenance-d": [138, 56],
+  "cargo-spine": [138, 206],
+  "thermal-ring": [232, 58],
+  "cryo-1-3": [254, 138],
+  hydroponics: [232, 214],
+};
+
+// Qualitative route bands, weakest to strongest. Used for both exposure (already
+// projected as a band) and instability (banded client-side from the route fact).
+const BAND_STEPS = ["none", "low", "moderate", "high", "severe"];
+
 // UI-local state, preserved across snapshot re-renders.
 const ui = {
   sessionId: null,
@@ -27,6 +45,7 @@ const ui = {
 
 const els = {
   missionStrip: document.querySelector("#missionStrip"),
+  arkaPanel: document.querySelector("#arkaPanel"),
   arkaBody: document.querySelector("#arkaBody"),
   systemTabs: document.querySelector("#systemTabs"),
   systemBody: document.querySelector("#systemBody"),
@@ -68,6 +87,21 @@ function el(tag, props = {}, children = []) {
 
 function replace(parent, ...nodes) {
   parent.replaceChildren(...nodes.filter(Boolean));
+}
+
+// SVG nodes need the SVG namespace; the schematic edge layer is the only place
+// we build them. Attributes only — the edges are decorative and aria-hidden.
+function svgEl(tag, props = {}, children = []) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (value == null || value === false) continue;
+    node.setAttribute(key, value === true ? "" : String(value));
+  }
+  for (const child of Array.isArray(children) ? children : [children]) {
+    if (child == null || child === false) continue;
+    node.append(child.nodeType ? child : document.createTextNode(String(child)));
+  }
+  return node;
 }
 
 // ---- API ----
@@ -203,6 +237,12 @@ function renderArka(view) {
     );
   }
   replace(els.arkaBody, ...nodes);
+
+  // Drift-driven atmosphere only — never printed as text. As arka's account
+  // rots, its panel reads *calmer*, not noisier: the same warm competence keeps
+  // speaking while the schematic around it degrades. The player still catches
+  // drift by reading raw, not from a legible visual tell.
+  els.arkaPanel.dataset.intensity = view.visual_state.arka_panel_intensity || "steady";
 }
 
 function stripArka(line) {
@@ -329,63 +369,109 @@ function trendGlyph(trend) {
 // ---- Navigation ----
 
 function renderNavigation(view) {
-  const nav = view.navigation;
   const frag = document.createDocumentFragment();
-
   frag.append(
     el("div", { class: "system-head" }, [
       el("h3", { text: "Navigation" }),
-      el("span", { class: "status-badge" }, `exposure ${nav.exposure_band}`),
+      el("span", { class: "status-badge" }, `exposure ${view.navigation.exposure_band}`),
     ]),
-    el("p", { class: "nav-fix" }, [
-      el("b", { text: nav.current_fix_label }),
-      ` — ${nav.current_purpose}. signal: ${nav.current_signal}.`,
-      nav.plotted_route_label
-        ? el("span", {}, [el("br"), `plotted: `, el("b", { text: nav.plotted_route_label })])
-        : null,
-    ]),
-    el(
-      "div",
-      { class: "route-list" },
-      nav.route_options.map((route) => routeCard(view, route)),
-    ),
+    routeGraph(view),
     actionGroup("Delegate", filterActions(view.actions, "delegate", "navigation"), "delegate"),
     actionGroup("Inspect", filterActions(view.actions, "raw", "navigation")),
   );
   return frag;
 }
 
-function routeCard(view, route) {
+// Current fix plus the candidate routes drawn as a branching display, not an
+// expected-value table: each branch leads with qualitative bands and keeps the
+// exact route facts as a detail line. Raw nav still holds the full table.
+function routeGraph(view) {
+  const nav = view.navigation;
+  const origin = el("div", { class: "route-origin", "aria-label": "Current fix" }, [
+    el("span", { class: "route-origin-tag", text: "current fix" }),
+    el("strong", { text: nav.current_fix_label }),
+    el("span", { class: "route-origin-signal", text: `signal: ${nav.current_signal}` }),
+    el("span", { class: "route-origin-purpose", text: nav.current_purpose }),
+    nav.plotted_route_label
+      ? el("span", { class: "route-origin-plotted" }, ["plotted: ", el("b", { text: nav.plotted_route_label })])
+      : el("span", { class: "route-origin-plotted muted", text: "no route plotted" }),
+  ]);
+  const branches = el(
+    "div",
+    { class: "route-branches" },
+    nav.route_options.map((route) => routeBranch(view, route)),
+  );
+  return el("div", { class: "route-graph" }, [origin, branches]);
+}
+
+function routeBranch(view, route) {
   const plotAction = view.actions.find(
     (action) => action.kind === "navigation" && action.command === `plot ${route.jump_class}`,
   );
   const jumpAction = view.actions.find((action) => action.id === "execute-jump");
-  const cls = ["route-card", route.is_plotted ? "plotted" : "", route.is_last_jump ? "last-jump" : ""]
-    .join(" ")
-    .trim();
-
-  return el("div", { class: cls }, [
-    el("div", { class: "route-head" }, [
-      el("strong", { text: route.label }),
-      el("span", { class: "route-class", text: route.jump_class }),
-    ]),
-    el("div", { class: "route-stats" }, [
-      kv("dist", route.distance_label),
-      kv("days", route.elapsed_days),
-      kv("exposure", route.exposure_band),
-      kv("instability", `${route.instability_pct}%`),
-      kv("wear", `+${route.wear_delta_pct}`),
-      kv("cryo-age", `+${route.cryo_decay_delta_pct}`),
-    ]),
-    el("div", { class: "action-row" }, [
-      plotAction ? actionButton(plotAction) : null,
-      route.is_plotted && jumpAction ? actionButton(jumpAction) : null,
-    ]),
+  const instability = instabilityBand(route.instability_pct);
+  const node = el(
+    "div",
+    {
+      class: "route-node",
+      dataset: {
+        plotted: route.is_plotted ? "true" : "false",
+        lastjump: route.is_last_jump ? "true" : "false",
+      },
+    },
+    [
+      el("div", { class: "route-head" }, [
+        el("strong", { text: route.label }),
+        el("span", { class: "route-class", text: route.jump_class }),
+        route.is_plotted ? el("span", { class: "route-flag plotted", text: "plotted" }) : null,
+        route.is_last_jump ? el("span", { class: "route-flag last", text: "last jump" }) : null,
+      ]),
+      el("div", { class: "route-bands" }, [
+        bandRow("exposure", route.exposure_band, BAND_STEPS.indexOf(route.exposure_band)),
+        bandRow(
+          "instability",
+          instability,
+          BAND_STEPS.indexOf(instability),
+          `${route.instability_pct}%`,
+        ),
+      ]),
+      el("div", {
+        class: "route-detail",
+        text: `${route.distance_label} · ${route.elapsed_days} days · wear +${route.wear_delta_pct} · cryo-age +${route.cryo_decay_delta_pct}`,
+      }),
+      el("div", { class: "action-row" }, [
+        plotAction ? actionButton(plotAction) : null,
+        route.is_plotted && jumpAction ? actionButton(jumpAction) : null,
+      ]),
+    ],
+  );
+  return el("div", { class: "route-branch" }, [
+    el("span", { class: "route-connector", "aria-hidden": "true" }),
+    node,
   ]);
 }
 
-function kv(key, value) {
-  return el("span", {}, [`${key} `, el("b", { text: String(value) })]);
+function instabilityBand(pct) {
+  if (pct >= 30) return "severe";
+  if (pct >= 20) return "high";
+  if (pct >= 10) return "moderate";
+  if (pct > 0) return "low";
+  return "none";
+}
+
+// A four-pip qualitative indicator plus the band word as the text equivalent.
+// `filled` is the band index (none=0 … severe=4); the pips are aria-hidden.
+function bandRow(label, bandText, filled, extra) {
+  const pips = el(
+    "span",
+    { class: "band-pips", "aria-hidden": "true" },
+    [0, 1, 2, 3].map((index) => el("span", { class: `band-pip ${index < filled ? "on" : ""}`.trim() })),
+  );
+  return el("div", { class: `band-row band-${bandText}` }, [
+    el("span", { class: "band-label", text: label }),
+    pips,
+    el("span", { class: "band-text", text: extra ? `${bandText} (${extra})` : bandText }),
+  ]);
 }
 
 // ---- Containment ----
@@ -450,34 +536,130 @@ function selectSector(id) {
 
 function renderSchematic(view) {
   const noise = view.visual_state.schematic_noise_by_sector || {};
-  const grid = el(
-    "div",
-    { class: "schematic-grid" },
-    view.schematic.sectors.map((sector) =>
-      el(
-        "button",
-        {
-          type: "button",
-          class: "sector",
-          dataset: {
-            selected: sector.id === ui.selectedSector ? "true" : "false",
-            noise: noise[sector.id] || "steady",
-          },
-          onclick: () => focusSector(sector.id),
-        },
-        [
-          el("span", { class: "sector-name", text: sector.label }),
-          el("span", { class: "sector-state", text: `${sector.reported_state} · ${sector.signal_confidence}` }),
-          containmentTag(sector),
-        ],
-      ),
-    ),
+  const sectors = view.schematic.sectors;
+  const [vw, vh] = SCHEMATIC_VIEWBOX;
+  const positions = schematicPositions(sectors);
+
+  // Connecting lines from reported adjacency, each undirected edge drawn once.
+  const drawn = new Set();
+  const lines = [];
+  for (const sector of sectors) {
+    for (const otherId of sector.adjacent || []) {
+      if (!positions[otherId]) continue;
+      const key = [sector.id, otherId].sort().join("|");
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+      const [x1, y1] = positions[sector.id];
+      const [x2, y2] = positions[otherId];
+      lines.push(
+        svgEl("line", {
+          x1,
+          y1,
+          x2,
+          y2,
+          class: "schematic-edge",
+          "data-edge": edgeState(noise[sector.id], noise[otherId]),
+        }),
+      );
+    }
+  }
+  const edges = svgEl(
+    "svg",
+    {
+      class: "schematic-edges",
+      viewBox: `0 0 ${vw} ${vh}`,
+      preserveAspectRatio: "xMidYMid meet",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    lines,
   );
+
+  const nodes = sectors.map((sector) => {
+    const [x, y] = positions[sector.id];
+    const selected = sector.id === ui.selectedSector;
+    return el(
+      "button",
+      {
+        type: "button",
+        class: "sector-node",
+        style: `left:${(x / vw) * 100}%;top:${(y / vh) * 100}%`,
+        dataset: {
+          selected: selected ? "true" : "false",
+          noise: noise[sector.id] || "steady",
+          containment: sector.containment,
+        },
+        // The aria-label carries the full textual state so the node stays
+        // legible regardless of any visual corruption (accessible equivalent).
+        "aria-label": sectorAriaLabel(sector),
+        "aria-pressed": selected ? "true" : "false",
+        onclick: () => focusSector(sector.id),
+      },
+      [
+        el("span", { class: "sector-name", text: sector.label }),
+        el("span", {
+          class: "sector-state",
+          "aria-hidden": "true",
+          text: `${sector.reported_state} · ${sector.signal_confidence}`,
+        }),
+        containmentTag(sector),
+      ],
+    );
+  });
+
+  const diagram = el(
+    "div",
+    {
+      class: "schematic-diagram",
+      role: "group",
+      "aria-label": "Ship sector diagram",
+      // Label instability is drift-driven atmosphere, applied as a data hook
+      // for CSS only. It must never be printed as text (it would leak the
+      // hidden drift stage), and it never hides the sector labels.
+      dataset: { labelInstability: view.visual_state.label_instability || "stable" },
+    },
+    [edges, ...nodes],
+  );
+
   replace(
     els.schematicBody,
-    grid,
+    diagram,
     el("p", { class: "schematic-note", text: view.schematic.arka_locus }),
   );
+}
+
+function schematicPositions(sectors) {
+  const positions = {};
+  const unknown = sectors.filter((sector) => !SCHEMATIC_LAYOUT[sector.id]);
+  let fallbackIndex = 0;
+  for (const sector of sectors) {
+    if (SCHEMATIC_LAYOUT[sector.id]) {
+      positions[sector.id] = SCHEMATIC_LAYOUT[sector.id];
+    } else {
+      const span = SCHEMATIC_VIEWBOX[0] / (unknown.length + 1);
+      positions[sector.id] = [span * (fallbackIndex + 1), SCHEMATIC_VIEWBOX[1] - 26];
+      fallbackIndex += 1;
+    }
+  }
+  return positions;
+}
+
+const EDGE_SEVERED = new Set(["isolated", "blank"]);
+const EDGE_DEGRADED = new Set(["broken", "disagreeing", "thin"]);
+
+function edgeState(a, b) {
+  if (EDGE_SEVERED.has(a) || EDGE_SEVERED.has(b)) return "severed";
+  if (EDGE_DEGRADED.has(a) || EDGE_DEGRADED.has(b)) return "degraded";
+  return "steady";
+}
+
+function sectorAriaLabel(sector) {
+  return [
+    `${sector.label}, ${sector.function}`,
+    `reported ${sector.reported_state}`,
+    `signal ${sector.signal_confidence}`,
+    `containment ${sector.containment}${sector.rerouted ? ", rerouted" : ""}`,
+  ].join("; ");
 }
 
 function containmentTag(sector) {

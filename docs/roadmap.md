@@ -186,9 +186,18 @@ Likely split:
 - System panels and action buttons.
 - Responsive/accessibility pass.
 
-### 5. Schematic And Route Displays (Next)
+### 5. Schematic And Route Displays
 
 Goal: make the ship and route pressure visible as game state, not flavour.
+
+Status: implemented. The operating desk now renders the ship schematic as a
+connected graphical deck diagram from `SpatialState` (sector nodes plus adjacency
+edges), the navigation tab as a branching route display with qualitative
+exposure / instability bands, and drift- and symptom-driven visual corruption
+wired to `visual_state` with reduced-motion and textual equivalents. No Dark
+percentage is shown and arka still has no sector. See
+`docs/ui/operating-desk.md` and `docs/lore/the-dark.md`. Containment and
+plot/jump reuse the existing action specs.
 
 Work:
 
@@ -218,7 +227,7 @@ Likely split:
 - Route display and jump flow.
 - Visual corruption and accessibility pass.
 
-### 6. Behaviour Ledger And Standing Delegation
+### 6. Behaviour Ledger And Standing Delegation (Next)
 
 Goal: track how the player relies on arka without exposing a trust meter.
 

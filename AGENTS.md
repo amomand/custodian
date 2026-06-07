@@ -17,6 +17,7 @@ shape of the idea and the current playtest feel over rigid process.
 - `docs/architecture/web-session-api.md` - browser session API and snapshot contract.
 - `docs/ui/operating-desk.md` - the graphical operating desk web client.
 - `docs/lore/arka.md` - arka character and runtime voice capsule.
+- `docs/lore/the-dark.md` - how the Dark functions through effects, never explained.
 - `docs/architecture/ai-interpreter.md` - current AI/simulation boundary.
 - `docs/architecture/project-operating-system.md` - notes on borrowed process.
 
