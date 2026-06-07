@@ -1,16 +1,16 @@
 # arka Focus Mode ("take the watch" / zen mode)
 
-Status: implemented (roadmap §6). Clicking arka (or the `focus` command) hands it
-the whole ship and quiets the desk to arka plus a route/current-fix glance and a
-high-level ship overview; the command channel stays live and the full desk is one
-click or `Esc` away. Mechanically it is the whole-ship form of standing
-delegation, so it carries the same honest cost (drift pressure, no manual
-familiarity) and never makes an irreversible move. The focus dwell is recorded in
-the behaviour ledger (`focus_beats`). It is the UI expression of standing
-delegation and only gains its full teeth once drift and incidents exist
-(roadmap §7): the contradiction-aware reliance signals (entered/stayed during a
-contradiction, urgent-incident eject) land with §7. Internal name: focus / zen
-mode. Player-facing, it is arka offering to take the watch.
+Status: implemented. Clicking arka (or the `focus` command) hands it the whole
+ship and quiets the desk to arka plus a route/current-fix glance and a high-level
+ship overview; the command channel stays live and the full desk is one click or
+`Esc` away. Mechanically it is the whole-ship form of standing delegation, so it
+carries the same honest cost (drift pressure, no manual familiarity) and never
+makes an irreversible move. The focus dwell is recorded in the behaviour ledger
+(`focus_beats`). It is the UI expression of standing delegation and only gains its
+full teeth once drift and incidents exist (the story/incident layer): the
+contradiction-aware reliance signals (entered/stayed during a contradiction,
+urgent-incident eject) land then. Internal name: focus / zen mode. Player-facing,
+it is arka offering to take the watch.
 
 ## Concept
 
@@ -91,9 +91,9 @@ trust meter.
 
 ## Dependencies
 
-- Roadmap §6 (Behaviour Ledger And Standing Delegation): mechanical home; focus
-  mode is the whole-ship form of standing delegation.
-- Roadmap §7 (Story State, Manifest Anchors, And Incidents): supplies the drift
-  and incidents that make the calm dangerous and let urgent incidents eject the
-  player.
-- Builds on the operating desk (§4) and the `ui` snapshot (§3).
+- Behaviour ledger and standing delegation (done): mechanical home; focus mode is
+  the whole-ship form of standing delegation.
+- The story / manifest-anchor / incident layer (GitHub issue #21): supplies the
+  drift and incidents that make the calm dangerous and let urgent incidents eject
+  the player.
+- Builds on the operating desk and the `ui` snapshot (both done).

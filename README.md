@@ -161,7 +161,7 @@ The original project note is preserved in `docs/original-idea.md`.
 Current working docs:
 
 - `design.md` - MVP thesis, loop, systems, and maintenance arc
-- `docs/roadmap.md` - current operating-surface roadmap
+- GitHub issues - the live backlog and long-range plan (the old `docs/roadmap.md` has been retired)
 - `docs/production/codex-direction-phase4.md` - producer direction for the first graphical vertical slice
 - `docs/game_mechanics/opening-sequence.md` - boot text and run debrief notes
 - `docs/game_mechanics/reactor-coolant.md` - coolant telemetry, actions, and pressure beats

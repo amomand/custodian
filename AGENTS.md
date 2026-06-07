@@ -7,11 +7,12 @@ shape of the idea and the current playtest feel over rigid process.
 
 ## Where To Look
 
+- GitHub issues - the live backlog and long-range plan. The old `roadmap.md` has
+  been retired; remaining work (story/incidents, endings, instrumentation, plus
+  launch docs, README, and CI) lives there.
 - `~/obsidian/Projects/Custodian/idea.md` - original vision and thesis.
-- `~/obsidian/Projects/Custodian/roadmap.md` - working long-range plan.
 - `README.md` - maintainer/player overview.
 - `design.md` - current terminal MVP.
-- `docs/roadmap.md` - repo copy of the long-range plan.
 - `docs/production/codex-direction-phase4.md` - operating-surface production direction.
 - `docs/architecture/engine-contracts.md` - canonical truth owners and boundaries.
 - `docs/architecture/web-session-api.md` - browser session API and snapshot contract.

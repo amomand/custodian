@@ -53,7 +53,7 @@ one gentle automatic adjustment to that system until the player runs
 
 Standing delegation is meant to be the more tempting form. It reduces cognitive
 load: there is less to read, fewer bars to scan, and the UI can quiet the panel
-entirely (the focus/zen view, roadmap §6). Early, while arka's account is still
+entirely (the focus/zen view). Early, while arka's account is still
 accurate, the automatic adjustments quietly keep the panel inside its box and
 improve outcomes. That is the seduction.
 
