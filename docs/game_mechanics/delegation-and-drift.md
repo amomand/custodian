@@ -43,6 +43,40 @@ Delegation:
 There is no visible trust meter. Reports can show the count because they are
 developer tools, not the fiction.
 
+## Standing Delegation
+
+One-shot delegation hands arka a panel for a single beat. Standing delegation
+hands arka a whole system *between* watches. The player runs `assign coolant`
+(or cryostasis, or navigation); from then on, every beat that passes, arka makes
+one gentle automatic adjustment to that system until the player runs
+`release coolant`.
+
+Standing delegation is meant to be the more tempting form. It reduces cognitive
+load: there is less to read, fewer bars to scan, and the UI can quiet the panel
+entirely (the focus/zen view, roadmap §6). Early, while arka's account is still
+accurate, the automatic adjustments quietly keep the panel inside its box and
+improve outcomes. That is the seduction.
+
+The cost is wired to the same mechanic. Every standing adjustment is a
+delegation, so it drives drift exactly like a one-shot hand-over: each tended
+system pushes `delegated_controls` once per beat. Hand arka a system early and
+its account of that system rots faster, precisely while the player has stopped
+looking. Standing delegation never builds manual familiarity, and the player's
+hands fall further behind the longer it runs.
+
+Standing delegation is **routine handling only**. It must never make an
+irreversible move on the player's behalf:
+
+- Standing navigation keeps arka's recommended route plotted and ready, but never
+  commits the jump. The player still calls the jump.
+- A manual plot is respected: standing navigation will not override a route the
+  player plotted by hand.
+- Nothing in standing delegation seals or abandons a sector.
+
+Those guards keep the ending the player's history, not arka's fault. See
+`trust-ledger.md` for what the behaviour ledger records and
+`../ui/zen-mode.md` for the focus-mode UI expression of standing delegation.
+
 ## Drift Weighting
 
 Drift is deterministic. Its inputs, in order of weight:

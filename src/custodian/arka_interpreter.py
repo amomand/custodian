@@ -24,6 +24,8 @@ ALLOWED_ACTIONS = {
     "status",
     "raw",
     "delegate",
+    "assign",
+    "release",
     "plot",
     "jump",
     "schematic",
@@ -37,6 +39,8 @@ ALLOWED_ACTIONS = {
     "converse",
     "none",
 }
+
+STANDING_SYSTEMS = {"coolant", "cryostasis", "navigation"}
 
 MANUAL_OPERATIONS = {
     "pump_up",
@@ -281,11 +285,13 @@ def _system_prompt() -> str:
         + "Use jump when the player asks to execute, commit, or initiate the plotted route.\n"
         + "For seal, abandon, and reroute, args.sector_id must be bridge, cryo-1-3, thermal-ring, maintenance-d, cargo-spine, hydroponics, or arka.\n"
         + "Use delegate when the player asks arka/you to handle coolant, cryostasis, or navigation, fix it, take over, or automate.\n"
+        + "Use assign when the player leaves a system under arka's ongoing/standing watch, and release when they take a system back. For both, args.system must be coolant, cryostasis, or navigation.\n"
         + "Use converse for questions, jokes, impossible gestures, emotional remarks, or arka dialogue that should not advance maintenance time.\n"
         + "Do not create state changes, telemetry, inventory, maps, or future events.\n"
         + "If asked about reactor condition, base any reply only on context.arka_summary.\n"
         + "Do not mention internal beat numbers in spoken replies.\n"
         + "Keep reply under 280 characters. Start spoken replies with 'arka:'.\n"
+        + "For assign and release, args must be {\"system\": one of coolant, cryostasis, navigation}.\n"
         + "Schema: {\"action\":\"...\",\"args\":{},\"confidence\":0.0,\"reply\":\"...\",\"rationale\":\"...\"}"
     )
 
@@ -312,6 +318,14 @@ def _intent_from_model_data(data: Any) -> Intent:
         target = args.get("target", "coolant")
         if target not in {"coolant", "cryo", "nav", "navigation"}:
             args["target"] = "coolant"
+
+    if action in {"assign", "release"}:
+        system = _standing_system_from_alias(args.get("system", ""))
+        if system is None:
+            action = "converse"
+            args = {}
+        else:
+            args = {"system": system}
 
     if action == "plot":
         route_id = args.get("route_id", "")
@@ -382,6 +396,20 @@ def _rule_based(command: str) -> Intent | None:
     simple = command.rstrip("?!.")
     if simple in _DELEGATION_PHRASES:
         return Intent("delegate", {}, 1.0, rationale="delegation phrase")
+
+    # Parse standing delegation from the raw command, before fuzzy typo
+    # correction can mangle a phrase like "take back navigation" into a
+    # one-shot delegate. The parser is prefix-based and only matches when the
+    # remainder names a real system.
+    standing_action = _standing_action(command)
+    if standing_action is not None:
+        action, system = standing_action
+        return Intent(
+            action,
+            {"system": system},
+            1.0,
+            rationale=f"{action} standing delegation",
+        )
 
     corrected = _correct_command(command)
     punctuation_only = command.rstrip("?!.") == corrected
@@ -868,6 +896,82 @@ def _sector_action(command: str) -> tuple[str, str] | None:
     return None
 
 
+def _standing_system_from_alias(value: str) -> str | None:
+    normalised = " ".join(value.strip().lower().replace("_", " ").split())
+    aliases = {
+        "coolant": "coolant",
+        "reactor": "coolant",
+        "reactor coolant": "coolant",
+        "loop": "coolant",
+        "coolant loop": "coolant",
+        "cryo": "cryostasis",
+        "cryostasis": "cryostasis",
+        "sleepers": "cryostasis",
+        "banks": "cryostasis",
+        "cryobanks": "cryostasis",
+        "cryo banks": "cryostasis",
+        "pods": "cryostasis",
+        "nav": "navigation",
+        "navigation": "navigation",
+        "route": "navigation",
+        "routes": "navigation",
+        "the route": "navigation",
+    }
+    return aliases.get(normalised)
+
+
+def _strip_standing_tail(text: str) -> str:
+    tails = (
+        " to arka's standing watch",
+        " under arka's standing watch",
+        " to arka's watch",
+        " under arka's watch",
+        " to arka",
+        " under arka",
+        " with arka",
+        " on arka",
+        " standing watch",
+        " standing",
+        " watch",
+        " to me",
+    )
+    cleaned = text.strip()
+    changed = True
+    while changed:
+        changed = False
+        for tail in tails:
+            if cleaned.endswith(tail):
+                cleaned = cleaned[: -len(tail)].strip()
+                changed = True
+    return cleaned
+
+
+def _standing_action(command: str) -> tuple[str, str] | None:
+    assign_prefixes = ("assign ", "keep ", "standing delegate ", "standing assign ")
+    release_prefixes = (
+        "release ",
+        "take back ",
+        "resume ",
+        "unassign ",
+        "reclaim ",
+    )
+    for prefix in assign_prefixes:
+        if command.startswith(prefix):
+            system = _standing_system_from_alias(
+                _strip_standing_tail(command[len(prefix):])
+            )
+            if system is not None:
+                return "assign", system
+    for prefix in release_prefixes:
+        if command.startswith(prefix):
+            system = _standing_system_from_alias(
+                _strip_standing_tail(command[len(prefix):])
+            )
+            if system is not None:
+                return "release", system
+    return None
+
+
 def _cryo_status_label(state: ShipState) -> str:
     flags = state.cryostasis.danger_flags()
     if not flags:
@@ -1015,6 +1119,21 @@ _KNOWN_COMMANDS = (
     "plot a route",
     "choose route",
     "pick route",
+    "assign coolant",
+    "assign cryo",
+    "assign cryostasis",
+    "assign nav",
+    "assign navigation",
+    "assign coolant to arka",
+    "keep coolant under arka",
+    "keep cryostasis under arka",
+    "release coolant",
+    "release cryo",
+    "release cryostasis",
+    "release nav",
+    "release navigation",
+    "take back coolant",
+    "resume coolant",
     "plot short",
     "plot medium",
     "plot long",

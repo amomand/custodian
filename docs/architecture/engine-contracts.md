@@ -34,6 +34,9 @@ the same engine path unless there is an explicit, tested reason not to.
 - spatial sectors and containment,
 - hidden manual familiarity,
 - delegation and raw-inspection counters,
+- the behaviour ledger (`BehaviourLedger`): delegated/manual/raw actions by
+  system or panel, standing delegations, standing-adjustment count, and first
+  delegation/raw timing,
 - crisis, outcome, and command history.
 
 `src/custodian/engine.py` owns state transitions:
@@ -95,6 +98,15 @@ executes known intent actions only.
 - Manual familiarity improves through manual actions only.
 - Delegation should be useful early, should not increase manual familiarity, and
   should be recorded as behaviour.
+- Behaviour (delegation, manual, raw, standing delegation, first-reliance timing)
+  is recorded in the ledger from the one canonical command path, so UI buttons
+  and typed commands land in the same record. The ledger counts stay out of
+  normal UI snapshots; there is no visible trust meter.
+- Standing delegation is routine handling only. arka may tend an assigned system
+  between watches, but it must not make irreversible moves on the player's
+  behalf: standing navigation keeps a route ready but never commits the jump, and
+  standing delegation never seals or abandons a sector. Irreversible choices stay
+  the player's to authorise.
 - Reading raw telemetry may delay arka drift pressure, but does not make the
   player more manually fluent.
 - arka drift is deterministic. It is not ordinary model unreliability.

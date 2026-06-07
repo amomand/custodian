@@ -399,6 +399,11 @@ summary:focus-visible,
   border-color: var(--amber);
 }
 
+.status-badge.standing {
+  color: var(--arka);
+  border-color: var(--arka);
+}
+
 .system-arka {
   color: var(--arka);
   font-size: 0.92rem;

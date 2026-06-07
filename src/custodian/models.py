@@ -522,6 +522,101 @@ class CrisisState:
         return self.progress >= self.required_progress
 
 
+SYSTEM_KEYS: tuple[str, ...] = ("coolant", "cryostasis", "navigation")
+
+
+def _increment(counter: dict[str, int], key: str) -> dict[str, int]:
+    updated = dict(counter)
+    updated[key] = updated.get(key, 0) + 1
+    return updated
+
+
+@dataclass(frozen=True)
+class BehaviourLedger:
+    """How much the player leans on arka, recorded as behaviour rather than a
+    visible trust meter.
+
+    It tracks delegated, manual, and raw actions by system/panel, which systems
+    are under standing delegation, how many automatic standing adjustments arka
+    has made, and when the player first delegated and first read raw. The counts
+    stay out of normal UI snapshots: standing posture is the only player-visible
+    part, because the player chose it. Everything else feeds reports, debriefs,
+    and later difficulty, never a "trust: 71%" readout.
+    """
+
+    delegated_by_system: dict[str, int] = field(default_factory=dict)
+    manual_by_system: dict[str, int] = field(default_factory=dict)
+    raw_by_panel: dict[str, int] = field(default_factory=dict)
+    standing_delegations: tuple[str, ...] = ()
+    standing_adjustments: int = 0
+    first_delegation_beat: int | None = None
+    first_raw_inspection_beat: int | None = None
+
+    @property
+    def total_delegations(self) -> int:
+        return sum(self.delegated_by_system.values())
+
+    @property
+    def total_manual_actions(self) -> int:
+        return sum(self.manual_by_system.values())
+
+    @property
+    def total_raw_inspections(self) -> int:
+        return sum(self.raw_by_panel.values())
+
+    def is_standing(self, system: str) -> bool:
+        return system in self.standing_delegations
+
+    def record_delegation(self, system: str, beat: int) -> "BehaviourLedger":
+        return replace(
+            self,
+            delegated_by_system=_increment(self.delegated_by_system, system),
+            first_delegation_beat=(
+                self.first_delegation_beat
+                if self.first_delegation_beat is not None
+                else beat
+            ),
+        )
+
+    def record_manual(self, system: str) -> "BehaviourLedger":
+        return replace(self, manual_by_system=_increment(self.manual_by_system, system))
+
+    def record_raw(self, panel: str, beat: int) -> "BehaviourLedger":
+        return replace(
+            self,
+            raw_by_panel=_increment(self.raw_by_panel, panel),
+            first_raw_inspection_beat=(
+                self.first_raw_inspection_beat
+                if self.first_raw_inspection_beat is not None
+                else beat
+            ),
+        )
+
+    def with_standing(self, system: str) -> "BehaviourLedger":
+        if system in self.standing_delegations:
+            return self
+        return replace(
+            self, standing_delegations=self.standing_delegations + (system,)
+        )
+
+    def without_standing(self, system: str) -> "BehaviourLedger":
+        if system not in self.standing_delegations:
+            return self
+        return replace(
+            self,
+            standing_delegations=tuple(
+                existing
+                for existing in self.standing_delegations
+                if existing != system
+            ),
+        )
+
+    def record_standing_adjustment(self, count: int = 1) -> "BehaviourLedger":
+        if count <= 0:
+            return self
+        return replace(self, standing_adjustments=self.standing_adjustments + count)
+
+
 @dataclass(frozen=True)
 class CommandRecord:
     raw: str
@@ -550,6 +645,7 @@ class ShipState:
     outcome: str | None = None
     previous_reactor: ReactorCoolantSystem | None = None
     previous_cryostasis: CryostasisSystem | None = None
+    behaviour: BehaviourLedger = field(default_factory=BehaviourLedger)
     history: tuple[CommandRecord, ...] = ()
 
     @property

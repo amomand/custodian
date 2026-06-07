@@ -317,6 +317,7 @@ function renderSystem(view, id) {
   frag.append(
     el("div", { class: "system-head" }, [
       el("h3", { text: system.label }),
+      standingBadge(system.standing),
       el(
         "span",
         { class: `status-badge ${system.status}` },
@@ -327,9 +328,22 @@ function renderSystem(view, id) {
     metricsTable(system.metrics),
     actionGroup("Manual control", filterActions(actions, "manual", id)),
     actionGroup("Delegate", filterActions(actions, "delegate", id), "delegate"),
+    actionGroup("Standing watch", filterActions(actions, "standing", id), "delegate"),
     actionGroup("Inspect", filterActions(actions, "raw", id)),
   );
   return frag;
+}
+
+// Standing delegation is the player's own posture, not a hidden score, so it is
+// shown plainly: arka has the panel between watches until the player takes it
+// back. The cost (less practice, faster drift) is felt, never metered here.
+function standingBadge(isStanding) {
+  if (!isStanding) return null;
+  return el(
+    "span",
+    { class: "status-badge standing", title: "arka holds this between watches" },
+    "arka has the watch",
+  );
 }
 
 function metricsTable(metrics) {
@@ -373,10 +387,12 @@ function renderNavigation(view) {
   frag.append(
     el("div", { class: "system-head" }, [
       el("h3", { text: "Navigation" }),
+      standingBadge(view.navigation.standing),
       el("span", { class: "status-badge" }, `exposure ${view.navigation.exposure_band}`),
     ]),
     routeGraph(view),
     actionGroup("Delegate", filterActions(view.actions, "delegate", "navigation"), "delegate"),
+    actionGroup("Standing watch", filterActions(view.actions, "standing", "navigation"), "delegate"),
     actionGroup("Inspect", filterActions(view.actions, "raw", "navigation")),
   );
   return frag;

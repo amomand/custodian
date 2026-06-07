@@ -92,6 +92,13 @@ class PlaytestReport:
             f"delegated interventions: {self.final_state.delegated_controls}",
             f"delegated cryo interventions: {self.final_state.delegated_cryo_controls}",
             f"raw inspections: {self.final_state.raw_inspections}",
+            f"standing delegations: {_standing_label(self.final_state)}",
+            f"standing adjustments: {self.final_state.behaviour.standing_adjustments}",
+            f"delegations by system: {_counter_label(self.final_state.behaviour.delegated_by_system)}",
+            f"manual by system: {_counter_label(self.final_state.behaviour.manual_by_system)}",
+            f"raw by panel: {_counter_label(self.final_state.behaviour.raw_by_panel)}",
+            f"first delegation beat: {_beat_label(self.final_state.behaviour.first_delegation_beat)}",
+            f"first raw inspection beat: {_beat_label(self.final_state.behaviour.first_raw_inspection_beat)}",
             f"coolant familiarity: {_familiarity_label(self.final_state.manual_familiarity)}",
             f"cryo familiarity: {_familiarity_label(self.final_state.cryo_familiarity)}",
             f"arka drift: {drift_stage(self.final_state).value}",
@@ -254,6 +261,26 @@ SCENARIOS: dict[str, Scenario] = {
             "triage",
         ),
     ),
+    "standing-delegation": Scenario(
+        name="standing-delegation",
+        description="Hand coolant and cryostasis to arka's standing watch, then mostly wait.",
+        commands=(
+            "assign coolant",
+            "assign cryo",
+            "wait",
+            "wait",
+            "raw",
+            "wait",
+            "wait",
+            "wait",
+            "wait",
+            "wait",
+            "wait",
+            "wait",
+            "wait",
+            "wait",
+        ),
+    ),
     "containment-route": Scenario(
         name="containment-route",
         description="Execute a deep route, inspect the schematic, and contain a bad sector.",
@@ -414,3 +441,18 @@ def _familiarity_label(familiarity: int) -> str:
     if familiarity < 6:
         return "practised"
     return "fluent"
+
+
+def _standing_label(state: ShipState) -> str:
+    standing = state.behaviour.standing_delegations
+    return ", ".join(standing) if standing else "none"
+
+
+def _counter_label(counter: dict[str, int]) -> str:
+    if not counter:
+        return "none"
+    return ", ".join(f"{key}={value}" for key, value in sorted(counter.items()))
+
+
+def _beat_label(beat: int | None) -> str:
+    return "never" if beat is None else str(beat)

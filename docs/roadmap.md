@@ -227,9 +227,29 @@ Likely split:
 - Route display and jump flow.
 - Visual corruption and accessibility pass.
 
-### 6. Behaviour Ledger And Standing Delegation (Next)
+### 6. Behaviour Ledger And Standing Delegation (In Progress)
 
 Goal: track how the player relies on arka without exposing a trust meter.
+
+Status: the behaviour ledger and standing delegation are implemented.
+`BehaviourLedger` on `ShipState` records delegated/manual/raw actions by
+system/panel, standing delegations, the standing-adjustment count, and first
+delegation/raw timing, updated from the one canonical command path so UI buttons
+and typed commands share it. It is saved (save version 7, with backward-compatible
+defaults), surfaced in playtest reports and the closing debrief as fiction, and
+exposed only on the loopback dev snapshot — no trust meter. Standing delegation
+(`assign`/`release` a system) lets arka tend coolant, cryostasis, or navigation
+between watches; it improves early outcomes, drives drift, never builds manual
+familiarity, and never makes an irreversible move (standing navigation keeps a
+route ready but never jumps; nothing seals or abandons a sector). The operating
+desk shows standing posture and assign/release controls. See
+`docs/game_mechanics/trust-ledger.md` and `docs/game_mechanics/delegation-and-drift.md`.
+
+Remaining for this section: the whole-ship focus (zen) mode view and its
+reliance signals (`docs/ui/zen-mode.md`), and the ledger fields that only gain
+meaning with the §7 incident layer (arka advice followed/overridden, advice
+followed during contradictions, contradictions caught, irreversible choices on
+arka's recommendation, and zen dwell).
 
 Work:
 

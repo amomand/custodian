@@ -68,6 +68,7 @@ class SystemSnapshot:
     status: str
     arka_summary: str
     metrics: tuple[MetricSnapshot, ...]
+    standing: bool
 
 
 @dataclass(frozen=True)
@@ -97,6 +98,7 @@ class NavigationSnapshot:
     last_jump_route_label: str | None
     jumps_executed: int
     exposure_band: str
+    standing: bool
     route_options: tuple[RouteSnapshot, ...]
 
 
@@ -247,6 +249,7 @@ def _system_snapshots(state: ShipState) -> dict[str, SystemSnapshot]:
     cryo_metrics = _cryo_metrics(state)
     coolant_status = _overall_band(tuple(metric.band for metric in coolant_metrics))
     cryo_status = _overall_band(tuple(metric.band for metric in cryo_metrics))
+    standing = state.behaviour.standing_delegations
     return {
         "coolant": SystemSnapshot(
             id="coolant",
@@ -254,6 +257,7 @@ def _system_snapshots(state: ShipState) -> dict[str, SystemSnapshot]:
             status=coolant_status,
             arka_summary=summarize_coolant(state),
             metrics=coolant_metrics,
+            standing="coolant" in standing,
         ),
         "cryostasis": SystemSnapshot(
             id="cryostasis",
@@ -261,6 +265,7 @@ def _system_snapshots(state: ShipState) -> dict[str, SystemSnapshot]:
             status=cryo_status,
             arka_summary=summarize_cryostasis(state),
             metrics=cryo_metrics,
+            standing="cryostasis" in standing,
         ),
     }
 
@@ -280,6 +285,7 @@ def _navigation_snapshot(state: ShipState) -> NavigationSnapshot:
         last_jump_route_label=None if last_jump is None else last_jump.label,
         jumps_executed=nav.jumps_executed,
         exposure_band=_exposure_band(nav.total_dark_exposure),
+        standing="navigation" in state.behaviour.standing_delegations,
         route_options=tuple(_route_snapshot(state, option) for option in nav.options),
     )
 
@@ -460,9 +466,51 @@ def _action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
         ),
     ]
     actions.extend(_manual_action_specs(state))
+    actions.extend(_standing_action_specs(state))
     actions.extend(_route_action_specs(state))
     actions.extend(_containment_action_specs(state))
     return tuple(actions)
+
+
+_STANDING_SYSTEM_LABELS = {
+    "coolant": "coolant",
+    "cryostasis": "cryostasis",
+    "navigation": "navigation",
+}
+
+
+def _standing_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
+    # Standing delegation is a posture toggle, not a hidden reliance score: the
+    # player chose it, so it is shown. Each system offers exactly one of assign
+    # (hand it to arka's standing watch) or release (take it back).
+    specs: list[ActionSpec] = []
+    for system, label in _STANDING_SYSTEM_LABELS.items():
+        if state.behaviour.is_standing(system):
+            specs.append(
+                ActionSpec(
+                    id=f"release-{system}",
+                    label=f"Take back {label}",
+                    command=f"release {system}",
+                    kind="standing",
+                    target=system,
+                    detail=f"End arka's standing watch on {label}.",
+                )
+            )
+        else:
+            specs.append(
+                ActionSpec(
+                    id=f"assign-{system}",
+                    label=f"Leave {label} to arka",
+                    command=f"assign {system}",
+                    kind="standing",
+                    target=system,
+                    detail=(
+                        f"arka keeps {label} between watches. Less to read; "
+                        "your hands stop practising it."
+                    ),
+                )
+            )
+    return tuple(specs)
 
 
 def _manual_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
@@ -660,6 +708,7 @@ def _visual_state(state: ShipState) -> VisualCorruptionSnapshot:
 
 
 def _dev_snapshot(state: ShipState) -> dict[str, Any]:
+    behaviour = state.behaviour
     return {
         "drift_stage": drift_stage(state).value,
         "manual_familiarity": state.manual_familiarity,
@@ -670,6 +719,15 @@ def _dev_snapshot(state: ShipState) -> dict[str, Any]:
         "total_dark_exposure": state.navigation.total_dark_exposure,
         "sector_symptom_loads": {
             sector.sector_id: sector.symptom_load for sector in state.spatial.sectors
+        },
+        "behaviour_ledger": {
+            "delegated_by_system": dict(behaviour.delegated_by_system),
+            "manual_by_system": dict(behaviour.manual_by_system),
+            "raw_by_panel": dict(behaviour.raw_by_panel),
+            "standing_delegations": list(behaviour.standing_delegations),
+            "standing_adjustments": behaviour.standing_adjustments,
+            "first_delegation_beat": behaviour.first_delegation_beat,
+            "first_raw_inspection_beat": behaviour.first_raw_inspection_beat,
         },
     }
 

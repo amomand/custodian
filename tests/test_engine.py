@@ -444,5 +444,132 @@ class EngineTests(unittest.TestCase):
         self.assertTrue(any("cryostasis" in message for message in result.messages))
 
 
+class BehaviourLedgerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.engine = GameEngine()
+
+    def test_ledger_records_delegation_manual_and_raw_by_system(self) -> None:
+        state = self.engine.initial_state()
+        for command in ("delegate coolant", "delegate cryo", "balance", "raw cryo", "raw nav"):
+            state = self.engine.handle(state, command).state
+
+        ledger = state.behaviour
+        self.assertEqual(ledger.delegated_by_system, {"coolant": 1, "cryostasis": 1})
+        self.assertEqual(ledger.manual_by_system, {"coolant": 1})
+        self.assertEqual(ledger.raw_by_panel, {"cryostasis": 1, "navigation": 1})
+
+    def test_ledger_records_first_delegation_and_first_raw_beats(self) -> None:
+        state = self.engine.initial_state()
+        state = self.engine.handle(state, "balance").state  # beat 1, no delegation/raw
+        state = self.engine.handle(state, "delegate").state  # beat 2 -> first delegation
+        state = self.engine.handle(state, "raw").state  # beat 3 -> first raw
+
+        self.assertEqual(state.behaviour.first_delegation_beat, 2)
+        self.assertEqual(state.behaviour.first_raw_inspection_beat, 3)
+
+    def test_ledger_does_not_record_non_advancing_actions(self) -> None:
+        state = self.engine.initial_state()
+        result = self.engine.handle(state, "status")
+
+        self.assertEqual(result.state.behaviour.total_delegations, 0)
+        self.assertEqual(result.state.behaviour.total_raw_inspections, 0)
+        self.assertIsNone(result.state.behaviour.first_raw_inspection_beat)
+
+    def test_ui_and_text_paths_share_one_ledger(self) -> None:
+        # The desk's "delegate coolant" button posts the same command string a
+        # typed command would, so both land in the same ledger.
+        from custodian.ui_snapshot import project_ui_snapshot
+
+        state = self.engine.initial_state()
+        button = next(
+            action
+            for action in project_ui_snapshot(state).to_dict()["actions"]
+            if action["id"] == "delegate-coolant"
+        )
+        state = self.engine.handle(state, button["command"]).state
+
+        self.assertEqual(state.behaviour.delegated_by_system, {"coolant": 1})
+
+
+class StandingDelegationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.engine = GameEngine()
+
+    def test_assign_sets_standing_without_advancing_time(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "assign coolant")
+
+        self.assertFalse(result.advanced)
+        self.assertEqual(result.state.turn, 1)
+        self.assertEqual(result.state.behaviour.standing_delegations, ("coolant",))
+        self.assertEqual(result.state.delegated_controls, 0)
+
+    def test_release_clears_standing(self) -> None:
+        state = self.engine.handle(self.engine.initial_state(), "assign cryostasis").state
+
+        result = self.engine.handle(state, "release cryostasis")
+
+        self.assertEqual(result.state.behaviour.standing_delegations, ())
+
+    def test_standing_delegation_tends_panel_and_drives_drift_each_beat(self) -> None:
+        state = self.engine.handle(self.engine.initial_state(), "assign coolant").state
+
+        for _ in range(3):
+            state = self.engine.handle(state, "wait").state
+
+        # Three beats under standing watch is three delegations of drift pressure
+        # and three recorded standing adjustments, with no manual familiarity.
+        self.assertEqual(state.delegated_controls, 3)
+        self.assertEqual(state.behaviour.standing_adjustments, 3)
+        self.assertEqual(state.behaviour.delegated_by_system, {"coolant": 3})
+        self.assertEqual(state.manual_familiarity, 0)
+
+    def test_standing_delegation_improves_early_coolant_versus_idle(self) -> None:
+        start = self.engine.initial_state()
+        standing = self.engine.handle(start, "assign coolant").state
+
+        idle_state = start
+        tended_state = standing
+        for _ in range(3):
+            idle_state = self.engine.handle(idle_state, "wait").state
+            tended_state = self.engine.handle(tended_state, "wait").state
+
+        # Early, while arka's account is still accurate, the standing watch keeps
+        # coolant cooler than letting it drift untouched.
+        self.assertLess(
+            tended_state.reactor.temperature_c, idle_state.reactor.temperature_c
+        )
+
+    def test_standing_navigation_keeps_route_ready_but_never_jumps(self) -> None:
+        state = self.engine.handle(self.engine.initial_state(), "assign nav").state
+
+        for _ in range(4):
+            state = self.engine.handle(state, "wait").state
+
+        # arka keeps a recommended route plotted and ready, but the irreversible
+        # jump is never taken on the player's behalf.
+        self.assertIsNotNone(state.navigation.plotted_route_id)
+        self.assertEqual(state.navigation.jumps_executed, 0)
+
+    def test_standing_navigation_does_not_override_manual_plot(self) -> None:
+        state = self.engine.handle(self.engine.initial_state(), "assign nav").state
+        state = self.engine.handle(state, "plot short").state  # manual plot
+        plotted = state.navigation.plotted_route_id
+
+        state = self.engine.handle(state, "wait").state
+
+        self.assertEqual(state.navigation.plotted_route_id, plotted)
+
+    def test_standing_status_line_names_held_systems(self) -> None:
+        state = self.engine.handle(self.engine.initial_state(), "assign coolant").state
+        state = self.engine.handle(state, "assign nav").state
+
+        messages = self.engine.handle(state, "status").messages
+        joined = "\n".join(messages)
+
+        self.assertIn("STANDING WATCH: arka holds coolant and navigation.", joined)
+
+
 if __name__ == "__main__":
     unittest.main()

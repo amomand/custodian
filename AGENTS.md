@@ -45,6 +45,9 @@ These are the bits to be careful with even while exploring:
 - Raw telemetry comes from deterministic state, not generated prose.
 - The model may interpret and speak as arka; it should not own ship truth.
 - Manual familiarity improves through manual action, not delegation.
+- Trust is behaviour: reliance is recorded in the behaviour ledger, never shown
+  as a meter. Standing delegation may tend a system between watches but must not
+  make irreversible moves (jump, seal, abandon) for the player.
 - arka should remain competent reassurance, not turn into a cartoon villain.
 - Player-facing text should stay in-world.
 
