@@ -55,6 +55,18 @@ class PlaytestTests(unittest.TestCase):
         self.assertIn("sealed sectors:", summary)
         self.assertEqual(report.forbidden_hits, ())
 
+    def test_standing_delegation_scenario_reports_reliance(self) -> None:
+        report = run_scenario(SCENARIOS["standing-delegation"])
+        summary = "\n".join(report.summary_lines())
+
+        # Standing delegation never builds the player's hands, drives drift, and
+        # surfaces in the report as behaviour rather than a trust score.
+        self.assertEqual(report.final_state.manual_familiarity, 0)
+        self.assertGreater(report.final_state.behaviour.standing_adjustments, 0)
+        self.assertIn("standing delegations: coolant, cryostasis", summary)
+        self.assertIn("arka drift: wrong", summary)
+        self.assertEqual(report.forbidden_hits, ())
+
     def test_transcript_includes_opening_commands_and_closing(self) -> None:
         report = run_commands(("status", "quit"))
         transcript = "\n".join(report.transcript_lines())

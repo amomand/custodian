@@ -69,9 +69,11 @@ Returns the same snapshot shape with `ui.dev` populated for local developer
 inspection.
 
 This is the explicit developer path for hidden values. It includes fields such
-as drift stage, manual familiarity counters, exact total exposure, and sector
-symptom loads. Normal client rendering should not use it. The endpoint only
-responds to loopback clients.
+as drift stage, manual familiarity counters, exact total exposure, sector
+symptom loads, and the full behaviour ledger (`ui.dev.behaviour_ledger`:
+delegated/manual/raw counts by system or panel, standing-adjustment count, and
+first delegation/raw timing). Normal client rendering should not use it. The
+endpoint only responds to loopback clients.
 
 ### `POST /api/session/{id}/command`
 
@@ -118,7 +120,12 @@ Returns structured transcript events and a plain line transcript.
   API exchanges save text rather than arbitrary local filesystem paths.
 - `ui.raw_panels` are projected from deterministic state, not arka prose.
 - `ui.actions` are render specs for existing commands; dispatch still routes
-  through `GameEngine.handle()`.
+  through `GameEngine.handle()`. This includes `kind: "standing"` actions
+  (`assign`/`release`) for standing delegation.
+- Standing-delegation posture is shown (`ui.systems[id].standing`,
+  `ui.navigation.standing`) because the player chose it. The behaviour ledger
+  counts behind it are hidden — they require the loopback-only dev snapshot.
+  There is no visible trust meter.
 - Action-spec `command` strings must resolve to their intended intent under the
   deterministic (no-AI) interpreter, since that is the default play mode. This is
   covered by a contract test in `tests/test_ui_snapshot.py`.

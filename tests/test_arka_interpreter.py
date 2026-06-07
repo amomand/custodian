@@ -28,6 +28,31 @@ class ArkaInterpreterTests(unittest.TestCase):
         self.assertEqual(intent.action, "delegate")
         self.assertEqual(intent.confidence, 1.0)
 
+    def test_assign_and_release_parse_to_standing_intents(self) -> None:
+        interpreter = ArkaInterpreter(Config(custodian_ai=False))
+        cases = {
+            "assign coolant": ("assign", "coolant"),
+            "assign cryo": ("assign", "cryostasis"),
+            "assign navigation": ("assign", "navigation"),
+            "keep cryostasis under arka watch": ("assign", "cryostasis"),
+            "assign coolant to arka": ("assign", "coolant"),
+            "release coolant": ("release", "coolant"),
+            "take back navigation": ("release", "navigation"),
+            "resume cryostasis": ("release", "cryostasis"),
+        }
+        for text, (action, system) in cases.items():
+            with self.subTest(text=text):
+                intent = interpreter.interpret(text, ShipState())
+                self.assertEqual(intent.action, action)
+                self.assertEqual(intent.args.get("system"), system)
+
+    def test_assign_without_known_system_is_not_a_standing_intent(self) -> None:
+        interpreter = ArkaInterpreter(Config(custodian_ai=False))
+
+        intent = interpreter.interpret("assign the whole ship", ShipState())
+
+        self.assertNotIn(intent.action, {"assign", "release"})
+
     def test_typo_correction_stays_diegetic(self) -> None:
         interpreter = ArkaInterpreter(
             Config(openai_api_key="", openai_model="gpt-5.4-mini")

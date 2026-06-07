@@ -4,6 +4,7 @@ import unittest
 from custodian.arka_interpreter import ArkaInterpreter
 from custodian.config import Config
 from custodian.models import (
+    BehaviourLedger,
     CryostasisSystem,
     NavigationState,
     ReactorCoolantSystem,
@@ -95,6 +96,55 @@ class UiSnapshotTests(unittest.TestCase):
         self.assertTrue(by_id["seal-cryo-1-3"]["requires_confirmation"])
         self.assertTrue(by_id["abandon-cryo-1-3"]["requires_confirmation"])
 
+    def test_standing_delegation_specs_toggle_between_assign_and_release(self) -> None:
+        # Each system offers exactly one of assign / release, depending on whether
+        # arka currently holds its standing watch. The system panel reads the
+        # posture from `standing`.
+        fresh = project_ui_snapshot(ShipState()).to_dict()
+        by_id = {action["id"]: action for action in fresh["actions"]}
+        self.assertEqual(by_id["assign-coolant"]["command"], "assign coolant")
+        self.assertEqual(by_id["assign-navigation"]["command"], "assign navigation")
+        self.assertNotIn("release-coolant", by_id)
+        self.assertFalse(fresh["systems"]["coolant"]["standing"])
+        self.assertFalse(fresh["navigation"]["standing"])
+
+        held = project_ui_snapshot(
+            ShipState(behaviour=BehaviourLedger(standing_delegations=("coolant", "navigation")))
+        ).to_dict()
+        held_by_id = {action["id"]: action for action in held["actions"]}
+        self.assertEqual(held_by_id["release-coolant"]["command"], "release coolant")
+        self.assertEqual(held_by_id["release-navigation"]["command"], "release navigation")
+        self.assertNotIn("assign-coolant", held_by_id)
+        self.assertTrue(held["systems"]["coolant"]["standing"])
+        self.assertTrue(held["navigation"]["standing"])
+        self.assertFalse(held["systems"]["cryostasis"]["standing"])
+
+    def test_behaviour_ledger_counts_never_leak_into_normal_snapshot(self) -> None:
+        # The ledger is reliance behaviour, not a trust meter. Standing posture is
+        # shown (the player chose it), but the counts stay dev-only.
+        state = ShipState(
+            behaviour=BehaviourLedger(
+                delegated_by_system={"coolant": 5},
+                raw_by_panel={"coolant": 2},
+                standing_delegations=("coolant",),
+                standing_adjustments=4,
+                first_delegation_beat=1,
+            )
+        )
+
+        normal = project_ui_snapshot(state).to_dict()
+        encoded = json.dumps(normal)
+        self.assertNotIn("behaviour_ledger", encoded)
+        self.assertNotIn("delegated_by_system", encoded)
+        self.assertNotIn("standing_adjustments", encoded)
+        self.assertNotIn("first_delegation_beat", encoded)
+
+        dev = project_ui_snapshot(state, include_dev=True).to_dict()
+        ledger = dev["dev"]["behaviour_ledger"]
+        self.assertEqual(ledger["delegated_by_system"], {"coolant": 5})
+        self.assertEqual(ledger["standing_delegations"], ["coolant"])
+        self.assertEqual(ledger["standing_adjustments"], 4)
+
     def test_action_specs_resolve_under_deterministic_interpreter(self) -> None:
         # Every desk button dispatches its action-spec `command` through the same
         # engine path as text. Those strings must resolve to the intended intent
@@ -104,12 +154,19 @@ class UiSnapshotTests(unittest.TestCase):
             "watch": {"wait"},
             "raw": {"raw"},
             "delegate": {"delegate"},
+            "standing": {"assign", "release"},
             "manual": {"manual"},
             "navigation": {"plot", "jump"},
             "containment": {"seal", "reroute", "abandon"},
         }
 
-        for state in (ShipState(), ShipState(navigation=NavigationState(plotted_route_id="argos-12"))):
+        for state in (
+            ShipState(),
+            ShipState(navigation=NavigationState(plotted_route_id="argos-12")),
+            # A standing delegation flips assign specs to release specs, so this
+            # state exercises the "release coolant" command path too.
+            ShipState(behaviour=BehaviourLedger(standing_delegations=("coolant",))),
+        ):
             for action in project_ui_snapshot(state).to_dict()["actions"]:
                 with self.subTest(action=action["id"]):
                     intent = interpreter.interpret(action["command"], state)

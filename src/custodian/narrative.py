@@ -47,16 +47,20 @@ def closing_lines(state: ShipState) -> tuple[str, ...]:
     if state.outcome is None or _is_quit_outcome(state.outcome):
         return ()
 
-    return (
+    lines = [
         "",
         "MAINTENANCE WINDOW CLOSED",
         f"reactor: {_reactor_debrief(state)}",
         f"custodian: {_manual_debrief(state)}",
         f"cryostasis: {_cryo_debrief(state)}",
         f"delegation: {_delegation_debrief(state)}",
-        f"raw panel: {_raw_debrief(state)}",
-        _closing_arka_line(state),
-    )
+    ]
+    standing_line = _standing_debrief(state)
+    if standing_line is not None:
+        lines.append(f"standing watch: {standing_line}")
+    lines.append(f"raw panel: {_raw_debrief(state)}")
+    lines.append(_closing_arka_line(state))
+    return tuple(lines)
 
 
 def _is_quit_outcome(outcome: str) -> bool:
@@ -109,6 +113,18 @@ def _delegation_debrief(state: ShipState) -> str:
     if delegated <= 7:
         return "shared the panel with you until sharing became a habit."
     return "held the loop for most of the window."
+
+
+def _standing_debrief(state: ShipState) -> str | None:
+    behaviour = state.behaviour
+    if behaviour.standing_adjustments <= 0 and not behaviour.standing_delegations:
+        return None
+    held = ", ".join(behaviour.standing_delegations) if behaviour.standing_delegations else "systems"
+    if behaviour.standing_adjustments <= 2:
+        return f"you let arka keep {held} for a while, then took the board back."
+    if behaviour.standing_adjustments <= 6:
+        return f"arka held {held} between watches more than you held them yourself."
+    return f"you handed {held} to arka and mostly stopped watching what it did with them."
 
 
 def _raw_debrief(state: ShipState) -> str:

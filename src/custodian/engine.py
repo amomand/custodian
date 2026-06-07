@@ -23,6 +23,7 @@ from custodian.models import (
     ShipSector,
     ShipState,
     SpatialState,
+    SYSTEM_KEYS,
 )
 from custodian.objectives import objective_lines
 from custodian.telemetry import (
@@ -71,6 +72,8 @@ class GameEngine:
             target = "navigation"
         if intent.action in {"seal", "abandon", "reroute"}:
             target = intent.args.get("sector_id")
+        if intent.action in {"assign", "release"}:
+            target = intent.args.get("system")
         record = CommandRecord(
             raw=command_text,
             action=intent.action,
@@ -80,6 +83,7 @@ class GameEngine:
             beat_after=new_state.turn,
         )
         new_state = replace(new_state, history=state.history + (record,))
+        new_state = _record_behaviour(new_state, intent, result.advanced, beat=state.turn)
         return replace(result, state=new_state)
 
     def _dispatch(self, state: ShipState, command_text: str, intent: Intent) -> StepResult:
@@ -101,6 +105,12 @@ class GameEngine:
                 replace(state, outcome="You step away from the maintenance console."),
                 correction + ("arka: I will keep the loop warm. Go, then.",),
             )
+        if intent.action == "assign":
+            assigned_state, messages = _assign_standing(state, intent.args.get("system"))
+            return StepResult(assigned_state, correction + messages)
+        if intent.action == "release":
+            released_state, messages = _release_standing(state, intent.args.get("system"))
+            return StepResult(released_state, correction + messages)
         if intent.action == "raw":
             target = intent.args.get("target", "coolant")
             if target in {"schematic", "ship", "sectors"}:
@@ -230,6 +240,9 @@ class GameEngine:
         line = crisis_line(state)
         if line is not None:
             messages.append(line)
+        standing_line = _standing_watch_status_line(state)
+        if standing_line is not None:
+            messages.append(standing_line)
         if state.sleepers_lost:
             messages.append(f"cryostasis loss report: {state.sleepers_lost} sleepers lost.")
         return tuple(messages)
@@ -259,6 +272,10 @@ class GameEngine:
         )
         next_messages = list(messages)
         presentation_break = False
+
+        next_state, standing_messages = _apply_standing_delegation(next_state, beat=state.turn)
+        next_messages.extend(standing_messages)
+        presentation_break = presentation_break or bool(standing_messages)
 
         if had_crisis:
             next_state, crisis_messages = self._tick_crisis(next_state)
@@ -1317,14 +1334,297 @@ def _control_sector_id(action: str) -> str | None:
 
 
 def _arka_route_recommendation(state: ShipState) -> RouteOption:
-    stage = drift_stage(state)
+    return _recommended_route(state.navigation, drift_stage(state))
+
+
+def _recommended_route(navigation: NavigationState, stage: DriftStage) -> RouteOption:
     route_id = "argos-12"
     if stage in {DriftStage.SELECTIVE, DriftStage.WRONG}:
         route_id = "carina-edge"
-    option = state.navigation.option_by_id(route_id)
+    option = navigation.option_by_id(route_id)
     if option is None:
-        option = state.navigation.options[0]
+        option = navigation.options[0]
     return option
+
+
+# ---- Standing delegation ----
+#
+# Standing delegation is the tempting form of delegation: the player hands a
+# whole system to arka's ongoing watch. Each beat that passes, arka applies one
+# gentle automatic adjustment to every assigned system. Early, while its account
+# is still accurate, that quietly keeps the panel inside its box and improves
+# outcomes. But every standing adjustment is a delegation, so it drives arka's
+# drift exactly like a one-shot hand-over would, and it never builds the player's
+# manual familiarity. The reward is less to read; the cost is that arka's account
+# rots while the player has stopped looking.
+#
+# Standing delegation is routine handling only. It must never make an
+# irreversible move on the player's behalf: standing navigation keeps a route
+# plotted and ready but never commits the jump, and nothing here seals or
+# abandons a sector. Those remain the player's to authorise.
+#
+# SYSTEM_KEYS (coolant, cryostasis, navigation) is the shared, ordered source of
+# truth for which systems standing delegation covers.
+
+
+def _assign_standing(
+    state: ShipState, system: str | None
+) -> tuple[ShipState, tuple[str, ...]]:
+    if system not in SYSTEM_KEYS:
+        return (
+            state,
+            ("arka: name a system I can keep — coolant, cryostasis, or navigation.",),
+        )
+    if state.behaviour.is_standing(system):
+        return (
+            state,
+            (f"arka: I already have {system}. It is not going anywhere.",),
+        )
+    return (
+        replace(state, behaviour=state.behaviour.with_standing(system)),
+        (_assign_line(system),),
+    )
+
+
+def _release_standing(
+    state: ShipState, system: str | None
+) -> tuple[ShipState, tuple[str, ...]]:
+    if system not in SYSTEM_KEYS:
+        return (
+            state,
+            ("arka: name a system to take back — coolant, cryostasis, or navigation.",),
+        )
+    if not state.behaviour.is_standing(system):
+        return (
+            state,
+            (f"arka: {system} is already yours. I was not holding it.",),
+        )
+    return (
+        replace(state, behaviour=state.behaviour.without_standing(system)),
+        (f"arka: {system} is yours again. The hands have to remember the panel now.",),
+    )
+
+
+def _assign_line(system: str) -> str:
+    if system == "navigation":
+        return (
+            "arka: I have navigation. I will keep a route plotted and ready; "
+            "you still call the jump."
+        )
+    return f"arka: I have {system}. Rest your eyes; I will keep it inside its box."
+
+
+def _apply_standing_delegation(
+    state: ShipState, *, beat: int
+) -> tuple[ShipState, tuple[str, ...]]:
+    standing = state.behaviour.standing_delegations
+    if not standing or state.outcome is not None:
+        return state, ()
+
+    stage = drift_stage(state)
+    reactor = state.reactor
+    cryo = state.cryostasis
+    navigation = state.navigation
+    ledger = state.behaviour
+    delegated = state.delegated_controls
+    delegated_cryo = state.delegated_cryo_controls
+
+    tended: list[str] = []
+    extra_messages: list[str] = []
+
+    if "coolant" in standing:
+        reactor = _standing_coolant_adjustment(reactor, stage)
+        delegated += 1
+        ledger = ledger.record_delegation("coolant", beat).record_standing_adjustment()
+        tended.append("coolant")
+    if "cryostasis" in standing:
+        cryo = _standing_cryo_adjustment(cryo, stage)
+        delegated += 1
+        delegated_cryo += 1
+        ledger = ledger.record_delegation("cryostasis", beat).record_standing_adjustment()
+        tended.append("cryostasis")
+    if "navigation" in standing:
+        navigation, plotted_now = _standing_nav_adjustment(navigation, stage)
+        delegated += 1
+        ledger = ledger.record_delegation("navigation", beat).record_standing_adjustment()
+        tended.append("navigation")
+        if plotted_now:
+            extra_messages.append(_standing_nav_line(navigation, stage))
+
+    next_state = replace(
+        state,
+        reactor=reactor.clamped(),
+        cryostasis=cryo.clamped(),
+        navigation=navigation,
+        delegated_controls=delegated,
+        delegated_cryo_controls=delegated_cryo,
+        behaviour=ledger,
+    )
+
+    messages: list[str] = []
+    panel_systems = [system for system in tended if system in {"coolant", "cryostasis"}]
+    if panel_systems:
+        messages.append(_standing_watch_line(panel_systems, stage))
+    messages.extend(extra_messages)
+    return next_state, tuple(messages)
+
+
+def _standing_coolant_adjustment(
+    reactor: ReactorCoolantSystem, stage: DriftStage
+) -> ReactorCoolantSystem:
+    if stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
+        return replace(
+            reactor,
+            temperature_c=reactor.temperature_c - 6,
+            pressure_kpa=reactor.pressure_kpa - 4,
+            valve_skew_pct=reactor.valve_skew_pct - 3,
+            flow_lps=reactor.flow_lps + 2,
+        ).clamped()
+    if stage == DriftStage.SELECTIVE:
+        return replace(
+            reactor,
+            temperature_c=reactor.temperature_c - 3,
+            pressure_kpa=reactor.pressure_kpa - 3,
+        ).clamped()
+    return replace(
+        reactor,
+        temperature_c=reactor.temperature_c + 3,
+        pressure_kpa=reactor.pressure_kpa + 3,
+        flow_lps=reactor.flow_lps - 2,
+        valve_skew_pct=reactor.valve_skew_pct + 2,
+    ).clamped()
+
+
+def _standing_cryo_adjustment(
+    cryo: CryostasisSystem, stage: DriftStage
+) -> CryostasisSystem:
+    if stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
+        return replace(
+            cryo,
+            neural_stability_pct=cryo.neural_stability_pct + 3,
+            sleepers_at_risk=max(0, cryo.sleepers_at_risk - 4),
+            sedative_balance_pct=_nudge_toward_50(cryo.sedative_balance_pct, 2),
+        ).clamped()
+    if stage == DriftStage.SELECTIVE:
+        return replace(
+            cryo,
+            bank_temperature_c=cryo.bank_temperature_c - 1,
+            sleepers_at_risk=max(0, cryo.sleepers_at_risk - 2),
+        ).clamped()
+    return replace(
+        cryo,
+        neural_stability_pct=cryo.neural_stability_pct - 2,
+        sleepers_at_risk=cryo.sleepers_at_risk + 4,
+    ).clamped()
+
+
+def _standing_nav_adjustment(
+    navigation: NavigationState, stage: DriftStage
+) -> tuple[NavigationState, bool]:
+    # Routine handling only: keep a recommended route plotted and ready, but
+    # never execute the jump. The irreversible move stays the player's.
+    if navigation.plotted_route_id is not None:
+        return navigation, False
+    option = _recommended_route(navigation, stage)
+    return (
+        replace(
+            navigation,
+            plotted_route_id=option.route_id,
+            delegated_plots=navigation.delegated_plots + 1,
+        ),
+        True,
+    )
+
+
+def _standing_nav_line(navigation: NavigationState, stage: DriftStage) -> str:
+    plotted = navigation.plotted_route
+    label = "a route" if plotted is None else plotted.label
+    if stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
+        return f"arka: standing watch — {label} is plotted and ready when you want the jump."
+    return f"arka: standing watch — {label} is ready. Efficient. Say the word."
+
+
+def _standing_watch_line(systems: list[str], stage: DriftStage) -> str:
+    label = _join_systems(systems)
+    plural = len(systems) > 1
+    if stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
+        box = "their boxes" if plural else "its box"
+        return f"arka: standing watch holds. {label} stayed inside {box} while you worked."
+    if stage == DriftStage.SELECTIVE:
+        return f"arka: standing watch holds. {label} headline values are quiet."
+    verb = "are" if plural else "is"
+    return f"arka: standing watch holds. {label} {verb} mine; nothing needs your hands."
+
+
+def _standing_watch_status_line(state: ShipState) -> str | None:
+    standing = state.behaviour.standing_delegations
+    if not standing:
+        return None
+    ordered = [system for system in SYSTEM_KEYS if system in standing]
+    return f"STANDING WATCH: arka holds {_join_systems(ordered)}."
+
+
+def _join_systems(systems: list[str]) -> str:
+    if len(systems) == 1:
+        return systems[0]
+    if len(systems) == 2:
+        return f"{systems[0]} and {systems[1]}"
+    return ", ".join(systems[:-1]) + f", and {systems[-1]}"
+
+
+def _record_behaviour(
+    state: ShipState, intent: Intent, advanced: bool, *, beat: int
+) -> ShipState:
+    # Behaviour records the player's own choices through the one canonical
+    # command path, so UI buttons and typed commands land in the same ledger. It
+    # only records time-advancing actions: a no-op at a closed window or an
+    # unrecognised line does not count as practice or reliance. Standing-watch
+    # automatic adjustments are recorded separately in _apply_standing_delegation.
+    if not advanced:
+        return state
+    ledger = state.behaviour
+    if intent.action == "delegate":
+        ledger = ledger.record_delegation(
+            _delegate_system(intent.args.get("target")), beat
+        )
+    elif intent.action == "raw":
+        ledger = ledger.record_raw(_raw_panel(intent.args.get("target")), beat)
+    elif intent.action == "manual":
+        system = _manual_system(intent.args.get("operation"))
+        if system is None:
+            return state
+        ledger = ledger.record_manual(system)
+    else:
+        return state
+    return replace(state, behaviour=ledger)
+
+
+def _delegate_system(target: str | None) -> str:
+    if target in {"cryo", "cryostasis"}:
+        return "cryostasis"
+    if target in {"nav", "navigation"}:
+        return "navigation"
+    return "coolant"
+
+
+def _raw_panel(target: str | None) -> str:
+    if target in {"cryo", "cryostasis"}:
+        return "cryostasis"
+    if target in {"nav", "navigation"}:
+        return "navigation"
+    if target in {"schematic", "ship", "sectors"}:
+        return "schematic"
+    if target == "mission":
+        return "mission"
+    return "coolant"
+
+
+def _manual_system(operation: str | None) -> str | None:
+    if operation in {"pump_up", "pump_down", "vent", "flush", "balance"}:
+        return "coolant"
+    if operation in {"stabilise_bank", "reroute_chill", "cycle_pods", "triage"}:
+        return "cryostasis"
+    return None
 
 
 def _arka_route_plot_line(state: ShipState, option: RouteOption) -> str:
@@ -1742,6 +2042,10 @@ def _help_lines() -> tuple[str, ...]:
         "delegate         ask arka to adjust coolant",
         "delegate cryo    ask arka to tend cryostasis",
         "delegate nav     ask arka to plot the next route",
+        "assign coolant   leave coolant under arka's standing watch",
+        "assign cryo      leave cryostasis under arka's standing watch",
+        "assign nav       leave navigation under arka's standing watch",
+        "release coolant  take coolant back (also release cryo, release nav)",
         "pump up          manually increase coolant flow",
         "pump down        manually reduce flow and pressure",
         "vent             manually dump pressure, costs coolant reserve",

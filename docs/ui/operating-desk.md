@@ -65,10 +65,17 @@ by `kind` and `target`:
 | ------------ | ---------------------------------------------------- |
 | `manual`     | active system panel, by target system               |
 | `delegate`   | active system panel, "Delegate" group               |
+| `standing`   | active system panel, "Standing watch" group         |
 | `raw`        | active system panel, "Inspect" group                |
 | `navigation` | Navigation tab (plot per route, execute jump)        |
 | `containment`| Containment tab, by selected sector                  |
 | `watch`      | objective panel ("Wait one beat")                    |
+
+`standing` actions toggle standing delegation: each system offers one of
+`assign` ("Leave coolant to arka") or `release` ("Take back coolant"), depending
+on whether arka currently holds it. While a system is held, its panel shows an
+"arka has the watch" badge. Standing posture is the player's own choice, so it is
+shown; the reliance counts behind it are not. See `../game_mechanics/trust-ledger.md`.
 
 A button dispatches its action spec's `command` string. UI commands and typed
 commands route through the same `GameEngine.handle()` path, so the action specs

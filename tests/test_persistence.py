@@ -1,6 +1,7 @@
 import unittest
 
 from custodian.models import (
+    BehaviourLedger,
     CommandRecord,
     CrisisState,
     CryostasisSystem,
@@ -54,6 +55,15 @@ class PersistenceTests(unittest.TestCase):
             ),
             previous_reactor=ReactorCoolantSystem(temperature_c=600),
             previous_cryostasis=CryostasisSystem(),
+            behaviour=BehaviourLedger(
+                delegated_by_system={"coolant": 2, "cryostasis": 1},
+                manual_by_system={"coolant": 3},
+                raw_by_panel={"cryostasis": 5, "navigation": 1},
+                standing_delegations=("coolant", "navigation"),
+                standing_adjustments=4,
+                first_delegation_beat=2,
+                first_raw_inspection_beat=1,
+            ),
             history=(
                 CommandRecord(
                     raw="status",
@@ -321,6 +331,69 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(thermal.containment, "sealed")
         self.assertEqual(restored.spatial.sealed_count, 1)
         self.assertEqual(restored.spatial.abandoned_count, 0)
+
+    def test_version_six_save_loads_with_default_behaviour_ledger(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 6,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {},
+              "spatial": {},
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(restored.behaviour, BehaviourLedger())
+
+    def test_behaviour_ledger_round_trips_standing_and_counts(self) -> None:
+        state = self._rich_state()
+
+        restored = loads(dumps(state))
+
+        self.assertEqual(restored.behaviour, state.behaviour)
+        self.assertEqual(
+            restored.behaviour.standing_delegations, ("coolant", "navigation")
+        )
+
+    def test_behaviour_ledger_drops_unknown_standing_systems(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 7,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {},
+              "spatial": {},
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "behaviour": {
+                "standing_delegations": ["coolant", "bridge", "arka"],
+                "standing_adjustments": 2
+              },
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(restored.behaviour.standing_delegations, ("coolant",))
+        self.assertEqual(restored.behaviour.standing_adjustments, 2)
 
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

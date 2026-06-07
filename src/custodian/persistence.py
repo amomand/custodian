@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from custodian.models import (
+    BehaviourLedger,
     CommandRecord,
     CrisisState,
     CryostasisSystem,
@@ -15,11 +16,12 @@ from custodian.models import (
     ShipState,
     ShipSector,
     SpatialState,
+    SYSTEM_KEYS,
 )
 
 
-SAVE_VERSION = 6
-SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, SAVE_VERSION}
+SAVE_VERSION = 7
+SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, 6, SAVE_VERSION}
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -48,6 +50,7 @@ def state_to_dict(state: ShipState) -> dict:
             if state.previous_cryostasis is not None
             else None
         ),
+        "behaviour": _behaviour_to_dict(state.behaviour),
         "history": [asdict(record) for record in state.history],
     }
 
@@ -78,6 +81,7 @@ def state_from_dict(data: dict) -> ShipState:
         outcome=data.get("outcome"),
         previous_reactor=_optional_reactor(data.get("previous_reactor")),
         previous_cryostasis=_optional_cryo(data.get("previous_cryostasis")),
+        behaviour=_behaviour_from_data(data.get("behaviour")),
         history=_history_from_data(data.get("history", ())),
     )
 
@@ -98,6 +102,65 @@ def save_state(state: ShipState, path: Path = DEFAULT_SAVE_PATH) -> Path:
 
 def load_state(path: Path = DEFAULT_SAVE_PATH) -> ShipState:
     return loads(path.read_text(encoding="utf-8"))
+
+
+def _behaviour_to_dict(ledger: BehaviourLedger) -> dict:
+    return {
+        "delegated_by_system": dict(ledger.delegated_by_system),
+        "manual_by_system": dict(ledger.manual_by_system),
+        "raw_by_panel": dict(ledger.raw_by_panel),
+        "standing_delegations": list(ledger.standing_delegations),
+        "standing_adjustments": ledger.standing_adjustments,
+        "first_delegation_beat": ledger.first_delegation_beat,
+        "first_raw_inspection_beat": ledger.first_raw_inspection_beat,
+    }
+
+
+def _behaviour_from_data(data: object) -> BehaviourLedger:
+    if not isinstance(data, dict):
+        return BehaviourLedger()
+    valid_systems = set(SYSTEM_KEYS)
+    standing = tuple(
+        system
+        for system in _str_tuple(data.get("standing_delegations"))
+        if system in valid_systems
+    )
+    return BehaviourLedger(
+        delegated_by_system=_int_counter(data.get("delegated_by_system")),
+        manual_by_system=_int_counter(data.get("manual_by_system")),
+        raw_by_panel=_int_counter(data.get("raw_by_panel")),
+        standing_delegations=standing,
+        standing_adjustments=int(data.get("standing_adjustments", 0)),
+        first_delegation_beat=_optional_int(data.get("first_delegation_beat")),
+        first_raw_inspection_beat=_optional_int(data.get("first_raw_inspection_beat")),
+    )
+
+
+def _int_counter(data: object) -> dict[str, int]:
+    if not isinstance(data, dict):
+        return {}
+    counter: dict[str, int] = {}
+    for key, value in data.items():
+        try:
+            counter[str(key)] = int(value)
+        except (TypeError, ValueError):
+            continue
+    return counter
+
+
+def _str_tuple(data: object) -> tuple[str, ...]:
+    if not isinstance(data, (list, tuple)):
+        return ()
+    return tuple(str(item) for item in data)
+
+
+def _optional_int(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _optional_reactor(data: dict | None) -> ReactorCoolantSystem | None:
