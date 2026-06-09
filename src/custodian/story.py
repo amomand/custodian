@@ -660,7 +660,7 @@ def advance_story(
     else:
         definition = _select_incident(state, story)
         if definition is not None:
-            urgent = definition.urgency_watches <= 1
+            urgent = definition.urgency_watches <= 2
             active = IncidentState(
                 incident_id=definition.id,
                 title=definition.title,
