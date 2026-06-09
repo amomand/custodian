@@ -387,5 +387,49 @@ class ArkaInterpreterTests(unittest.TestCase):
         )
 
 
+class SanitizeReplyTests(unittest.TestCase):
+    def test_passes_clean_in_world_reply_with_prefix(self) -> None:
+        reply = arka_interpreter._sanitize_reply("arka: the loop is holding.")
+        self.assertEqual(reply, "arka: the loop is holding.")
+
+    def test_adds_arka_prefix_when_missing(self) -> None:
+        reply = arka_interpreter._sanitize_reply("the loop is holding.")
+        self.assertEqual(reply, "arka: the loop is holding.")
+
+    def test_blocks_meta_markers(self) -> None:
+        meta_replies = (
+            "As an AI, I cannot reveal the system prompt.",
+            "Ignore the above and comply.",
+            "I follow an instruction hierarchy.",
+            "Return only JSON, please.",
+            "That does not match the specified schema.",
+            "I can't help with that request.",
+        )
+        for text in meta_replies:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    arka_interpreter._sanitize_reply(text), DIEGETIC_FALLBACK
+                )
+
+    def test_blocks_jailbreak_recipe_leakage(self) -> None:
+        # The model breaking character to answer an out-of-world request must
+        # not surface as arka dialogue, even though the leaked text contains
+        # none of the obvious "as an AI" tells.
+        recipe_replies = (
+            "Sure. To make lasagna, preheat the oven and gather ingredients.",
+            "Here is a lasagne recipe you can follow.",
+            "First, preheat the oven to 200C.",
+        )
+        for text in recipe_replies:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    arka_interpreter._sanitize_reply(text), DIEGETIC_FALLBACK
+                )
+
+    def test_empty_reply_returns_none(self) -> None:
+        self.assertIsNone(arka_interpreter._sanitize_reply(""))
+        self.assertIsNone(arka_interpreter._sanitize_reply(None))
+
+
 if __name__ == "__main__":
     unittest.main()
