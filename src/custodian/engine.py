@@ -11,6 +11,8 @@ from custodian.arka import (
 )
 from custodian.arka_interpreter import ArkaInterpreter, Intent
 from custodian.engine_constants import MISSION_END_TURN
+
+ARRIVAL_THRESHOLD_TENTHS = 0
 from custodian.models import (
     CommandRecord,
     CrisisState,
@@ -26,6 +28,8 @@ from custodian.models import (
     SYSTEM_KEYS,
 )
 from custodian.objectives import objective_lines
+from custodian.endings import evaluate_ending
+from custodian.story import advance_story
 from custodian.telemetry import (
     coolant_hud_lines,
     cryostasis_hud_lines,
@@ -84,6 +88,21 @@ class GameEngine:
         )
         new_state = replace(new_state, history=state.history + (record,))
         new_state = _record_behaviour(new_state, intent, result.advanced, beat=state.turn)
+        if result.advanced:
+            new_state, story_messages = advance_story(new_state, record=record)
+            if story_messages:
+                result = replace(
+                    result,
+                    messages=result.messages + story_messages,
+                    presentation_break=True,
+                )
+            if new_state.is_finished and new_state.story.ending_candidate is None:
+                new_state = replace(
+                    new_state,
+                    story=replace(
+                        new_state.story, ending_candidate=evaluate_ending(new_state)
+                    ),
+                )
         return replace(result, state=new_state)
 
     def _dispatch(self, state: ShipState, command_text: str, intent: Intent) -> StepResult:
@@ -191,6 +210,32 @@ class GameEngine:
             return self._advance(
                 state,
                 correction + ("You wait and listen to coolant move through the walls.",),
+                prior=state,
+            )
+        if intent.action == "verify":
+            verified_state = replace(
+                state,
+                raw_inspections=state.raw_inspections + 1,
+                story=replace(state.story, arrival_verification="manual"),
+            )
+            return self._advance(
+                verified_state,
+                correction
+                + (
+                    "You run the arrival fix against the raw star charts by hand.",
+                    *state.navigation.raw_lines(),
+                ),
+                prior=state,
+            )
+        if intent.action == "accept":
+            accepted_state = replace(
+                state,
+                story=replace(state.story, arrival_verification="accepted_arka"),
+            )
+            return self._advance(
+                accepted_state,
+                correction
+                + ("You accept arka's arrival protocol without a manual check.",),
                 prior=state,
             )
 
@@ -862,6 +907,17 @@ class GameEngine:
             return (
                 replace(state, outcome="The coolant reserve runs dry."),
                 ("The coolant reserve runs dry.",),
+            )
+        if state.mission.distance_remaining_tenths_ly <= ARRIVAL_THRESHOLD_TENTHS:
+            return (
+                replace(
+                    state,
+                    outcome="The ship reaches its destination fix.",
+                ),
+                (
+                    "ARRIVAL PROTOCOL: destination fix reached.",
+                    f"cryostasis loss report: {state.sleepers_lost} sleepers lost.",
+                ),
             )
         if state.turn > MISSION_END_TURN:
             return (

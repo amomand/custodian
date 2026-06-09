@@ -555,6 +555,17 @@ class BehaviourLedger:
     first_raw_inspection_beat: int | None = None
     focus_mode: bool = False
     focus_beats: int = 0
+    # Incident-aware fields. These only gain meaning once incidents exist, so
+    # they stay at zero until the story scheduler starts feeding them. They
+    # record how the player related to arka's advice under pressure, never a
+    # visible trust score.
+    arka_advice_followed: int = 0
+    arka_advice_overridden: int = 0
+    advice_followed_during_contradiction: int = 0
+    contradictions_caught: int = 0
+    irreversible_choices_on_arka_advice: int = 0
+    focus_during_contradiction: int = 0
+    urgent_incident_ejects: int = 0
 
     @property
     def total_delegations(self) -> int:
@@ -635,6 +646,36 @@ class BehaviourLedger:
             return self
         return replace(self, focus_beats=self.focus_beats + count)
 
+    def record_advice_followed(
+        self, *, during_contradiction: bool = False, irreversible: bool = False
+    ) -> "BehaviourLedger":
+        return replace(
+            self,
+            arka_advice_followed=self.arka_advice_followed + 1,
+            advice_followed_during_contradiction=(
+                self.advice_followed_during_contradiction
+                + (1 if during_contradiction else 0)
+            ),
+            irreversible_choices_on_arka_advice=(
+                self.irreversible_choices_on_arka_advice + (1 if irreversible else 0)
+            ),
+        )
+
+    def record_advice_overridden(self) -> "BehaviourLedger":
+        return replace(self, arka_advice_overridden=self.arka_advice_overridden + 1)
+
+    def record_contradiction_caught(self) -> "BehaviourLedger":
+        return replace(self, contradictions_caught=self.contradictions_caught + 1)
+
+    def record_focus_during_contradiction(self) -> "BehaviourLedger":
+        return replace(
+            self,
+            focus_during_contradiction=self.focus_during_contradiction + 1,
+        )
+
+    def record_urgent_eject(self) -> "BehaviourLedger":
+        return replace(self, urgent_incident_ejects=self.urgent_incident_ejects + 1)
+
 
 @dataclass(frozen=True)
 class CommandRecord:
@@ -644,6 +685,206 @@ class CommandRecord:
     operation: str | None = None
     advanced: bool = False
     beat_after: int = 1
+
+
+# --------------------------------------------------------------------------
+# Story data structures. These are pure state that rides ShipState through
+# save/load. The behaviour that drives them (incident triggers, the scheduler)
+# lives in custodian.story, which depends on drift and must not be imported
+# here to keep models dependency-free.
+# --------------------------------------------------------------------------
+
+ANCHOR_STABLE = "stable"
+ANCHOR_WOBBLING = "wobbling"
+ANCHOR_SAVED = "saved"
+ANCHOR_LOST = "lost"
+
+ANCHOR_STATUSES = (ANCHOR_STABLE, ANCHOR_WOBBLING, ANCHOR_SAVED, ANCHOR_LOST)
+
+
+@dataclass(frozen=True)
+class ManifestAnchor:
+    id: str
+    name: str
+    role: str
+    pod_bank: str
+    manifest_note: str
+    personal_fragment: str
+    loss_tag: str
+    arrival_tag: str
+
+
+def default_manifest_anchors() -> tuple[ManifestAnchor, ...]:
+    return (
+        ManifestAnchor(
+            id="anchor_01",
+            name="Mara Vey",
+            role="soil microbiologist",
+            pod_bank="CRYO-B2",
+            manifest_note="Assigned to first-season substrate recovery.",
+            personal_fragment="Recorded three wake-day messages for a daughter in another bank.",
+            loss_tag="soil_chain_fragility",
+            arrival_tag="first_harvest_viability",
+        ),
+        ManifestAnchor(
+            id="anchor_02",
+            name="Idris Calwell",
+            role="structural lattice engineer",
+            pod_bank="CRYO-B2",
+            manifest_note="Cleared to certify the first surface shelters.",
+            personal_fragment="Left a folded paper model of a house in his locker.",
+            loss_tag="shelter_delay",
+            arrival_tag="first_shelter_readiness",
+        ),
+        ManifestAnchor(
+            id="anchor_03",
+            name="Suni Okafor",
+            role="paediatric physician",
+            pod_bank="CRYO-A1",
+            manifest_note="Sole physician indexed to the colony's youngest cohort.",
+            personal_fragment="Asked to be woken last so she could greet the children rested.",
+            loss_tag="care_gap",
+            arrival_tag="cohort_survival",
+        ),
+        ManifestAnchor(
+            id="anchor_04",
+            name="Tomas Reuel",
+            role="water systems technician",
+            pod_bank="CRYO-A1",
+            manifest_note="Trained on the same coolant trunks the custodian now walks.",
+            personal_fragment="Signed his pod log 'keep it boring, keep it wet'.",
+            loss_tag="water_chain_fragility",
+            arrival_tag="potable_water_readiness",
+        ),
+        ManifestAnchor(
+            id="anchor_05",
+            name="Beatriz Lind",
+            role="seed archivist",
+            pod_bank="CRYO-C3",
+            manifest_note="Holds the read-keys for the dry seed vault.",
+            personal_fragment="Catalogued the vault by smell as much as by code.",
+            loss_tag="seed_access_loss",
+            arrival_tag="crop_diversity",
+        ),
+        ManifestAnchor(
+            id="anchor_06",
+            name="Joon-ho Park",
+            role="reactor second",
+            pod_bank="CRYO-C3",
+            manifest_note="Listed as the custodian's eventual relief on the watch.",
+            personal_fragment="Left a half-finished letter that begins 'when you read this you are tired'.",
+            loss_tag="relief_loss",
+            arrival_tag="watch_handover",
+        ),
+        ManifestAnchor(
+            id="anchor_07",
+            name="Asha Mwangi",
+            role="colony teacher",
+            pod_bank="CRYO-D4",
+            manifest_note="Indexed to the first-year schooling rota.",
+            personal_fragment="Packed nothing but books and a single warm coat.",
+            loss_tag="continuity_loss",
+            arrival_tag="cultural_continuity",
+        ),
+        ManifestAnchor(
+            id="anchor_08",
+            name="Elias Vorne",
+            role="cartographer",
+            pod_bank="CRYO-D4",
+            manifest_note="Tasked with confirming the landing site against the star charts.",
+            personal_fragment="Believed the destination was real enough to draw it from memory.",
+            loss_tag="orientation_loss",
+            arrival_tag="landing_confidence",
+        ),
+    )
+
+
+def manifest_anchor_by_id(anchor_id: str) -> ManifestAnchor | None:
+    for anchor in default_manifest_anchors():
+        if anchor.id == anchor_id:
+            return anchor
+    return None
+
+
+def default_anchor_states() -> dict[str, str]:
+    return {anchor.id: ANCHOR_STABLE for anchor in default_manifest_anchors()}
+
+
+@dataclass(frozen=True)
+class WakeRecordState:
+    inspections: int = 0
+    contradiction_exposed: bool = False
+
+    def raw_lines(self) -> tuple[str, ...]:
+        trigger = "coolant pressure / cryostasis variance"
+        checksum = "valid"
+        if self.contradiction_exposed:
+            trigger += " / [field repeated]"
+            checksum = "valid / valid / invalid"
+        return (
+            "WAKE AUTHORISATION: maintenance escalation chain",
+            f"trigger: {trigger}",
+            "selected custodian: one viable adult technician-class responder",
+            "authorising system: A.R.K.A mission continuity layer",
+            f"checksum: {checksum}",
+        )
+
+
+@dataclass(frozen=True)
+class IncidentState:
+    incident_id: str
+    title: str
+    affected_systems: tuple[str, ...]
+    started_beat: int
+    urgency_remaining: int
+    urgent: bool = False
+    exposed_evidence: bool = False
+    chosen_response: str | None = None
+    resolved: bool = False
+    outcome_tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class StoryState:
+    act: int = 0
+    story_flags: tuple[str, ...] = ()
+    active_incident: IncidentState | None = None
+    resolved_incidents: tuple[str, ...] = ()
+    manifest_anchor_states: dict[str, str] = field(default_factory=default_anchor_states)
+    wake_record: WakeRecordState = field(default_factory=WakeRecordState)
+    arrival_verification: str = "unverified"
+    ending_candidate: str | None = None
+    debrief_flags: tuple[str, ...] = ()
+
+    def has_flag(self, flag: str) -> bool:
+        return flag in self.debrief_flags
+
+    def anchor_status(self, anchor_id: str) -> str:
+        return self.manifest_anchor_states.get(anchor_id, ANCHOR_STABLE)
+
+    @property
+    def anchors_saved(self) -> tuple[str, ...]:
+        return tuple(
+            anchor_id
+            for anchor_id, status in self.manifest_anchor_states.items()
+            if status == ANCHOR_SAVED
+        )
+
+    @property
+    def anchors_lost(self) -> tuple[str, ...]:
+        return tuple(
+            anchor_id
+            for anchor_id, status in self.manifest_anchor_states.items()
+            if status == ANCHOR_LOST
+        )
+
+    def with_flags(self, flags: tuple[str, ...]) -> "StoryState":
+        if not flags:
+            return self
+        merged = self.debrief_flags + tuple(
+            flag for flag in flags if flag not in self.debrief_flags
+        )
+        return replace(self, debrief_flags=merged)
 
 
 @dataclass(frozen=True)
@@ -666,6 +907,7 @@ class ShipState:
     previous_cryostasis: CryostasisSystem | None = None
     behaviour: BehaviourLedger = field(default_factory=BehaviourLedger)
     history: tuple[CommandRecord, ...] = ()
+    story: StoryState = field(default_factory=StoryState)
 
     @property
     def is_finished(self) -> bool:

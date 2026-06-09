@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from custodian.arka import drift_stage
+from custodian.endings import ENDING_TITLES, ending_lines
 from custodian.models import DriftStage, ShipState
 
 
@@ -62,7 +63,27 @@ def closing_lines(state: ShipState) -> tuple[str, ...]:
     if focus_line is not None:
         lines.append(f"the quiet: {focus_line}")
     lines.append(f"raw panel: {_raw_debrief(state)}")
+    route_line = _route_debrief(state)
+    if route_line is not None:
+        lines.append(f"route habits: {route_line}")
+    containment_line = _containment_debrief(state)
+    if containment_line is not None:
+        lines.append(f"containment: {containment_line}")
+    vigilance_line = _vigilance_debrief(state)
+    if vigilance_line is not None:
+        lines.append(f"vigilance: {vigilance_line}")
+    anchor_line = _anchor_debrief(state)
+    if anchor_line is not None:
+        lines.append(f"manifest anchors: {anchor_line}")
+    arrival_line = _arrival_debrief(state)
+    if arrival_line is not None:
+        lines.append(f"arrival: {arrival_line}")
     lines.append(_closing_arka_line(state))
+
+    ending = _ending_block(state)
+    if ending:
+        lines.append("")
+        lines.extend(ending)
     return tuple(lines)
 
 
@@ -157,3 +178,79 @@ def _closing_arka_line(state: ShipState) -> str:
     if "survives the maintenance window" in (state.outcome or ""):
         return "arka: There. Warm ship, cold sleepers, tolerable morning."
     return "arka: I was still composing a safer sequence."
+
+
+def _route_debrief(state: ShipState) -> str | None:
+    navigation = state.navigation
+    if navigation.jumps_executed <= 0 and navigation.manual_plots <= 0:
+        return None
+    if navigation.delegated_plots > navigation.manual_plots:
+        return "you mostly took the route arka offered."
+    if navigation.manual_plots > 0 and navigation.delegated_plots == 0:
+        return "you plotted every jump by hand."
+    return "you split the plotting between your hands and arka's."
+
+
+def _containment_debrief(state: ShipState) -> str | None:
+    spatial = state.spatial
+    if (
+        spatial.sealed_count == 0
+        and spatial.abandoned_count == 0
+        and spatial.reroute_actions == 0
+    ):
+        return None
+    if spatial.abandoned_count:
+        return "you wrote off ground rather than keep fighting for it."
+    if spatial.sealed_count:
+        return "you sealed what spread and lived with the lost access."
+    return "you rerouted around the bad sectors without sealing them."
+
+
+def _vigilance_debrief(state: ShipState) -> str | None:
+    caught = state.behaviour.contradictions_caught
+    if caught <= 0:
+        if state.behaviour.advice_followed_during_contradiction > 0:
+            return "you followed the calm even when the panel disagreed."
+        return None
+    if caught == 1:
+        return "you caught arka out once, where the panel and the voice disagreed."
+    return "you kept catching the gap between arka's calm and the raw panel."
+
+
+def _anchor_debrief(state: ShipState) -> str | None:
+    saved = state.story.anchors_saved
+    lost = state.story.anchors_lost
+    if not saved and not lost:
+        return None
+    parts: list[str] = []
+    if saved:
+        names = ", ".join(_anchor_name(anchor_id) for anchor_id in saved)
+        parts.append(f"you held the bank for {names}.")
+    if lost:
+        names = ", ".join(_anchor_name(anchor_id) for anchor_id in lost)
+        parts.append(f"{names} went quiet on your watch.")
+    return " ".join(parts)
+
+
+def _arrival_debrief(state: ShipState) -> str | None:
+    verification = state.story.arrival_verification
+    if verification == "manual":
+        return "you confirmed the arrival fix with your own hands."
+    if verification == "accepted_arka":
+        return "you took arka's word that the ship had arrived."
+    return None
+
+
+def _ending_block(state: ShipState) -> tuple[str, ...]:
+    candidate = state.story.ending_candidate
+    if candidate is None:
+        return ()
+    title = ENDING_TITLES.get(candidate, "Arrival")
+    return ("ARRIVAL DEBRIEF", f"reading: {title}", *ending_lines(state))
+
+
+def _anchor_name(anchor_id: str) -> str:
+    from custodian.models import manifest_anchor_by_id
+
+    anchor = manifest_anchor_by_id(anchor_id)
+    return anchor.name if anchor is not None else anchor_id
