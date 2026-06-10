@@ -10,7 +10,7 @@ from custodian.arka import (
     summarize_schematic,
 )
 from custodian.arka_interpreter import ArkaInterpreter, Intent
-from custodian.endings import evaluate_ending
+from custodian.endings import ARRIVAL_DISTANCE_TENTHS, evaluate_ending
 from custodian.engine_constants import MISSION_END_TURN
 from custodian.models import (
     CommandRecord,
@@ -35,9 +35,6 @@ from custodian.telemetry import (
     navigation_hud_lines,
     schematic_hud_lines,
 )
-
-ARRIVAL_THRESHOLD_TENTHS = 0
-
 
 @dataclass(frozen=True)
 class StepResult:
@@ -920,7 +917,7 @@ class GameEngine:
                 replace(state, outcome="The coolant reserve runs dry."),
                 ("The coolant reserve runs dry.",),
             )
-        if state.mission.distance_remaining_tenths_ly <= ARRIVAL_THRESHOLD_TENTHS:
+        if state.mission.distance_remaining_tenths_ly <= ARRIVAL_DISTANCE_TENTHS:
             return (
                 replace(
                     state,

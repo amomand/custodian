@@ -482,6 +482,15 @@ class PersistenceTests(unittest.TestCase):
 
         self.assertIsNone(restored.story.active_incident)
 
+    def test_invalid_manifest_anchor_status_is_ignored_on_load(self) -> None:
+        data = json.loads(dumps(ShipState()))
+        anchor_id = next(iter(data["story"]["manifest_anchor_states"]))
+        data["story"]["manifest_anchor_states"][anchor_id] = "haunted"
+
+        restored = loads(json.dumps(data))
+
+        self.assertEqual(restored.story.anchor_status(anchor_id), "stable")
+
     def test_story_state_round_trips(self) -> None:
         from custodian.playtest import SCENARIOS, run_scenario
 

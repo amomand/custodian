@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from custodian.models import (
+    ANCHOR_STATUSES,
     BehaviourLedger,
     CommandRecord,
     CrisisState,
@@ -303,7 +304,7 @@ def _story_from_data(data: object) -> StoryState:
     raw_anchors = data.get("manifest_anchor_states")
     if isinstance(raw_anchors, dict):
         for anchor_id, status in raw_anchors.items():
-            if str(anchor_id) in anchors:
+            if str(anchor_id) in anchors and str(status) in ANCHOR_STATUSES:
                 anchors[str(anchor_id)] = str(status)
 
     return StoryState(
