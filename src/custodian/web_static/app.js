@@ -1367,7 +1367,7 @@ function renderMapChart(view) {
     svgEl("circle", { cx: fx, cy: fy, r: 16, class: "chart-fix-ring" }),
     svgEl("circle", { cx: fx, cy: fy, r: 6, class: "chart-fix" }),
     svgEl("text", { x: fx, y: fy - 28, class: "chart-fix-label", "text-anchor": "middle" }, nav.current_fix_label),
-    svgEl("text", { x: fx, y: fy + 38, class: "chart-fix-detail", "text-anchor": "middle" }, `signal ${nav.current_signal}`),
+    svgEl("text", { x: 36, y: fy + 38, class: "chart-fix-detail" }, `signal ${nav.current_signal}`),
   );
 
   const chart = svgEl(
