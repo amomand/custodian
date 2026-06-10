@@ -2,7 +2,9 @@
 
 Status: implemented. Clicking arka (or the `focus` command) hands it the whole
 ship and quiets the desk to arka plus a route/current-fix glance and a high-level
-ship overview. Raw telemetry, dense controls, and command-output clutter are
+ship overview. In the web client the quiet renders as the full-screen forward
+window: the desk drops away and what remains is the Dark, arka's presence
+light, arka's words, the glance, and the command channel (see `views.md`). Raw telemetry, dense controls, and command-output clutter are
 intentionally absent while arka has the watch; the full desk is one click or
 `Esc` away. Mechanically it is the whole-ship form of standing delegation, so it
 carries the same honest cost (drift pressure, no manual familiarity) and never

@@ -106,24 +106,29 @@ then returns to wherever the player was. Gated behind reduced motion.
 
 1. **Land `story.py` fix** — PR #34, independent. (Done.)
 2. **Re-skin only** — port the #33 panel/screen cosmetics with no starfield
-   behind the desk.
+   behind the desk. (Done.)
 3. **View system** — view rail, `data-view` switching, keyboard, Esc ordering.
+   (Done.)
 4. **The Dark view** — visible starfield (bigger/brighter stars, density tuned
    on a real screen), exposure thinning/vignette, corner readout, jump warp
-   overlay, reduced-motion static frame.
+   overlay, reduced-motion static frame. (Done.)
 5. **Focus-on-the-Dark** — focus layout becomes the dark view variant: arka
    light + lines + glance + command bar + take-back. Urgent ejects (engine
-   already does this) land back on the desk view.
+   already does this) land back on the desk view. (Done.)
 6. **Map view** — route plot SVG (fix → candidate paths through Dark
    territory, band words as text, plot/execute buttons per route with the
    existing confirmation strip), deck plan pane (reuse schematic renderer at
-   map scale, sector select → containment actions).
-7. **Docs** — retire `docs/ui/cabin-view.md` in favour of `docs/ui/views.md`;
-   update `operating-desk.md`, `zen-mode.md`, `project-reference.md`.
+   map scale, sector select → containment actions). (Done.)
+7. **Docs** — `docs/ui/views.md` (cabin-view.md never landed on main; nothing
+   to retire); update `operating-desk.md`, `zen-mode.md`,
+   `project-reference.md`. (Done.)
 8. **Verify & critique loop** — run the suite; drive the app in a browser:
    all three views, focus enter/exit, a jump from desk and from outside,
    narrow viewport, reduced motion; iterate on density/contrast/feel until
-   the vibe holds without costing legibility.
+   the vibe holds without costing legibility. (Done — see PR notes. Found and
+   fixed along the way: a pre-existing `null`-stringifying append in the
+   system/nav/containment renderers; clipped chart labels; warp hold now
+   yields to explicit view changes.)
 
 ## Out of scope (deliberately)
 

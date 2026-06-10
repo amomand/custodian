@@ -134,7 +134,7 @@ custodian/
 │   │   └── arka.md                 # arka voice and character notes
 │   ├── production/
 │   │   └── codex-direction-phase4.md # Producer direction for graphical slice
-│   ├── ui/                         # Operating desk and zen-mode notes
+│   ├── ui/                         # Operating desk, views, zen-mode notes
 │   └── original-idea.md            # Copied seed idea
 ├── src/custodian/
 │   ├── engine.py                   # Deterministic state transitions
@@ -177,6 +177,7 @@ Current working docs:
 - `architecture/save-load.md` - run serialisation and command history
 - `architecture/web-session-api.md` - local browser session endpoints
 - `ui/operating-desk.md` - the graphical operating desk web client
+- `ui/views.md` - the desk / map / dark view architecture
 - `ui/zen-mode.md` - focus / take-the-watch mode notes
 - `lore/arka.md` - arka character and runtime voice capsule
 - `architecture/engine-contracts.md` - canonical truth owners and implementation boundaries

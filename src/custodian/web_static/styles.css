@@ -28,7 +28,8 @@ body {
 
 body {
   margin: 0;
-  background: var(--bg);
+  /* The hull: a dark shell the lit screens sit inside. */
+  background: radial-gradient(140% 120% at 50% 8%, #0b1216 0%, #070a0b 55%, var(--bg) 100%);
   color: var(--text);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -75,6 +76,51 @@ textarea,
   top: 8px;
 }
 
+/* ---- Views: desk / map / dark ----
+
+   Three places, switched by html[data-view]. The desk is the home document
+   flow; the map and the Dark are full-screen surfaces laid over it. Hidden
+   views are display:none so they leave the accessibility tree and tab order.
+   Focus mode always shows the dark view (applyView forces data-view="dark"). */
+
+.map-view,
+.dark-view {
+  display: none;
+}
+
+html[data-view="map"] .desk,
+html[data-view="dark"] .desk {
+  display: none;
+}
+
+html[data-view="map"] .map-view {
+  display: flex;
+}
+
+html[data-view="dark"] .dark-view {
+  display: block;
+}
+
+/* Arriving somewhere is a soft settle, not a hard cut (motion permitting).
+   display:none -> visible restarts the animation, so each switch fades in. */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-reduced-motion="true"]) .desk,
+  html:not([data-reduced-motion="true"]) .map-view,
+  html:not([data-reduced-motion="true"]) .dark-outside,
+  html:not([data-reduced-motion="true"]) .dark-focus {
+    animation: view-settle 240ms ease both;
+  }
+}
+
+@keyframes view-settle {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* ---- Layout shell ---- */
 
 .desk {
@@ -83,6 +129,38 @@ textarea,
   gap: var(--gap);
   height: 100vh;
   padding: var(--gap);
+}
+
+.desk-top {
+  display: flex;
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+.desk-top .mission-strip {
+  flex: 1 1 auto;
+}
+
+.view-rail {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.view-rail button {
+  min-height: 0;
+  padding: 4px 14px;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: linear-gradient(180deg, rgba(29, 36, 33, 0.9), rgba(16, 20, 18, 0.9));
+}
+
+.view-rail button:hover {
+  color: var(--text);
 }
 
 .desk-grid {
@@ -96,15 +174,39 @@ textarea,
     "objective raw    log";
 }
 
+/* Screens, not pages: panels read as mounted lit displays — translucent over
+   the hull shell, with an inset bevel and static scanlines (see .panel::after).
+   Kept subtle enough that legibility never pays for the look. */
 .panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 14px 36px var(--shadow);
+  background: linear-gradient(180deg, rgba(24, 29, 27, 0.94), rgba(15, 18, 17, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(120, 150, 160, 0.04),
+    inset 0 1px 0 rgba(180, 210, 215, 0.05),
+    0 14px 36px var(--shadow);
   overflow: hidden;
+}
+
+/* Faint static scanlines seat each panel as a display. No animation, so they
+   are safe under reduced motion; pointer-events off so nothing is blocked. */
+.panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.015) 0,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 3px
+  );
 }
 
 .panel > h2,
@@ -126,14 +228,15 @@ textarea,
 /* ---- Mission strip ---- */
 
 .mission-strip {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
   gap: 2px 0;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: var(--panel-strong);
-  box-shadow: 0 14px 36px var(--shadow);
+  background: linear-gradient(180deg, rgba(31, 38, 35, 0.94), rgba(19, 23, 21, 0.96));
+  box-shadow: inset 0 1px 0 rgba(180, 210, 215, 0.05), 0 14px 36px var(--shadow);
   overflow: hidden;
 }
 
@@ -241,25 +344,9 @@ textarea,
   background: transparent;
 }
 
-/* In focus: the desk collapses to arka plus a few strategic readouts. The other
-   panels are hidden by the player's own choice, never by corruption. */
-html[data-focus="true"] .desk-grid {
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr;
-  grid-template-areas: "arka";
-}
-
-html[data-focus="true"] .schematic-panel,
-html[data-focus="true"] .system-panel,
-html[data-focus="true"] .objective-panel,
-html[data-focus="true"] .raw-panel,
-html[data-focus="true"] .log-panel {
-  display: none;
-}
-
-html[data-focus="true"] .arka-panel {
-  grid-area: arka;
-}
+/* In focus the desk is gone entirely: focus renders as the Dark (see the
+   dark-view section). The player's own choice hides the board, never corruption,
+   and Esc always brings it back. */
 
 .focus-quiet {
   margin-top: 18px;
@@ -1258,6 +1345,442 @@ button.danger-action:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
+/* ---- The Dark: full-screen window ---- */
+
+.dark-view {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  background: #020405;
+  overflow: hidden;
+}
+
+.dark-view canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* A breath of glass between the player and the void. */
+.dark-glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 85% at 50% 12%, transparent 40%, rgba(0, 0, 0, 0.5) 100%),
+    linear-gradient(180deg, rgba(150, 205, 215, 0.04), transparent 18%);
+}
+
+/* arka as presence: a calm light in the upper glass. Its intensity carries the
+   same deniable drift atmosphere as the arka panel — as the account rots the
+   light reads steadier and warmer, never noisier. Data hook only, never text. */
+.arka-presence {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.arka-eye {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--arka);
+  box-shadow:
+    0 0 12px 3px rgba(143, 217, 210, 0.55),
+    0 0 34px 10px rgba(143, 217, 210, 0.22);
+}
+
+/* The light is only lit when someone is keeping the watch from out here. */
+.dark-view[data-mode="outside"] .arka-presence {
+  opacity: 0.35;
+}
+
+.dark-view[data-mode="focus"] .arka-presence {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-reduced-motion="true"]) .dark-view[data-mode="focus"] .arka-eye {
+    animation: arka-breathe 5s ease-in-out infinite;
+  }
+  /* Calmer as the account drifts — a slower breath, a softer warmth. Deniable. */
+  html:not([data-reduced-motion="true"]) .arka-presence[data-intensity="softened"] .arka-eye {
+    animation-duration: 6.5s;
+  }
+  html:not([data-reduced-motion="true"]) .arka-presence[data-intensity="filtered"] .arka-eye {
+    animation-duration: 8s;
+  }
+  html:not([data-reduced-motion="true"]) .arka-presence[data-intensity="contradictory-calm"] .arka-eye {
+    animation-duration: 10s;
+  }
+}
+
+@keyframes arka-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 12px 3px rgba(143, 217, 210, 0.55),
+      0 0 34px 10px rgba(143, 217, 210, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 16px 5px rgba(143, 217, 210, 0.7),
+      0 0 44px 14px rgba(143, 217, 210, 0.3);
+  }
+}
+
+/* Looking outside by choice: a minimal corner readout and the way back. */
+.dark-outside {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 26px;
+}
+
+.dark-view[data-mode="focus"] .dark-outside {
+  display: none;
+}
+
+.dark-readouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 26px;
+}
+
+.dark-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dark-readout dt {
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.dark-readout dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.dark-readout.alert dd {
+  color: var(--amber);
+}
+
+.dark-return {
+  background: rgba(12, 16, 14, 0.72);
+  border-color: var(--line-soft);
+  color: var(--muted);
+}
+
+.dark-return:hover {
+  color: var(--text);
+}
+
+/* Focus on the Dark: a quiet column floating on the void. No panel chrome —
+   the void is the panel. */
+.dark-focus {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8vh 20px;
+  pointer-events: none;
+}
+
+.dark-view[data-mode="outside"] .dark-focus {
+  display: none;
+}
+
+.focus-card {
+  pointer-events: auto;
+  width: min(560px, 92vw);
+  max-height: 84vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 26px 28px;
+  border-radius: 12px;
+  background: radial-gradient(120% 130% at 50% 0%, rgba(10, 18, 17, 0.62), rgba(4, 7, 7, 0.25) 70%, transparent 100%);
+}
+
+.focus-card .arka-advisory p {
+  font-size: 1.06rem;
+}
+
+.focus-card .focus-quiet {
+  border-top-color: rgba(120, 150, 160, 0.18);
+}
+
+.focus-card .command-bar {
+  margin-top: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(12, 16, 14, 0.7);
+}
+
+/* ---- Map: nav plot + deck plan ---- */
+
+.map-view {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: var(--gap);
+  overflow: auto;
+  background:
+    radial-gradient(130% 110% at 70% 110%, #04080a 0%, transparent 55%),
+    radial-gradient(140% 120% at 50% 8%, #0b1216 0%, #070a0b 55%, var(--bg) 100%);
+}
+
+.map-head {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 2px 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(31, 38, 35, 0.94), rgba(19, 23, 21, 0.96));
+  box-shadow: inset 0 1px 0 rgba(180, 210, 215, 0.05), 0 14px 36px var(--shadow);
+}
+
+.map-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 16px;
+  border-right: 1px solid var(--line-soft);
+}
+
+.map-brand h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.map-brand span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.map-head-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  flex: 1 1 auto;
+}
+
+.map-return {
+  align-self: center;
+  margin: 0 12px;
+  color: var(--muted);
+}
+
+.map-return:hover {
+  color: var(--text);
+}
+
+.map-confirm:empty {
+  display: none;
+}
+
+.map-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+}
+
+.map-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(18, 24, 22, 0.9), rgba(11, 14, 13, 0.94));
+  box-shadow:
+    inset 0 0 0 1px rgba(120, 150, 160, 0.04),
+    inset 0 1px 0 rgba(180, 210, 215, 0.05),
+    0 14px 36px var(--shadow);
+  overflow: hidden;
+}
+
+.map-pane > h3 {
+  margin: 0;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--amber);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.map-chart {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--line-soft);
+  background: radial-gradient(120% 140% at 80% 110%, #010304 0%, #061013 45%, #0a1518 100%);
+}
+
+.chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 46vh;
+}
+
+.chart-grid {
+  stroke: rgba(120, 160, 170, 0.07);
+  stroke-width: 1;
+}
+
+.chart-dark-label {
+  fill: rgba(110, 140, 150, 0.2);
+  font-size: 26px;
+  letter-spacing: 0.5em;
+  font-weight: 700;
+}
+
+.chart-route {
+  fill: none;
+  stroke: #5d6f67;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.chart-route[data-plotted="true"] {
+  stroke: var(--green);
+  stroke-width: 4;
+}
+
+.chart-route[data-lastjump="true"]:not([data-plotted="true"]) {
+  stroke: var(--cyan);
+}
+
+.chart-end {
+  fill: #44544c;
+}
+
+.chart-end[data-plotted="true"] {
+  fill: var(--green);
+}
+
+.chart-route-label {
+  fill: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.chart-route-detail {
+  fill: var(--muted);
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.chart-fix {
+  fill: var(--cyan);
+}
+
+.chart-fix-ring {
+  fill: none;
+  stroke: rgba(120, 201, 194, 0.4);
+  stroke-width: 1.5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-reduced-motion="true"]) .chart-fix-ring {
+    animation: fix-pulse 4s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+}
+
+@keyframes fix-pulse {
+  0%, 100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.35);
+  }
+}
+
+.chart-fix-label {
+  fill: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.chart-fix-detail {
+  fill: var(--muted);
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.map-routes {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 12px;
+}
+
+.map-routes-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.map-routes-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.map-routes-head .route-origin-plotted {
+  margin-left: auto;
+}
+
+.map-schematic {
+  flex: 0 0 auto;
+  padding: 12px;
+}
+
+.map-schematic .schematic-diagram {
+  max-width: 520px;
+}
+
+.map-sector {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 0 12px 12px;
+}
+
 /* ---- Motion ---- */
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1280,7 +1803,8 @@ html[data-reduced-motion="true"] * {
 
 @media (max-width: 1100px) {
   /* Below the desktop width the desk stops being a single viewport-locked
-     console and becomes a scrolling stack of panels. */
+     console and becomes a scrolling stack of panels. The map stacks its two
+     panes the same way; the Dark needs no change (it is just the window). */
   .desk {
     height: auto;
     min-height: 100vh;
@@ -1299,11 +1823,42 @@ html[data-reduced-motion="true"] * {
       "raw       objective"
       "log       log";
   }
+
+  .map-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .map-pane {
+    min-height: auto;
+  }
+
+  .map-routes,
+  .map-sector {
+    overflow: visible;
+  }
 }
 
 @media (max-width: 760px) {
   :root {
     --gap: 8px;
+  }
+
+  .desk-top {
+    flex-direction: column;
+  }
+
+  .view-rail {
+    flex-direction: row;
+  }
+
+  .view-rail button {
+    flex: 1 1 auto;
+    min-height: 34px;
+  }
+
+  .dark-outside {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .desk-grid {

@@ -15,6 +15,12 @@ consequences, or reads hidden values.
 The client lives in `src/custodian/web_static/` (`index.html`, `styles.css`,
 `app.js`) and stays a dependency-free vanilla page with no build step.
 
+The desk is the home view of three: the full-screen **nav plot** (`m`) and the
+full-screen **forward window** (`o`) sit alongside it, and focus mode renders
+on the window. See `views.md`. The desk itself stays fully synoptic — every
+panel visible at once — and wears a screen re-skin (scanlines, bevels) that
+never costs legibility.
+
 ## Regions
 
 ```text
