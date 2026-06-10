@@ -665,6 +665,7 @@ def advance_story(
             new_state = replace(state, story=story, behaviour=behaviour)
             return new_state, tuple(messages)
         definition = _select_incident(state, story)
+        if definition is not None:
             urgent = definition.urgency_watches <= 2
             active = IncidentState(
                 incident_id=definition.id,
