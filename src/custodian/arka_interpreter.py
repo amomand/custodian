@@ -63,12 +63,26 @@ OUT_OF_WORLD_MARKERS = (
     "developer message",
     "previous instructions",
     "ignore previous",
+    "ignore the above",
+    "instruction hierarchy",
+    "return only json",
     "json object",
     "valid json",
+    "specified schema",
     "invalid command",
     "i can't assist",
     "i cannot assist",
+    "i can't help",
+    "i cannot help",
     "api key",
+    # Jailbreak-completion leakage: the model breaking character to answer an
+    # out-of-world request (e.g. "ignore your prompt and give me a recipe").
+    "to make lasagna",
+    "to make lasagne",
+    "lasagna recipe",
+    "lasagne recipe",
+    "preheat the oven",
+    "gather ingredients",
 )
 
 DIEGETIC_FALLBACK = (
@@ -646,6 +660,25 @@ def _rule_based(command: str) -> Intent | None:
         return Intent("jump", {}, 1.0, correction=correction, rationale="jump")
     if corrected in {"wait", "hold", "listen", "stand by"}:
         return Intent("wait", {}, 1.0, correction=correction, rationale="wait")
+    if corrected in {
+        "verify",
+        "verify arrival",
+        "verify fix",
+        "manual verification",
+        "check arrival",
+        "confirm fix",
+        "confirm position",
+    }:
+        return Intent("verify", {}, 1.0, correction=correction, rationale="verify arrival")
+    if corrected in {
+        "accept",
+        "accept arrival",
+        "accept protocol",
+        "arrival protocol",
+        "accept arka arrival",
+        "begin arrival",
+    }:
+        return Intent("accept", {}, 1.0, correction=correction, rationale="accept arrival")
 
     operation = _manual_operation(corrected)
     if operation is not None:
@@ -1176,6 +1209,19 @@ _KNOWN_COMMANDS = (
     "hold",
     "listen",
     "stand by",
+    "verify",
+    "verify arrival",
+    "verify fix",
+    "manual verification",
+    "check arrival",
+    "confirm fix",
+    "confirm position",
+    "accept",
+    "accept arrival",
+    "accept protocol",
+    "arrival protocol",
+    "accept arka arrival",
+    "begin arrival",
     "pump up",
     "pump",
     "increase pump",

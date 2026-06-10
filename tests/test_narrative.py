@@ -49,6 +49,14 @@ class NarrativeTests(unittest.TestCase):
         self.assertNotIn("manual_familiarity", debrief)
         self.assertNotIn("delegated_controls", debrief)
 
+    def test_catastrophic_failure_has_no_arrival_debrief(self) -> None:
+        state = ShipState(outcome="Reactor temperature exceeds containment.")
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("MAINTENANCE WINDOW CLOSED", debrief)
+        self.assertNotIn("ARRIVAL DEBRIEF", debrief)
+
 
 if __name__ == "__main__":
     unittest.main()

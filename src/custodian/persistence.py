@@ -5,10 +5,12 @@ import json
 from pathlib import Path
 
 from custodian.models import (
+    ANCHOR_STATUSES,
     BehaviourLedger,
     CommandRecord,
     CrisisState,
     CryostasisSystem,
+    IncidentState,
     MissionStatus,
     NavigationState,
     ReactorCoolantSystem,
@@ -16,12 +18,15 @@ from custodian.models import (
     ShipState,
     ShipSector,
     SpatialState,
+    StoryState,
+    WakeRecordState,
+    default_anchor_states,
     SYSTEM_KEYS,
 )
 
 
-SAVE_VERSION = 8
-SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, 6, 7, SAVE_VERSION}
+SAVE_VERSION = 9
+SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, 6, 7, 8, SAVE_VERSION}
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -52,6 +57,7 @@ def state_to_dict(state: ShipState) -> dict:
         ),
         "behaviour": _behaviour_to_dict(state.behaviour),
         "history": [asdict(record) for record in state.history],
+        "story": _story_to_dict(state.story),
     }
 
 
@@ -83,6 +89,7 @@ def state_from_dict(data: dict) -> ShipState:
         previous_cryostasis=_optional_cryo(data.get("previous_cryostasis")),
         behaviour=_behaviour_from_data(data.get("behaviour")),
         history=_history_from_data(data.get("history", ())),
+        story=_story_from_data(data.get("story")),
     )
 
 
@@ -115,6 +122,13 @@ def _behaviour_to_dict(ledger: BehaviourLedger) -> dict:
         "first_raw_inspection_beat": ledger.first_raw_inspection_beat,
         "focus_mode": ledger.focus_mode,
         "focus_beats": ledger.focus_beats,
+        "arka_advice_followed": ledger.arka_advice_followed,
+        "arka_advice_overridden": ledger.arka_advice_overridden,
+        "advice_followed_during_contradiction": ledger.advice_followed_during_contradiction,
+        "contradictions_caught": ledger.contradictions_caught,
+        "irreversible_choices_on_arka_advice": ledger.irreversible_choices_on_arka_advice,
+        "focus_during_contradiction": ledger.focus_during_contradiction,
+        "urgent_incident_ejects": ledger.urgent_incident_ejects,
     }
 
 
@@ -137,6 +151,17 @@ def _behaviour_from_data(data: object) -> BehaviourLedger:
         first_raw_inspection_beat=_optional_int(data.get("first_raw_inspection_beat")),
         focus_mode=bool(data.get("focus_mode", False)),
         focus_beats=int(data.get("focus_beats", 0)),
+        arka_advice_followed=int(data.get("arka_advice_followed", 0)),
+        arka_advice_overridden=int(data.get("arka_advice_overridden", 0)),
+        advice_followed_during_contradiction=int(
+            data.get("advice_followed_during_contradiction", 0)
+        ),
+        contradictions_caught=int(data.get("contradictions_caught", 0)),
+        irreversible_choices_on_arka_advice=int(
+            data.get("irreversible_choices_on_arka_advice", 0)
+        ),
+        focus_during_contradiction=int(data.get("focus_during_contradiction", 0)),
+        urgent_incident_ejects=int(data.get("urgent_incident_ejects", 0)),
     )
 
 
@@ -254,3 +279,71 @@ def _history_from_data(data: object) -> tuple[CommandRecord, ...]:
 
 def _optional_str(value: object) -> str | None:
     return None if value is None else str(value)
+
+
+def _story_to_dict(story: StoryState) -> dict:
+    active = story.active_incident
+    return {
+        "act": story.act,
+        "story_flags": list(story.story_flags),
+        "active_incident": asdict(active) if active is not None else None,
+        "resolved_incidents": list(story.resolved_incidents),
+        "manifest_anchor_states": dict(story.manifest_anchor_states),
+        "wake_record": asdict(story.wake_record),
+        "arrival_verification": story.arrival_verification,
+        "ending_candidate": story.ending_candidate,
+        "debrief_flags": list(story.debrief_flags),
+    }
+
+
+def _story_from_data(data: object) -> StoryState:
+    if not isinstance(data, dict):
+        return StoryState()
+
+    anchors = default_anchor_states()
+    raw_anchors = data.get("manifest_anchor_states")
+    if isinstance(raw_anchors, dict):
+        for anchor_id, status in raw_anchors.items():
+            if str(anchor_id) in anchors and str(status) in ANCHOR_STATUSES:
+                anchors[str(anchor_id)] = str(status)
+
+    return StoryState(
+        act=int(data.get("act", 0)),
+        story_flags=_str_tuple(data.get("story_flags")),
+        active_incident=_incident_from_data(data.get("active_incident")),
+        resolved_incidents=_str_tuple(data.get("resolved_incidents")),
+        manifest_anchor_states=anchors,
+        wake_record=_wake_record_from_data(data.get("wake_record")),
+        arrival_verification=str(data.get("arrival_verification", "unverified")),
+        ending_candidate=_optional_str(data.get("ending_candidate")),
+        debrief_flags=_str_tuple(data.get("debrief_flags")),
+    )
+
+
+def _incident_from_data(data: object) -> IncidentState | None:
+    if not isinstance(data, dict):
+        return None
+    incident_id = str(data.get("incident_id", ""))
+    if not incident_id:
+        return None
+    return IncidentState(
+        incident_id=incident_id,
+        title=str(data.get("title", "")),
+        affected_systems=_str_tuple(data.get("affected_systems")),
+        started_beat=int(data.get("started_beat", 0)),
+        urgency_remaining=int(data.get("urgency_remaining", 0)),
+        urgent=bool(data.get("urgent", False)),
+        exposed_evidence=bool(data.get("exposed_evidence", False)),
+        chosen_response=_optional_str(data.get("chosen_response")),
+        resolved=bool(data.get("resolved", False)),
+        outcome_tags=_str_tuple(data.get("outcome_tags")),
+    )
+
+
+def _wake_record_from_data(data: object) -> WakeRecordState:
+    if not isinstance(data, dict):
+        return WakeRecordState()
+    return WakeRecordState(
+        inspections=int(data.get("inspections", 0)),
+        contradiction_exposed=bool(data.get("contradiction_exposed", False)),
+    )

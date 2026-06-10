@@ -10,6 +10,7 @@ from custodian.arka import (
     summarize_schematic,
 )
 from custodian.arka_interpreter import ArkaInterpreter, Intent
+from custodian.endings import ARRIVAL_DISTANCE_TENTHS, VIABILITY_FLOOR, evaluate_ending
 from custodian.engine_constants import MISSION_END_TURN
 from custodian.models import (
     CommandRecord,
@@ -26,12 +27,20 @@ from custodian.models import (
     SYSTEM_KEYS,
 )
 from custodian.objectives import objective_lines
+from custodian.story import advance_story
 from custodian.telemetry import (
     coolant_hud_lines,
     cryostasis_hud_lines,
     mission_hud_lines,
     navigation_hud_lines,
     schematic_hud_lines,
+)
+
+CRYO_COLLAPSE_OUTCOME = "Cryostasis viability collapses across the forward banks."
+ARRIVAL_OUTCOME = "The ship reaches its destination fix."
+MAINTENANCE_WINDOW_OUTCOME = (
+    "The reactor survives the maintenance window. "
+    "You are not sure arka agrees about how."
 )
 
 
@@ -84,6 +93,24 @@ class GameEngine:
         )
         new_state = replace(new_state, history=state.history + (record,))
         new_state = _record_behaviour(new_state, intent, result.advanced, beat=state.turn)
+        if result.advanced:
+            new_state, story_messages = advance_story(new_state, record=record)
+            if story_messages:
+                result = replace(
+                    result,
+                    messages=result.messages + story_messages,
+                    presentation_break=True,
+                )
+            if (
+                _ending_candidate_applies(new_state)
+                and new_state.story.ending_candidate is None
+            ):
+                new_state = replace(
+                    new_state,
+                    story=replace(
+                        new_state.story, ending_candidate=evaluate_ending(new_state)
+                    ),
+                )
         return replace(result, state=new_state)
 
     def _dispatch(self, state: ShipState, command_text: str, intent: Intent) -> StepResult:
@@ -191,6 +218,44 @@ class GameEngine:
             return self._advance(
                 state,
                 correction + ("You wait and listen to coolant move through the walls.",),
+                prior=state,
+            )
+        if intent.action == "verify":
+            if not _arrival_disagreement_active(state):
+                return StepResult(
+                    state,
+                    correction
+                    + ("ARRIVAL PROTOCOL: no active arrival disagreement to verify.",),
+                )
+            verified_state = replace(
+                state,
+                raw_inspections=state.raw_inspections + 1,
+                story=replace(state.story, arrival_verification="manual"),
+            )
+            return self._advance(
+                verified_state,
+                correction
+                + (
+                    "You run the arrival fix against the raw star charts by hand.",
+                    *state.navigation.raw_lines(),
+                ),
+                prior=state,
+            )
+        if intent.action == "accept":
+            if not _arrival_disagreement_active(state):
+                return StepResult(
+                    state,
+                    correction
+                    + ("ARRIVAL PROTOCOL: no active arrival disagreement to accept.",),
+                )
+            accepted_state = replace(
+                state,
+                story=replace(state.story, arrival_verification="accepted_arka"),
+            )
+            return self._advance(
+                accepted_state,
+                correction
+                + ("You accept arka's arrival protocol without a manual check.",),
                 prior=state,
             )
 
@@ -843,10 +908,10 @@ class GameEngine:
         reactor = state.reactor
         if state.outcome is not None:
             return state, (state.outcome,)
-        if state.cryostasis.neural_stability_pct <= 35:
+        if state.cryostasis.neural_stability_pct <= VIABILITY_FLOOR:
             return (
-                replace(state, outcome="Cryostasis viability collapses across the forward banks."),
-                ("Cryostasis viability collapses across the forward banks.",),
+                replace(state, outcome=CRYO_COLLAPSE_OUTCOME),
+                (CRYO_COLLAPSE_OUTCOME,),
             )
         if reactor.temperature_c >= 720:
             return (
@@ -863,14 +928,22 @@ class GameEngine:
                 replace(state, outcome="The coolant reserve runs dry."),
                 ("The coolant reserve runs dry.",),
             )
+        if state.mission.distance_remaining_tenths_ly <= ARRIVAL_DISTANCE_TENTHS:
+            return (
+                replace(
+                    state,
+                    outcome=ARRIVAL_OUTCOME,
+                ),
+                (
+                    "ARRIVAL PROTOCOL: destination fix reached.",
+                    f"cryostasis loss report: {state.sleepers_lost} sleepers lost.",
+                ),
+            )
         if state.turn > MISSION_END_TURN:
             return (
                 replace(
                     state,
-                    outcome=(
-                        "The reactor survives the maintenance window. "
-                        "You are not sure arka agrees about how."
-                    ),
+                    outcome=MAINTENANCE_WINDOW_OUTCOME,
                 ),
                 (
                     "The reactor survives the maintenance window.",
@@ -1683,6 +1756,19 @@ def _raw_panel(target: str | None) -> str:
     if target == "mission":
         return "mission"
     return "coolant"
+
+
+def _ending_candidate_applies(state: ShipState) -> bool:
+    return state.outcome in {
+        CRYO_COLLAPSE_OUTCOME,
+        ARRIVAL_OUTCOME,
+        MAINTENANCE_WINDOW_OUTCOME,
+    }
+
+
+def _arrival_disagreement_active(state: ShipState) -> bool:
+    incident = state.story.active_incident
+    return incident is not None and incident.incident_id == "arrival-disagreement"
 
 
 def _manual_system(operation: str | None) -> str | None:
