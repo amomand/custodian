@@ -65,6 +65,10 @@ class EvaluateEndingTests(unittest.TestCase):
         state = _state(distance=0, neural=80, open_symptom=0, verification="manual")
         self.assertEqual(evaluate_ending(state), CLEAN_ARRIVAL)
 
+    def test_clean_arrival_when_sleepers_survive_and_symptoms_are_contained(self) -> None:
+        state = _state(distance=0, neural=50, open_symptom=0, verification="manual")
+        self.assertEqual(evaluate_ending(state), CLEAN_ARRIVAL)
+
     def test_efficient_arrival_with_contamination(self) -> None:
         state = _state(
             distance=0,

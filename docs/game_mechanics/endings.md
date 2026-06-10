@@ -43,9 +43,9 @@ darker twins of others.
    floor, or sleeper losses at or above the ceiling. If the ship arrived, it
    arrived as an ark with no colony to wake; if it did not, the watch failed its
    people either way.
-4. **Clean arrival.** Arrived with viable sleepers (neural stability at or above
-   the clean threshold) and contained symptoms. The hardest target: it demands
-   both a maintained ship and a maintained crew.
+4. **Clean arrival.** Arrived with sleepers still above the collapse floor and
+   contained symptoms. The hardest target: it demands both a maintained ship and
+   a maintained crew.
 5. **Endless custodian.** Did not arrive, but the ship remains maintainable and
    the sleepers viable. The watch does not close. It only continues.
 
@@ -55,7 +55,6 @@ The thresholds are deliberately explicit so a scripted route can reach each
 ending deterministically and so balancing has a single place to move them:
 
 - `VIABILITY_FLOOR` — neural stability at or below this is sleeper collapse.
-- `CLEAN_VIABILITY` — neural stability required for a clean arrival.
 - `HIGH_DARK_EXPOSURE` — Dark exposure that, with unresolved symptoms, reads as
   contamination.
 - `ARRIVAL_DISTANCE_TENTHS` — distance at which the ship has arrived.

@@ -23,7 +23,6 @@ QUIET_EXTINCTION = "quiet_extinction"
 # Thresholds. These are deliberately explicit so a scripted route can reach each
 # ending deterministically and so balancing has a single place to move them.
 VIABILITY_FLOOR = 35  # neural stability at or below this is sleeper collapse
-CLEAN_VIABILITY = 70
 HIGH_DARK_EXPOSURE = 30
 ARRIVAL_DISTANCE_TENTHS = 0
 
@@ -87,18 +86,12 @@ def evaluate_ending(state: ShipState) -> str:
         ):
             return EFFICIENT_ARRIVAL_WITH_CONTAMINATION
 
-        # Clean arrival: viable sleepers and contained symptoms.
-        if (
-            state.cryostasis.neural_stability_pct >= CLEAN_VIABILITY
-            and not _unresolved_symptoms(state)
-        ):
+        # Clean arrival: no false fix, no sleeper collapse, no unresolved symptoms.
+        if not _unresolved_symptoms(state):
             return CLEAN_ARRIVAL
 
-        # Arrived but messy: closest to contamination if symptoms linger, else a
-        # diminished clean arrival.
-        if _unresolved_symptoms(state):
-            return EFFICIENT_ARRIVAL_WITH_CONTAMINATION
-        return CLEAN_ARRIVAL
+        # Arrived with unresolved symptoms but lower exposure: still not clean.
+        return EFFICIENT_ARRIVAL_WITH_CONTAMINATION
 
     # Did not arrive.
     if _viability_collapsed(state):

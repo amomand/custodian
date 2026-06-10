@@ -21,13 +21,11 @@ from custodian.models import (
     ANCHOR_SAVED,
     ANCHOR_STABLE,
     ANCHOR_WOBBLING,
-    BehaviourLedger,
     CommandRecord,
     DriftStage,
     IncidentState,
     ShipState,
     StoryState,
-    WakeRecordState,
     default_manifest_anchors,
     manifest_anchor_by_id,
 )
@@ -588,13 +586,6 @@ def _compute_act(state: ShipState) -> int:
     if state.turn >= 2:
         return 1
     return 0
-
-
-def _next_anchor_for_loss(story: StoryState) -> str | None:
-    for anchor in default_manifest_anchors():
-        if story.anchor_status(anchor.id) in {ANCHOR_STABLE, ANCHOR_WOBBLING}:
-            return anchor.id
-    return None
 
 
 def _wobbling_anchor(story: StoryState) -> str | None:
