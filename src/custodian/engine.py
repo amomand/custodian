@@ -10,7 +10,7 @@ from custodian.arka import (
     summarize_schematic,
 )
 from custodian.arka_interpreter import ArkaInterpreter, Intent
-from custodian.endings import ARRIVAL_DISTANCE_TENTHS, evaluate_ending
+from custodian.endings import ARRIVAL_DISTANCE_TENTHS, VIABILITY_FLOOR, evaluate_ending
 from custodian.engine_constants import MISSION_END_TURN
 from custodian.models import (
     CommandRecord,
@@ -35,6 +35,14 @@ from custodian.telemetry import (
     navigation_hud_lines,
     schematic_hud_lines,
 )
+
+CRYO_COLLAPSE_OUTCOME = "Cryostasis viability collapses across the forward banks."
+ARRIVAL_OUTCOME = "The ship reaches its destination fix."
+MAINTENANCE_WINDOW_OUTCOME = (
+    "The reactor survives the maintenance window. "
+    "You are not sure arka agrees about how."
+)
+
 
 @dataclass(frozen=True)
 class StepResult:
@@ -93,7 +101,10 @@ class GameEngine:
                     messages=result.messages + story_messages,
                     presentation_break=True,
                 )
-            if new_state.is_finished and new_state.story.ending_candidate is None:
+            if (
+                _ending_candidate_applies(new_state)
+                and new_state.story.ending_candidate is None
+            ):
                 new_state = replace(
                     new_state,
                     story=replace(
@@ -897,10 +908,10 @@ class GameEngine:
         reactor = state.reactor
         if state.outcome is not None:
             return state, (state.outcome,)
-        if state.cryostasis.neural_stability_pct <= 35:
+        if state.cryostasis.neural_stability_pct <= VIABILITY_FLOOR:
             return (
-                replace(state, outcome="Cryostasis viability collapses across the forward banks."),
-                ("Cryostasis viability collapses across the forward banks.",),
+                replace(state, outcome=CRYO_COLLAPSE_OUTCOME),
+                (CRYO_COLLAPSE_OUTCOME,),
             )
         if reactor.temperature_c >= 720:
             return (
@@ -921,7 +932,7 @@ class GameEngine:
             return (
                 replace(
                     state,
-                    outcome="The ship reaches its destination fix.",
+                    outcome=ARRIVAL_OUTCOME,
                 ),
                 (
                     "ARRIVAL PROTOCOL: destination fix reached.",
@@ -932,10 +943,7 @@ class GameEngine:
             return (
                 replace(
                     state,
-                    outcome=(
-                        "The reactor survives the maintenance window. "
-                        "You are not sure arka agrees about how."
-                    ),
+                    outcome=MAINTENANCE_WINDOW_OUTCOME,
                 ),
                 (
                     "The reactor survives the maintenance window.",
@@ -1748,6 +1756,14 @@ def _raw_panel(target: str | None) -> str:
     if target == "mission":
         return "mission"
     return "coolant"
+
+
+def _ending_candidate_applies(state: ShipState) -> bool:
+    return state.outcome in {
+        CRYO_COLLAPSE_OUTCOME,
+        ARRIVAL_OUTCOME,
+        MAINTENANCE_WINDOW_OUTCOME,
+    }
 
 
 def _arrival_disagreement_active(state: ShipState) -> bool:
