@@ -322,8 +322,11 @@ def _story_from_data(data: object) -> StoryState:
 def _incident_from_data(data: object) -> IncidentState | None:
     if not isinstance(data, dict):
         return None
+    incident_id = str(data.get("incident_id", ""))
+    if not incident_id:
+        return None
     return IncidentState(
-        incident_id=str(data.get("incident_id", "")),
+        incident_id=incident_id,
         title=str(data.get("title", "")),
         affected_systems=_str_tuple(data.get("affected_systems")),
         started_beat=int(data.get("started_beat", 0)),

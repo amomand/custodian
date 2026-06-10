@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from custodian.models import (
@@ -467,6 +468,19 @@ class PersistenceTests(unittest.TestCase):
         # New behaviour-ledger fields default cleanly on an old save.
         self.assertEqual(restored.behaviour.arka_advice_followed, 0)
         self.assertEqual(restored.behaviour.contradictions_caught, 0)
+
+    def test_active_incident_without_id_is_dropped_on_load(self) -> None:
+        data = json.loads(dumps(ShipState()))
+        data["story"]["active_incident"] = {
+            "title": "Invalid incident",
+            "affected_systems": ["navigation"],
+            "started_beat": 4,
+            "urgency_remaining": 2,
+        }
+
+        restored = loads(json.dumps(data))
+
+        self.assertIsNone(restored.story.active_incident)
 
     def test_story_state_round_trips(self) -> None:
         from custodian.playtest import SCENARIOS, run_scenario

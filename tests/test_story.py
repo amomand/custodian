@@ -157,6 +157,25 @@ class IncidentSchedulerTests(unittest.TestCase):
         self.assertIsNone(advanced.story.active_incident)
         self.assertIn("control-in-bad-place", advanced.story.resolved_incidents)
 
+    def test_unknown_active_incident_is_archived_instead_of_wedging(self) -> None:
+        state = ShipState(
+            story=StoryState(
+                active_incident=IncidentState(
+                    incident_id="future-incident",
+                    title="Future incident",
+                    affected_systems=("navigation",),
+                    started_beat=4,
+                    urgency_remaining=2,
+                )
+            )
+        )
+
+        advanced, messages = advance_story(state)
+
+        self.assertIsNone(advanced.story.active_incident)
+        self.assertIn("future-incident", advanced.story.resolved_incidents)
+        self.assertIn("stale watch note archived", "\n".join(messages))
+
 
 class ManifestAnchorTests(unittest.TestCase):
     def test_anchor_wobble_saved_by_manual_cryo_work(self) -> None:

@@ -5,6 +5,7 @@ from custodian.arka_interpreter import ArkaInterpreter
 from custodian.config import Config
 from custodian.models import (
     BehaviourLedger,
+    CrisisState,
     CryostasisSystem,
     IncidentState,
     NavigationState,
@@ -202,6 +203,35 @@ class UiSnapshotTests(unittest.TestCase):
         self.assertEqual(incident["progress"], 0)
         self.assertEqual(incident["watches_left"], 2)
         self.assertEqual(incident["affected_systems"], ["navigation"])
+
+    def test_crisis_incident_snapshot_takes_priority_over_story_incident(self) -> None:
+        state = ShipState(
+            crisis=CrisisState(
+                kind="pressure_surge",
+                label="Pressure surge",
+                turns_left=2,
+                required_progress=3,
+                progress=1,
+            ),
+            story=StoryState(
+                active_incident=IncidentState(
+                    incident_id="arrival-disagreement",
+                    title="Arrival disagreement",
+                    affected_systems=("navigation",),
+                    started_beat=8,
+                    urgency_remaining=2,
+                    urgent=True,
+                )
+            ),
+        )
+
+        incident = project_ui_snapshot(state).to_dict()["incident"]
+
+        self.assertEqual(incident["id"], "pressure_surge")
+        self.assertEqual(incident["turns_left"], 2)
+        self.assertEqual(incident["required_progress"], 3)
+        self.assertEqual(incident["progress"], 1)
+        self.assertNotIn("watches_left", incident)
 
     def test_action_specs_resolve_under_deterministic_interpreter(self) -> None:
         # Every desk button dispatches its action-spec `command` through the same

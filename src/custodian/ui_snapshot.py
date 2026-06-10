@@ -394,6 +394,14 @@ def _raw_panels(state: ShipState) -> dict[str, RawPanelSnapshot]:
 
 
 def _incident_snapshot(state: ShipState) -> dict[str, Any] | None:
+    if state.crisis is not None:
+        return {
+            "id": state.crisis.kind,
+            "title": state.crisis.label,
+            "turns_left": state.crisis.turns_left,
+            "required_progress": state.crisis.required_progress,
+            "progress": state.crisis.progress,
+        }
     active = state.story.active_incident
     if active is not None:
         return {
@@ -406,15 +414,7 @@ def _incident_snapshot(state: ShipState) -> dict[str, Any] | None:
             "watches_left": active.urgency_remaining,
             "urgent": active.urgent,
         }
-    if state.crisis is None:
-        return None
-    return {
-        "id": state.crisis.kind,
-        "title": state.crisis.label,
-        "turns_left": state.crisis.turns_left,
-        "required_progress": state.crisis.required_progress,
-        "progress": state.crisis.progress,
-    }
+    return None
 
 
 def _action_specs(state: ShipState) -> tuple[ActionSpec, ...]:

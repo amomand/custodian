@@ -640,7 +640,17 @@ def advance_story(
         definition = incident_def(story.active_incident.incident_id)
         active = story.active_incident
         resolution: IncidentResolution | None = None
-        if definition is not None:
+        if definition is None:
+            resolved_incidents = story.resolved_incidents
+            if active.incident_id and active.incident_id not in resolved_incidents:
+                resolved_incidents = resolved_incidents + (active.incident_id,)
+            story = replace(
+                story,
+                active_incident=None,
+                resolved_incidents=resolved_incidents,
+            )
+            messages.append("INCIDENT RECORD: stale watch note archived.")
+        else:
             resolution = definition.resolve(state, active, record)
             if not resolution.resolved:
                 ticked = replace(active, urgency_remaining=active.urgency_remaining - 1)
