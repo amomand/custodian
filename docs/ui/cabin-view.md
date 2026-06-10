@@ -1,9 +1,10 @@
 # Cabin View (cockpit framing)
 
 Status: implemented (presentation layer). The operating desk now renders inside a
-dark retro flight deck: a window onto the Dark out front, a cabin frame around the
-viewport, screen-styled panels, an arka presence light, and a head-turn that lets
-you look between stations instead of seeing one flat grid.
+dark retro flight deck: a window onto the Dark out front, a cabin frame and
+console sill around the viewport, screen-styled panels, an arka presence light,
+and a head-turn that lets you look between stations instead of seeing one flat
+grid.
 
 It is a re-skin, not a new engine. The cabin is a thin presentation layer over the
 same `ui` snapshot the operating desk already renders (see
@@ -26,8 +27,8 @@ From back to front, all inside `.cabin`:
   deterministic snapshot fields (range to fix, jumps executed, the qualitative
   exposure band). The Dark shows as a quiet thinning and edge-darkening of the
   stars — never a meter, percentage, or label.
-- **Glass** (`.cabin-glass`) — a canopy glare and vignette that seats the view in
-  a hull.
+- **Glass / sill** (`.cabin-glass`, `.cabin::before`, `.cabin::after`) — canopy
+  glare, vignette, and a low console shadow that seats the view in a hull.
 - **Frame** (`.cabin-frame`) — dark chrome struts around the viewport. Decorative.
 - **arka presence** (`#arkaPresence`) — a fixed pilot light near the canopy you can
   turn toward. Its calm is the same deniable drift atmosphere as the arka panel
@@ -40,8 +41,10 @@ From back to front, all inside `.cabin`:
 
 ## Head-turn between stations
 
-In cabin mode the desk is a flight deck you look around. The panels are gathered
-into four stations, left to right:
+In cabin mode the player arrives looking forward through the window, with the
+command channel available by pressing `/` rather than auto-focused. The desk is a
+flight deck you look around. The panels are gathered into four stations, left to
+right:
 
 | Station   | Panels                         |
 | --------- | ------------------------------ |
@@ -60,7 +63,7 @@ Turn the head with:
 
 - the **station rail** buttons (the accessible primary control),
 - the **left/right arrow keys** (when focus is outside the system tablist),
-- **edge-hover** — dwelling at the far left/right edge of the cabin.
+- **edge-hover** — dwelling briefly at the far left/right edge of the cabin.
 
 The `1`–`4` keys still switch the active system tab within the console station.
 

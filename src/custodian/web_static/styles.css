@@ -89,6 +89,33 @@ textarea,
   background: radial-gradient(140% 120% at 50% 8%, #0b1418 0%, #060809 60%, #040506 100%);
 }
 
+.cabin::before,
+.cabin::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.cabin::before {
+  left: 5vw;
+  right: 5vw;
+  bottom: -12vh;
+  height: 30vh;
+  border-radius: 50% 50% 0 0 / 70% 70% 0 0;
+  background: radial-gradient(90% 90% at 50% 100%, rgba(18, 28, 30, 0.92), rgba(8, 11, 12, 0.82) 52%, transparent 72%);
+  box-shadow: inset 0 1px 0 rgba(160, 200, 205, 0.05), 0 -26px 60px rgba(0, 0, 0, 0.35);
+}
+
+.cabin::after {
+  left: 9vw;
+  right: 9vw;
+  bottom: 9vh;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(120, 201, 194, 0.18), transparent);
+  opacity: 0.8;
+}
+
 /* The window: the space view straight ahead. The canvas paints stars and the
    Dark; it carries no text and renders only from deterministic snapshot fields. */
 .cabin-window {
@@ -1581,7 +1608,9 @@ html[data-reduced-motion="true"] * {
 
   .cabin-window,
   .cabin-glass,
-  .cabin-frame {
+  .cabin-frame,
+  .cabin::before,
+  .cabin::after {
     position: fixed;
   }
 

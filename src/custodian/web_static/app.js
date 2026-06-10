@@ -41,6 +41,9 @@ const STATIONS = [
   { id: "arka", label: "arka" },
 ];
 
+const CABIN_WIDE_QUERY = "(min-width: 1101px)";
+const EDGE_DWELL_MS = 320;
+
 // UI-local state, preserved across snapshot re-renders.
 const ui = {
   sessionId: null,
@@ -51,7 +54,7 @@ const ui = {
   logView: "transcript",
   pendingConfirm: null,
   inFocus: false,
-  look: "console",
+  look: "ahead",
 };
 
 const els = {
@@ -135,7 +138,9 @@ async function api(path, options = {}) {
 async function createSession() {
   const snapshot = await api("/api/session", { method: "POST", body: "{}" });
   renderSnapshot(snapshot);
-  els.commandInput.focus();
+  if (document.documentElement.dataset.cabin !== "on") {
+    els.commandInput.focus();
+  }
 }
 
 async function sendCommand(command) {
@@ -1035,8 +1040,11 @@ function turnHead(direction) {
 // panel is visible and static — the existing operating-desk behaviour.
 function updateCabinMode() {
   const reduced = document.documentElement.dataset.reducedMotion === "true";
-  const wide = window.matchMedia("(min-width: 1101px)").matches;
-  document.documentElement.dataset.cabin = wide && !reduced ? "on" : "off";
+  const wide = window.matchMedia(CABIN_WIDE_QUERY).matches;
+  const enabled = wide && !reduced;
+  document.documentElement.dataset.cabin = enabled ? "on" : "off";
+  if (!enabled) cancelEdgeDwell();
+  return enabled;
 }
 
 // ---- The window: starfield space view ----
@@ -1044,8 +1052,8 @@ function updateCabinMode() {
 // The space view is painted from deterministic snapshot fields only — never a
 // hidden value. Distance and jumps give the sense of travel; the exposure band
 // (already shown in nav) drives the Dark as a quiet, deniable thinning of the
-// stars, with no number and no label on the glass. All motion stops under reduced
-// motion, which falls back to a single static frame.
+// stars, with no number and no label on the glass. Motion stops under reduced
+// motion or outside cabin mode, falling back to a single static frame.
 const space = {
   ctx: els.spaceView ? els.spaceView.getContext("2d") : null,
   stars: [],
@@ -1081,7 +1089,7 @@ function spawnStar() {
   return {
     x: (Math.random() - 0.5) * space.w,
     y: (Math.random() - 0.5) * space.h,
-    z: Math.random() * space.w,
+    z: Math.max(1, Math.random() * space.w),
     pz: 0,
   };
 }
@@ -1094,10 +1102,17 @@ function updateSpaceView(view) {
   const jumps = (view.navigation && view.navigation.jumps_executed) || 0;
   if (jumps > space.jumps) space.warp = 1;
   space.jumps = jumps;
-  if (document.documentElement.dataset.reducedMotion === "true") {
+  if (!spaceCanMove()) {
     space.warp = 0;
     drawSpaceView(false);
   }
+}
+
+function spaceCanMove() {
+  return (
+    document.documentElement.dataset.cabin === "on" &&
+    document.documentElement.dataset.reducedMotion !== "true"
+  );
 }
 
 function drawSpaceView(moving) {
@@ -1164,21 +1179,26 @@ function drawSpaceView(moving) {
 }
 
 function spaceFrame() {
-  if (document.documentElement.dataset.reducedMotion !== "true") {
-    drawSpaceView(true);
+  if (!spaceCanMove()) {
+    space.raf = 0;
+    drawSpaceView(false);
+    return;
   }
+  drawSpaceView(true);
   space.raf = requestAnimationFrame(spaceFrame);
 }
 
 function startSpaceView() {
   if (!space.ctx) return;
   sizeSpaceView();
-  drawSpaceView(document.documentElement.dataset.reducedMotion !== "true");
   cancelAnimationFrame(space.raf);
-  space.raf = requestAnimationFrame(spaceFrame);
+  space.raf = 0;
+  const moving = spaceCanMove();
+  drawSpaceView(moving);
+  if (moving) {
+    space.raf = requestAnimationFrame(spaceFrame);
+  }
 }
-
-
 
 function isTyping(target) {
   return target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
@@ -1262,34 +1282,49 @@ els.saveButton.addEventListener("click", () => saveSession().catch(showFault));
 els.loadButton.addEventListener("click", () => loadSession().catch(showFault));
 els.reducedMotionToggle.addEventListener("change", (event) => applyReducedMotion(event.target.checked));
 
-// Edge-hover turns the head one station in cabin mode: dwelling at the far left
-// or right edge looks that way. A latch prevents a single sweep from running all
-// the way across; the pointer must leave the edge zone before it fires again.
-let edgeLatched = false;
+// Edge-hover turns the head one station in cabin mode after a short dwell, so a
+// casual mouse sweep never yanks the player's view across the desk.
+let edgeDwellTimer = 0;
+let edgeDwellDirection = 0;
+
+function cancelEdgeDwell() {
+  clearTimeout(edgeDwellTimer);
+  edgeDwellTimer = 0;
+  edgeDwellDirection = 0;
+}
+
+function queueEdgeTurn(direction) {
+  if (edgeDwellTimer && edgeDwellDirection === direction) return;
+  cancelEdgeDwell();
+  edgeDwellDirection = direction;
+  edgeDwellTimer = setTimeout(() => {
+    turnHead(direction);
+    cancelEdgeDwell();
+  }, EDGE_DWELL_MS);
+}
+
 els.cabin.addEventListener("mousemove", (event) => {
   if (document.documentElement.dataset.cabin !== "on") {
-    edgeLatched = false;
+    cancelEdgeDwell();
     return;
   }
   const x = event.clientX / window.innerWidth;
   if (x < 0.035) {
-    if (!edgeLatched) turnHead(-1);
-    edgeLatched = true;
+    queueEdgeTurn(-1);
   } else if (x > 0.965) {
-    if (!edgeLatched) turnHead(1);
-    edgeLatched = true;
+    queueEdgeTurn(1);
   } else {
-    edgeLatched = false;
+    cancelEdgeDwell();
   }
 });
+els.cabin.addEventListener("mouseleave", cancelEdgeDwell);
 
 let resizeTimer = 0;
 window.addEventListener("resize", () => {
   updateCabinMode();
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    sizeSpaceView();
-    drawSpaceView(document.documentElement.dataset.reducedMotion !== "true");
+    startSpaceView();
   }, 120);
 });
 
