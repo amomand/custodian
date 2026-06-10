@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from custodian.models import (
@@ -431,6 +432,95 @@ class PersistenceTests(unittest.TestCase):
 
         self.assertTrue(restored.behaviour.focus_mode)
         self.assertEqual(restored.behaviour.focus_beats, 3)
+
+    def test_version_eight_save_loads_with_default_story_state(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 8,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {},
+              "spatial": {},
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0,
+              "behaviour": {"standing_delegations": ["coolant"]},
+              "history": []
+            }
+            """
+        )
+
+        self.assertEqual(restored.story.act, 0)
+        self.assertIsNone(restored.story.active_incident)
+        self.assertEqual(restored.story.resolved_incidents, ())
+        self.assertEqual(restored.story.arrival_verification, "unverified")
+        self.assertIsNone(restored.story.ending_candidate)
+        # Default manifest anchors are present and all stable.
+        self.assertEqual(restored.story.anchors_lost, ())
+        self.assertEqual(restored.story.anchors_saved, ())
+        self.assertTrue(restored.story.manifest_anchor_states)
+        # New behaviour-ledger fields default cleanly on an old save.
+        self.assertEqual(restored.behaviour.arka_advice_followed, 0)
+        self.assertEqual(restored.behaviour.contradictions_caught, 0)
+
+    def test_active_incident_without_id_is_dropped_on_load(self) -> None:
+        data = json.loads(dumps(ShipState()))
+        data["story"]["active_incident"] = {
+            "title": "Invalid incident",
+            "affected_systems": ["navigation"],
+            "started_beat": 4,
+            "urgency_remaining": 2,
+        }
+
+        restored = loads(json.dumps(data))
+
+        self.assertIsNone(restored.story.active_incident)
+
+    def test_invalid_manifest_anchor_status_is_ignored_on_load(self) -> None:
+        data = json.loads(dumps(ShipState()))
+        anchor_id = next(iter(data["story"]["manifest_anchor_states"]))
+        data["story"]["manifest_anchor_states"][anchor_id] = "haunted"
+
+        restored = loads(json.dumps(data))
+
+        self.assertEqual(restored.story.anchor_status(anchor_id), "stable")
+
+    def test_story_state_round_trips(self) -> None:
+        from custodian.playtest import SCENARIOS, run_scenario
+
+        report = run_scenario(SCENARIOS["arrival-accepted"])
+        state = report.final_state
+
+        restored = loads(dumps(state))
+
+        self.assertEqual(
+            restored.story.ending_candidate, state.story.ending_candidate
+        )
+        self.assertEqual(
+            restored.story.arrival_verification, state.story.arrival_verification
+        )
+        self.assertEqual(
+            restored.story.resolved_incidents, state.story.resolved_incidents
+        )
+        self.assertEqual(restored.story.act, state.story.act)
+        self.assertEqual(
+            restored.story.manifest_anchor_states,
+            state.story.manifest_anchor_states,
+        )
+        self.assertEqual(
+            restored.behaviour.arka_advice_followed,
+            state.behaviour.arka_advice_followed,
+        )
+        self.assertEqual(
+            restored.behaviour.contradictions_caught,
+            state.behaviour.contradictions_caught,
+        )
 
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

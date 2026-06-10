@@ -4,10 +4,12 @@ from dataclasses import replace
 from custodian.engine import GameEngine
 from custodian.models import (
     CrisisState,
+    IncidentState,
     MissionStatus,
     NavigationState,
     ReactorCoolantSystem,
     ShipState,
+    StoryState,
 )
 
 
@@ -193,6 +195,53 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(result.state.history[0].action, "jump")
         self.assertEqual(result.state.history[0].target, "navigation")
 
+    def test_arrival_verify_and_accept_do_not_work_before_disagreement(self) -> None:
+        for command in ("verify", "accept"):
+            with self.subTest(command=command):
+                result = self.engine.handle(ShipState(), command)
+
+                self.assertFalse(result.advanced)
+                self.assertEqual(result.state.story.arrival_verification, "unverified")
+                self.assertIn("no active arrival disagreement", "\n".join(result.messages))
+
+    def test_arrival_verify_resolves_disagreement(self) -> None:
+        state = ShipState(
+            story=StoryState(
+                active_incident=IncidentState(
+                    incident_id="arrival-disagreement",
+                    title="Arrival disagreement",
+                    affected_systems=("navigation",),
+                    started_beat=8,
+                    urgency_remaining=2,
+                )
+            )
+        )
+
+        result = self.engine.handle(state, "verify")
+
+        self.assertTrue(result.advanced)
+        self.assertEqual(result.state.story.arrival_verification, "manual")
+        self.assertIn("arrival-disagreement", result.state.story.resolved_incidents)
+
+    def test_arrival_accept_resolves_disagreement(self) -> None:
+        state = ShipState(
+            story=StoryState(
+                active_incident=IncidentState(
+                    incident_id="arrival-disagreement",
+                    title="Arrival disagreement",
+                    affected_systems=("navigation",),
+                    started_beat=8,
+                    urgency_remaining=2,
+                )
+            )
+        )
+
+        result = self.engine.handle(state, "accept")
+
+        self.assertTrue(result.advanced)
+        self.assertEqual(result.state.story.arrival_verification, "accepted_arka")
+        self.assertIn("arrival-disagreement", result.state.story.resolved_incidents)
+
     def test_deep_jump_creates_qualitative_sector_symptoms(self) -> None:
         state = ShipState(navigation=NavigationState(plotted_route_id="carina-edge"))
 
@@ -206,6 +255,14 @@ class EngineTests(unittest.TestCase):
             {"readings disagree", "intermittent", "no signal"},
         )
         self.assertIn("SCHEMATIC:", "\n".join(result.messages))
+
+    def test_catastrophic_reactor_failure_does_not_set_ending_candidate(self) -> None:
+        state = ShipState(reactor=ReactorCoolantSystem(temperature_c=720))
+
+        result = self.engine.handle(state, "wait")
+
+        self.assertEqual(result.state.outcome, "Reactor temperature exceeds containment.")
+        self.assertIsNone(result.state.story.ending_candidate)
 
     def test_seal_arka_is_impossible_and_does_not_advance(self) -> None:
         state = self.engine.initial_state()

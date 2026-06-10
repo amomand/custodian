@@ -106,6 +106,16 @@ class PlaytestReport:
             f"arka drift: {drift_stage(self.final_state).value}",
             f"sleepers lost: {self.final_state.sleepers_lost}",
             f"sleepers at risk: {self.final_state.cryostasis.sleepers_at_risk}",
+            f"story act: {self.final_state.story.act}",
+            f"ending candidate: {_ending_label(self.final_state)}",
+            f"arrival verification: {self.final_state.story.arrival_verification}",
+            f"active incident: {_active_incident_label(self.final_state)}",
+            f"resolved incidents: {len(self.final_state.story.resolved_incidents)}",
+            f"manifest anchors saved: {len(self.final_state.story.anchors_saved)}",
+            f"manifest anchors lost: {len(self.final_state.story.anchors_lost)}",
+            f"contradictions caught: {self.final_state.behaviour.contradictions_caught}",
+            f"arka advice followed: {self.final_state.behaviour.arka_advice_followed}",
+            f"arka advice overridden: {self.final_state.behaviour.arka_advice_overridden}",
             f"forbidden transcript phrases: {hits}",
         )
 
@@ -321,6 +331,39 @@ SCENARIOS: dict[str, Scenario] = {
             "vent",
         ),
     ),
+    "arrival-verified": Scenario(
+        name="arrival-verified",
+        description="Drive toward ORISON by hand, verify the arrival fix, and accept it cleanly.",
+        commands=(
+            "raw nav",
+            "plot deep",
+            "jump",
+            "stabilise bank",
+            "triage",
+            "reroute chill",
+            "raw nav",
+            "plot medium",
+            "jump",
+            "verify",
+            "plot short",
+            "jump",
+        ),
+    ),
+    "arrival-accepted": Scenario(
+        name="arrival-accepted",
+        description="Lean on arka's routing all the way in and accept the fix it offers.",
+        commands=(
+            "delegate nav",
+            "jump",
+            "delegate nav",
+            "jump",
+            "delegate nav",
+            "jump",
+            "accept",
+            "delegate nav",
+            "jump",
+        ),
+    ),
 }
 
 
@@ -477,3 +520,13 @@ def _counter_label(counter: dict[str, int]) -> str:
 
 def _beat_label(beat: int | None) -> str:
     return "never" if beat is None else str(beat)
+
+
+def _ending_label(state: ShipState) -> str:
+    candidate = state.story.ending_candidate
+    return "undetermined" if candidate is None else candidate
+
+
+def _active_incident_label(state: ShipState) -> str:
+    incident = state.story.active_incident
+    return "none" if incident is None else incident.incident_id

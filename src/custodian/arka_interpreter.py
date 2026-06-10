@@ -660,6 +660,25 @@ def _rule_based(command: str) -> Intent | None:
         return Intent("jump", {}, 1.0, correction=correction, rationale="jump")
     if corrected in {"wait", "hold", "listen", "stand by"}:
         return Intent("wait", {}, 1.0, correction=correction, rationale="wait")
+    if corrected in {
+        "verify",
+        "verify arrival",
+        "verify fix",
+        "manual verification",
+        "check arrival",
+        "confirm fix",
+        "confirm position",
+    }:
+        return Intent("verify", {}, 1.0, correction=correction, rationale="verify arrival")
+    if corrected in {
+        "accept",
+        "accept arrival",
+        "accept protocol",
+        "arrival protocol",
+        "accept arka arrival",
+        "begin arrival",
+    }:
+        return Intent("accept", {}, 1.0, correction=correction, rationale="accept arrival")
 
     operation = _manual_operation(corrected)
     if operation is not None:
@@ -1190,6 +1209,19 @@ _KNOWN_COMMANDS = (
     "hold",
     "listen",
     "stand by",
+    "verify",
+    "verify arrival",
+    "verify fix",
+    "manual verification",
+    "check arrival",
+    "confirm fix",
+    "confirm position",
+    "accept",
+    "accept arrival",
+    "accept protocol",
+    "arrival protocol",
+    "accept arka arrival",
+    "begin arrival",
     "pump up",
     "pump",
     "increase pump",

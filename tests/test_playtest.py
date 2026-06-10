@@ -117,6 +117,27 @@ class PlaytestTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "did not contain any commands"):
                 scenario_from_file(path)
 
+    def test_arrival_accepted_scenario_reaches_false_arrival(self) -> None:
+        report = run_scenario(SCENARIOS["arrival-accepted"])
+
+        self.assertTrue(report.completed)
+        self.assertEqual(report.final_state.story.ending_candidate, "false_arrival")
+        self.assertEqual(report.forbidden_hits, ())
+
+    def test_arrival_scenarios_record_an_ending_candidate(self) -> None:
+        for key in ("arrival-verified", "arrival-accepted"):
+            report = run_scenario(SCENARIOS[key])
+            self.assertTrue(report.completed)
+            self.assertIsNotNone(report.final_state.story.ending_candidate)
+            self.assertEqual(report.forbidden_hits, ())
+
+    def test_all_scenarios_avoid_forbidden_phrases(self) -> None:
+        for key in SCENARIOS:
+            report = run_scenario(SCENARIOS[key])
+            self.assertEqual(
+                report.forbidden_hits, (), f"{key} leaked a forbidden phrase"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

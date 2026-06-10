@@ -394,15 +394,27 @@ def _raw_panels(state: ShipState) -> dict[str, RawPanelSnapshot]:
 
 
 def _incident_snapshot(state: ShipState) -> dict[str, Any] | None:
-    if state.crisis is None:
-        return None
-    return {
-        "id": state.crisis.kind,
-        "title": state.crisis.label,
-        "turns_left": state.crisis.turns_left,
-        "required_progress": state.crisis.required_progress,
-        "progress": state.crisis.progress,
-    }
+    if state.crisis is not None:
+        return {
+            "id": state.crisis.kind,
+            "title": state.crisis.label,
+            "turns_left": state.crisis.turns_left,
+            "required_progress": state.crisis.required_progress,
+            "progress": state.crisis.progress,
+        }
+    active = state.story.active_incident
+    if active is not None:
+        return {
+            "id": active.incident_id,
+            "title": active.title,
+            "turns_left": active.urgency_remaining,
+            "required_progress": 1,
+            "progress": 0,
+            "affected_systems": list(active.affected_systems),
+            "watches_left": active.urgency_remaining,
+            "urgent": active.urgent,
+        }
+    return None
 
 
 def _action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
@@ -760,6 +772,27 @@ def _dev_snapshot(state: ShipState) -> dict[str, Any]:
             "first_raw_inspection_beat": behaviour.first_raw_inspection_beat,
             "focus_mode": behaviour.focus_mode,
             "focus_beats": behaviour.focus_beats,
+            "arka_advice_followed": behaviour.arka_advice_followed,
+            "arka_advice_overridden": behaviour.arka_advice_overridden,
+            "advice_followed_during_contradiction": behaviour.advice_followed_during_contradiction,
+            "contradictions_caught": behaviour.contradictions_caught,
+            "irreversible_choices_on_arka_advice": behaviour.irreversible_choices_on_arka_advice,
+            "focus_during_contradiction": behaviour.focus_during_contradiction,
+            "urgent_incident_ejects": behaviour.urgent_incident_ejects,
+        },
+        "story": {
+            "act": state.story.act,
+            "active_incident": (
+                state.story.active_incident.incident_id
+                if state.story.active_incident is not None
+                else None
+            ),
+            "resolved_incidents": list(state.story.resolved_incidents),
+            "manifest_anchor_states": dict(state.story.manifest_anchor_states),
+            "arrival_verification": state.story.arrival_verification,
+            "ending_candidate": state.story.ending_candidate,
+            "debrief_flags": list(state.story.debrief_flags),
+            "wake_contradiction_exposed": state.story.wake_record.contradiction_exposed,
         },
     }
 
