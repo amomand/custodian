@@ -10,9 +10,8 @@ from custodian.arka import (
     summarize_schematic,
 )
 from custodian.arka_interpreter import ArkaInterpreter, Intent
+from custodian.endings import evaluate_ending
 from custodian.engine_constants import MISSION_END_TURN
-
-ARRIVAL_THRESHOLD_TENTHS = 0
 from custodian.models import (
     CommandRecord,
     CrisisState,
@@ -28,7 +27,6 @@ from custodian.models import (
     SYSTEM_KEYS,
 )
 from custodian.objectives import objective_lines
-from custodian.endings import evaluate_ending
 from custodian.story import advance_story
 from custodian.telemetry import (
     coolant_hud_lines,
@@ -37,6 +35,8 @@ from custodian.telemetry import (
     navigation_hud_lines,
     schematic_hud_lines,
 )
+
+ARRIVAL_THRESHOLD_TENTHS = 0
 
 
 @dataclass(frozen=True)

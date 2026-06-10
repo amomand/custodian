@@ -28,7 +28,6 @@ from custodian.models import (
     ShipState,
     StoryState,
     WakeRecordState,
-    default_anchor_states,
     default_manifest_anchors,
     manifest_anchor_by_id,
 )
@@ -722,12 +721,6 @@ def _apply_resolution(
     active: IncidentState,
     resolution: IncidentResolution,
 ) -> tuple[StoryState, object, tuple[str, ...]]:
-    resolved_incident = replace(
-        active,
-        resolved=True,
-        outcome_tags=active.outcome_tags + resolution.outcome_tags,
-        chosen_response=resolution.outcome_tags[0] if resolution.outcome_tags else None,
-    )
     story = replace(
         story,
         active_incident=None,
