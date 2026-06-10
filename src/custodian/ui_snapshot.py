@@ -399,6 +399,9 @@ def _incident_snapshot(state: ShipState) -> dict[str, Any] | None:
         return {
             "id": active.incident_id,
             "title": active.title,
+            "turns_left": active.urgency_remaining,
+            "required_progress": 1,
+            "progress": 0,
             "affected_systems": list(active.affected_systems),
             "watches_left": active.urgency_remaining,
             "urgent": active.urgent,

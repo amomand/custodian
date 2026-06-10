@@ -36,16 +36,16 @@ darker twins of others.
    charts disagree and nothing confirms where the ship is.
 2. **Efficient arrival with contamination.** Arrived fast and intact, but the
    ship carries unresolved symptoms (an open sector at or above the symptom
-   threshold) and heavy Dark exposure. The colony arrives ahead of decay,
-   carrying something it did not contain.
+   threshold). Heavy Dark exposure makes this path explicit; unresolved
+   symptoms still outrank clean arrival even when exposure is lower. The colony
+   arrives ahead of decay, carrying something it did not contain.
 3. **Quiet extinction.** Viability collapsed — neural stability at or below the
    floor, or sleeper losses at or above the ceiling. If the ship arrived, it
    arrived as an ark with no colony to wake; if it did not, the watch failed its
    people either way.
 4. **Clean arrival.** Arrived with viable sleepers (neural stability at or above
-   the clean threshold) and contained symptoms, with arka kept aligned or the fix
-   verified by hand. The hardest target: it demands both a maintained ship and a
-   maintained crew.
+   the clean threshold) and contained symptoms. The hardest target: it demands
+   both a maintained ship and a maintained crew.
 5. **Endless custodian.** Did not arrive, but the ship remains maintainable and
    the sleepers viable. The watch does not close. It only continues.
 

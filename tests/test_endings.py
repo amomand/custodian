@@ -96,6 +96,13 @@ class EvaluateEndingTests(unittest.TestCase):
         state = _state(distance=0, neural=80, flags=("false_arrival_path",))
         self.assertEqual(evaluate_ending(state), FALSE_ARRIVAL)
 
+    def test_false_arrival_from_story_flag(self) -> None:
+        state = _state(distance=0, neural=80)
+        flagged = replace(
+            state, story=replace(state.story, story_flags=("false_arrival_path",))
+        )
+        self.assertEqual(evaluate_ending(flagged), FALSE_ARRIVAL)
+
     def test_quiet_extinction_when_arrived_but_viability_collapsed(self) -> None:
         state = _state(distance=0, neural=30, verification="manual")
         self.assertEqual(evaluate_ending(state), QUIET_EXTINCTION)
@@ -135,6 +142,15 @@ class EndingLinesTests(unittest.TestCase):
         lines = ending_lines(resolved)
         self.assertTrue(lines)
         self.assertTrue(any("ARRIVAL PROTOCOL" in line for line in lines))
+
+    def test_clean_arrival_lines_do_not_claim_manual_verification_unless_manual(self) -> None:
+        state = _state(distance=0, neural=80, verification="unverified")
+        resolved = replace(state, story=replace(state.story, ending_candidate=CLEAN_ARRIVAL))
+
+        text = "\n".join(ending_lines(resolved))
+
+        self.assertNotIn("manual nav", text)
+        self.assertIn("beacon echo within arrival tolerance", text)
 
     def test_lines_never_explain_the_dark(self) -> None:
         for candidate in ENDING_TITLES:

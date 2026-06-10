@@ -105,6 +105,58 @@ class IncidentSchedulerTests(unittest.TestCase):
         if active is not None:
             self.assertNotEqual(active.incident_id, "first-useful-delegation")
 
+    def test_control_in_bad_place_ignores_cryo_manual_work(self) -> None:
+        state = ShipState(
+            story=StoryState(
+                active_incident=IncidentState(
+                    incident_id="control-in-bad-place",
+                    title="Control in a bad place",
+                    affected_systems=("coolant",),
+                    started_beat=4,
+                    urgency_remaining=2,
+                )
+            )
+        )
+        record = CommandRecord(
+            raw="triage",
+            action="manual",
+            target="cryo",
+            operation="triage",
+            advanced=True,
+            beat_after=5,
+        )
+
+        advanced, _ = advance_story(state, record=record)
+
+        self.assertIsNotNone(advanced.story.active_incident)
+        self.assertNotIn("control-in-bad-place", advanced.story.resolved_incidents)
+
+    def test_control_in_bad_place_resolves_on_coolant_manual_work(self) -> None:
+        state = ShipState(
+            story=StoryState(
+                active_incident=IncidentState(
+                    incident_id="control-in-bad-place",
+                    title="Control in a bad place",
+                    affected_systems=("coolant",),
+                    started_beat=4,
+                    urgency_remaining=2,
+                )
+            )
+        )
+        record = CommandRecord(
+            raw="balance",
+            action="manual",
+            target="coolant",
+            operation="balance",
+            advanced=True,
+            beat_after=5,
+        )
+
+        advanced, _ = advance_story(state, record=record)
+
+        self.assertIsNone(advanced.story.active_incident)
+        self.assertIn("control-in-bad-place", advanced.story.resolved_incidents)
+
 
 class ManifestAnchorTests(unittest.TestCase):
     def test_anchor_wobble_saved_by_manual_cryo_work(self) -> None:

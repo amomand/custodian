@@ -100,6 +100,7 @@ def _last_operation(record: CommandRecord | None) -> str:
 
 
 _CRYO_MANUAL_OPS = {"stabilise_bank", "reroute_chill", "cycle_pods", "triage"}
+_COOLANT_MANUAL_OPS = {"pump_up", "pump_down", "vent", "flush", "balance"}
 
 
 # --- the eight required incidents ------------------------------------------
@@ -278,7 +279,9 @@ def _resolve_control_in_bad_place(
             advice_followed=True,
             messages=("You seal the bad sector. The spread stops; the manual path is gone.",),
         )
-    if action in {"reroute", "manual"}:
+    if action == "reroute" or (
+        action == "manual" and _last_operation(record) in _COOLANT_MANUAL_OPS
+    ):
         return IncidentResolution(
             resolved=True,
             debrief_flags=("kept_dangerous_access",),

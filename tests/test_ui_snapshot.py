@@ -6,11 +6,13 @@ from custodian.config import Config
 from custodian.models import (
     BehaviourLedger,
     CryostasisSystem,
+    IncidentState,
     NavigationState,
     ReactorCoolantSystem,
     ShipSector,
     ShipState,
     SpatialState,
+    StoryState,
 )
 from custodian.ui_snapshot import project_ui_snapshot
 
@@ -178,6 +180,28 @@ class UiSnapshotTests(unittest.TestCase):
         dev = project_ui_snapshot(state, include_dev=True).to_dict()
         self.assertEqual(dev["dev"]["behaviour_ledger"]["focus_beats"], 5)
         self.assertTrue(dev["dev"]["behaviour_ledger"]["focus_mode"])
+
+    def test_story_incident_snapshot_keeps_browser_incident_contract(self) -> None:
+        state = ShipState(
+            story=StoryState(
+                active_incident=IncidentState(
+                    incident_id="arrival-disagreement",
+                    title="Arrival disagreement",
+                    affected_systems=("navigation",),
+                    started_beat=8,
+                    urgency_remaining=2,
+                    urgent=True,
+                )
+            )
+        )
+
+        incident = project_ui_snapshot(state).to_dict()["incident"]
+
+        self.assertEqual(incident["turns_left"], 2)
+        self.assertEqual(incident["required_progress"], 1)
+        self.assertEqual(incident["progress"], 0)
+        self.assertEqual(incident["watches_left"], 2)
+        self.assertEqual(incident["affected_systems"], ["navigation"])
 
     def test_action_specs_resolve_under_deterministic_interpreter(self) -> None:
         # Every desk button dispatches its action-spec `command` through the same

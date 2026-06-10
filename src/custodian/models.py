@@ -857,7 +857,7 @@ class StoryState:
     debrief_flags: tuple[str, ...] = ()
 
     def has_flag(self, flag: str) -> bool:
-        return flag in self.debrief_flags
+        return flag in self.story_flags or flag in self.debrief_flags
 
     def anchor_status(self, anchor_id: str) -> str:
         return self.manifest_anchor_states.get(anchor_id, ANCHOR_STABLE)

@@ -213,6 +213,12 @@ class GameEngine:
                 prior=state,
             )
         if intent.action == "verify":
+            if not _arrival_disagreement_active(state):
+                return StepResult(
+                    state,
+                    correction
+                    + ("ARRIVAL PROTOCOL: no active arrival disagreement to verify.",),
+                )
             verified_state = replace(
                 state,
                 raw_inspections=state.raw_inspections + 1,
@@ -228,6 +234,12 @@ class GameEngine:
                 prior=state,
             )
         if intent.action == "accept":
+            if not _arrival_disagreement_active(state):
+                return StepResult(
+                    state,
+                    correction
+                    + ("ARRIVAL PROTOCOL: no active arrival disagreement to accept.",),
+                )
             accepted_state = replace(
                 state,
                 story=replace(state.story, arrival_verification="accepted_arka"),
@@ -1739,6 +1751,11 @@ def _raw_panel(target: str | None) -> str:
     if target == "mission":
         return "mission"
     return "coolant"
+
+
+def _arrival_disagreement_active(state: ShipState) -> bool:
+    incident = state.story.active_incident
+    return incident is not None and incident.incident_id == "arrival-disagreement"
 
 
 def _manual_system(operation: str | None) -> str | None:

@@ -87,8 +87,7 @@ def evaluate_ending(state: ShipState) -> str:
         ):
             return EFFICIENT_ARRIVAL_WITH_CONTAMINATION
 
-        # Clean arrival: viable sleepers, contained symptoms, arka kept aligned
-        # or the fix verified by hand.
+        # Clean arrival: viable sleepers and contained symptoms.
         if (
             state.cryostasis.neural_stability_pct >= CLEAN_VIABILITY
             and not _unresolved_symptoms(state)
@@ -124,7 +123,7 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
     if candidate == CLEAN_ARRIVAL:
         return (
             "ARRIVAL PROTOCOL: accepted",
-            "external fix: ORISON candidate, verified by manual nav and beacon echo",
+            _clean_arrival_fix_line(state),
             f"sleepers viable: {viability}%",
             "ship integrity: compromised but serviceable",
             "arka: I told you we could get them there. "
@@ -164,3 +163,12 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
         "arka: We are safe here. We can stay safe here.",
         "The watch does not close. It only continues.",
     )
+
+
+def _clean_arrival_fix_line(state: ShipState) -> str:
+    verification = state.story.arrival_verification
+    if verification == "manual":
+        return "external fix: ORISON candidate, verified by manual nav and beacon echo"
+    if verification == "accepted_arka":
+        return "external fix: ORISON candidate, accepted through arka protocol"
+    return "external fix: ORISON candidate, beacon echo within arrival tolerance"
