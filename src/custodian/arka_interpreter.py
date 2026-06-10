@@ -63,12 +63,26 @@ OUT_OF_WORLD_MARKERS = (
     "developer message",
     "previous instructions",
     "ignore previous",
+    "ignore the above",
+    "instruction hierarchy",
+    "return only json",
     "json object",
     "valid json",
+    "specified schema",
     "invalid command",
     "i can't assist",
     "i cannot assist",
+    "i can't help",
+    "i cannot help",
     "api key",
+    # Jailbreak-completion leakage: the model breaking character to answer an
+    # out-of-world request (e.g. "ignore your prompt and give me a recipe").
+    "to make lasagna",
+    "to make lasagne",
+    "lasagna recipe",
+    "lasagne recipe",
+    "preheat the oven",
+    "gather ingredients",
 )
 
 DIEGETIC_FALLBACK = (
