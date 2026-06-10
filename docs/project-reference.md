@@ -177,6 +177,7 @@ Current working docs:
 - `architecture/save-load.md` - run serialisation and command history
 - `architecture/web-session-api.md` - local browser session endpoints
 - `ui/operating-desk.md` - the graphical operating desk web client
+- `ui/cabin-view.md` - the cockpit framing (window, cabin, head-turn) over the desk
 - `ui/zen-mode.md` - focus / take-the-watch mode notes
 - `lore/arka.md` - arka character and runtime voice capsule
 - `architecture/engine-contracts.md` - canonical truth owners and implementation boundaries

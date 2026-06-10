@@ -15,6 +15,11 @@ consequences, or reads hidden values.
 The client lives in `src/custodian/web_static/` (`index.html`, `styles.css`,
 `app.js`) and stays a dependency-free vanilla page with no build step.
 
+The desk now renders inside a cockpit framing — a dark cabin with a window onto
+the Dark, screen-styled panels, and a head-turn between stations. That layer is
+pure presentation over the same snapshot and degrades back to the layout below;
+see `cabin-view.md`.
+
 ## Regions
 
 ```text

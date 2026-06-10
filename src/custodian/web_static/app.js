@@ -32,6 +32,15 @@ const SCHEMATIC_LAYOUT = {
 // projected as a band) and instability (banded client-side from the route fact).
 const BAND_STEPS = ["none", "low", "moderate", "high", "severe"];
 
+// The cabin stations, left to right as you turn your head. "ahead" is the window
+// (straight on); the rest gather the existing panels into looked-at clusters.
+const STATIONS = [
+  { id: "ahead", label: "Window" },
+  { id: "port", label: "Port" },
+  { id: "console", label: "Console" },
+  { id: "arka", label: "arka" },
+];
+
 // UI-local state, preserved across snapshot re-renders.
 const ui = {
   sessionId: null,
@@ -42,9 +51,15 @@ const ui = {
   logView: "transcript",
   pendingConfirm: null,
   inFocus: false,
+  look: "console",
 };
 
 const els = {
+  cabin: document.querySelector("#cabin"),
+  spaceView: document.querySelector("#spaceView"),
+  arkaPresence: document.querySelector("#arkaPresence"),
+  stationRail: document.querySelector("#stationRail"),
+  windowBody: document.querySelector("#windowBody"),
   missionStrip: document.querySelector("#missionStrip"),
   arkaPanel: document.querySelector("#arkaPanel"),
   arkaBody: document.querySelector("#arkaBody"),
@@ -172,6 +187,7 @@ function renderSnapshot(snapshot) {
   document.documentElement.dataset.focus = ui.inFocus ? "true" : "false";
 
   renderMissionStrip(view, snapshot);
+  renderWindow(view);
   renderArka(view);
   renderSystemTabs(view);
   renderActiveSystem(view);
@@ -179,8 +195,37 @@ function renderSnapshot(snapshot) {
   renderObjective(view);
   renderRaw(view);
   renderLog(snapshot);
+  renderStationRail();
+  updateSpaceView(view);
+  // arka's presence light carries the same deniable drift atmosphere as its
+  // panel — a data hook only, never printed, never a legible tell.
+  els.arkaPresence.dataset.intensity = view.visual_state.arka_panel_intensity || "steady";
 
   els.sessionLabel.textContent = `${snapshot.session_id.slice(0, 8)} / beat ${snapshot.turn}`;
+}
+
+// ---- Forward view (the window readout) ----
+
+// The window panel frames the starfield canvas. It shows only fields already
+// surfaced elsewhere — distance, jumps behind us, the qualitative exposure band —
+// and never an exact Dark figure. The canvas itself carries no text.
+function renderWindow(view) {
+  const nav = view.navigation;
+  const m = view.mission;
+  const readouts = [
+    windowReadout("Heading", nav.current_fix_label),
+    windowReadout("Range to fix", m.distance_label),
+    windowReadout("Jumps run", String(nav.jumps_executed)),
+    windowReadout("Exposure", nav.exposure_band, ["high", "severe"].includes(nav.exposure_band)),
+  ];
+  replace(els.windowBody, ...readouts);
+}
+
+function windowReadout(label, value, alert = false) {
+  return el("dl", { class: `window-readout ${alert ? "alert" : ""}`.trim() }, [
+    el("dt", { text: label }),
+    el("dd", { text: value }),
+  ]);
 }
 
 // ---- Mission strip ----
@@ -950,7 +995,190 @@ function showFault(error) {
   );
 }
 
-// ---- Keyboard ----
+// ---- Cabin: head-turn between stations ----
+
+// The rail is the accessible primary way to turn the head; arrow keys and the
+// edge-hover zones enhance it. It only does anything in cabin mode, but stays in
+// the DOM so its state is always consistent.
+function renderStationRail() {
+  replace(
+    els.stationRail,
+    ...STATIONS.map((station) =>
+      el(
+        "button",
+        {
+          type: "button",
+          "aria-pressed": ui.look === station.id ? "true" : "false",
+          onclick: () => setLook(station.id),
+        },
+        station.label,
+      ),
+    ),
+  );
+}
+
+function setLook(look) {
+  if (!STATIONS.some((station) => station.id === look)) return;
+  ui.look = look;
+  els.cabin.dataset.look = look;
+  renderStationRail();
+}
+
+function turnHead(direction) {
+  const index = STATIONS.findIndex((station) => station.id === ui.look);
+  const next = Math.min(STATIONS.length - 1, Math.max(0, index + direction));
+  setLook(STATIONS[next].id);
+}
+
+// Cabin mode (the flight-deck head-turn) only runs on a wide viewport with motion
+// allowed. Anywhere else the desk degrades to the full stacked layout where every
+// panel is visible and static — the existing operating-desk behaviour.
+function updateCabinMode() {
+  const reduced = document.documentElement.dataset.reducedMotion === "true";
+  const wide = window.matchMedia("(min-width: 1101px)").matches;
+  document.documentElement.dataset.cabin = wide && !reduced ? "on" : "off";
+}
+
+// ---- The window: starfield space view ----
+
+// The space view is painted from deterministic snapshot fields only — never a
+// hidden value. Distance and jumps give the sense of travel; the exposure band
+// (already shown in nav) drives the Dark as a quiet, deniable thinning of the
+// stars, with no number and no label on the glass. All motion stops under reduced
+// motion, which falls back to a single static frame.
+const space = {
+  ctx: els.spaceView ? els.spaceView.getContext("2d") : null,
+  stars: [],
+  w: 0,
+  h: 0,
+  dpr: 1,
+  raf: 0,
+  exposure: 0,
+  jumps: 0,
+  warp: 0,
+};
+
+const EXPOSURE_LEVEL = { none: 0, low: 1, moderate: 2, high: 3, severe: 4 };
+
+function sizeSpaceView() {
+  if (!space.ctx) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const rect = els.spaceView.getBoundingClientRect();
+  space.dpr = dpr;
+  space.w = Math.max(1, Math.floor(rect.width));
+  space.h = Math.max(1, Math.floor(rect.height));
+  els.spaceView.width = Math.floor(space.w * dpr);
+  els.spaceView.height = Math.floor(space.h * dpr);
+  if (!space.stars.length) seedStars();
+}
+
+function seedStars() {
+  const count = 220;
+  space.stars = Array.from({ length: count }, () => spawnStar());
+}
+
+function spawnStar() {
+  return {
+    x: (Math.random() - 0.5) * space.w,
+    y: (Math.random() - 0.5) * space.h,
+    z: Math.random() * space.w,
+    pz: 0,
+  };
+}
+
+function updateSpaceView(view) {
+  const band = (view.navigation && view.navigation.exposure_band) || "none";
+  space.exposure = EXPOSURE_LEVEL[band] ?? 0;
+  // A jump just executed: a brief warp streak. Detected from a deterministic,
+  // already-shown counter, never from hidden state.
+  const jumps = (view.navigation && view.navigation.jumps_executed) || 0;
+  if (jumps > space.jumps) space.warp = 1;
+  space.jumps = jumps;
+  if (document.documentElement.dataset.reducedMotion === "true") {
+    space.warp = 0;
+    drawSpaceView(false);
+  }
+}
+
+function drawSpaceView(moving) {
+  const ctx = space.ctx;
+  if (!ctx) return;
+  const { w, h, dpr } = space;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  // Deep-space wash. The Dark deepens it from the edges as exposure rises —
+  // subtle, deniable, never labelled.
+  const exposure = space.exposure / 4;
+  const cx = w / 2;
+  const cy = h * 0.42;
+
+  const speed = moving ? (space.warp > 0 ? 18 : 2.2) : 0;
+  const brightness = 1 - exposure * 0.55;
+
+  for (const star of space.stars) {
+    star.pz = star.z;
+    star.z -= speed;
+    if (star.z < 1) {
+      Object.assign(star, spawnStar());
+      star.z = w;
+      star.pz = star.z;
+    }
+    const sx = cx + (star.x / star.z) * w;
+    const sy = cy + (star.y / star.z) * w;
+    if (sx < 0 || sx > w || sy < 0 || sy > h) continue;
+    const size = Math.max(0.4, (1 - star.z / w) * 2.2);
+    const edge = Math.min(1, Math.hypot(sx - cx, sy - cy) / (Math.max(w, h) * 0.6));
+    const alpha = Math.max(0, brightness * (0.35 + (1 - star.z / w) * 0.65) * (1 - edge * exposure * 0.9));
+    if (alpha <= 0.02) continue;
+
+    if (space.warp > 0 && moving) {
+      const px = cx + (star.x / star.pz) * w;
+      const py = cy + (star.y / star.pz) * w;
+      ctx.strokeStyle = `rgba(190, 220, 225, ${alpha})`;
+      ctx.lineWidth = size;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = `rgba(205, 224, 228, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // The Dark: a creeping edge vignette that thickens with exposure. No meter.
+  if (exposure > 0) {
+    const grad = ctx.createRadialGradient(cx, cy, h * 0.2, cx, cy, Math.max(w, h) * 0.75);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(1, `rgba(2,3,4,${0.25 + exposure * 0.5})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  if (space.warp > 0) {
+    space.warp = Math.max(0, space.warp - 0.02);
+  }
+}
+
+function spaceFrame() {
+  if (document.documentElement.dataset.reducedMotion !== "true") {
+    drawSpaceView(true);
+  }
+  space.raf = requestAnimationFrame(spaceFrame);
+}
+
+function startSpaceView() {
+  if (!space.ctx) return;
+  sizeSpaceView();
+  drawSpaceView(document.documentElement.dataset.reducedMotion !== "true");
+  cancelAnimationFrame(space.raf);
+  space.raf = requestAnimationFrame(spaceFrame);
+}
+
+
 
 function isTyping(target) {
   return target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
@@ -974,6 +1202,15 @@ document.addEventListener("keydown", (event) => {
 
   if (event.key >= "1" && event.key <= "4") {
     setActiveSystem(SYSTEM_TABS[Number(event.key) - 1].id);
+    event.preventDefault();
+  } else if (
+    (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+    document.documentElement.dataset.cabin === "on" &&
+    !(event.target.closest && event.target.closest(".system-tabs"))
+  ) {
+    // Turn the head between cabin stations. The system tablist keeps its own
+    // arrow handling, so only turn when focus is outside it.
+    turnHead(event.key === "ArrowRight" ? 1 : -1);
     event.preventDefault();
   } else if (event.key === "/") {
     els.commandInput.focus();
@@ -1003,6 +1240,9 @@ els.systemTabs.addEventListener("keydown", (event) => {
 function applyReducedMotion(enabled) {
   document.documentElement.dataset.reducedMotion = enabled ? "true" : "false";
   els.reducedMotionToggle.checked = enabled;
+  updateCabinMode();
+  // Restart the space view so it picks up the static-frame / animated choice.
+  startSpaceView();
 }
 
 // ---- Wiring ----
@@ -1022,7 +1262,40 @@ els.saveButton.addEventListener("click", () => saveSession().catch(showFault));
 els.loadButton.addEventListener("click", () => loadSession().catch(showFault));
 els.reducedMotionToggle.addEventListener("change", (event) => applyReducedMotion(event.target.checked));
 
+// Edge-hover turns the head one station in cabin mode: dwelling at the far left
+// or right edge looks that way. A latch prevents a single sweep from running all
+// the way across; the pointer must leave the edge zone before it fires again.
+let edgeLatched = false;
+els.cabin.addEventListener("mousemove", (event) => {
+  if (document.documentElement.dataset.cabin !== "on") {
+    edgeLatched = false;
+    return;
+  }
+  const x = event.clientX / window.innerWidth;
+  if (x < 0.035) {
+    if (!edgeLatched) turnHead(-1);
+    edgeLatched = true;
+  } else if (x > 0.965) {
+    if (!edgeLatched) turnHead(1);
+    edgeLatched = true;
+  } else {
+    edgeLatched = false;
+  }
+});
+
+let resizeTimer = 0;
+window.addEventListener("resize", () => {
+  updateCabinMode();
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    sizeSpaceView();
+    drawSpaceView(document.documentElement.dataset.reducedMotion !== "true");
+  }, 120);
+});
+
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+setLook(ui.look);
 applyReducedMotion(prefersReducedMotion);
+renderStationRail();
 
 createSession().catch(showFault);

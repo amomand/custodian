@@ -9,119 +9,165 @@
   <body>
     <a class="skip-link" href="#systemPanel">Skip to active system</a>
 
-    <div class="desk">
-      <!-- MISSION STRIP -->
-      <header class="mission-strip" id="missionStrip" aria-label="Mission status"></header>
+    <!-- The cabin wraps the desk: a dark retro flight deck with a window onto the
+         Dark out front. Everything inside the cabin frame except the desk panels
+         is decorative atmosphere (aria-hidden) and renders only deterministic
+         snapshot fields — it never invents ship truth. -->
+    <div class="cabin" id="cabin" data-look="ahead">
+      <!-- The window: the space view straight ahead. Driven from deterministic
+           distance / jump / exposure-band fields; the Dark shows only as effect. -->
+      <canvas class="cabin-window" id="spaceView" aria-hidden="true"></canvas>
+      <div class="cabin-glass" aria-hidden="true"></div>
+      <!-- Cabin frame: struts and dark chrome around the viewport. Decorative. -->
+      <div class="cabin-frame" aria-hidden="true">
+        <span class="strut strut-left"></span>
+        <span class="strut strut-right"></span>
+        <span class="strut strut-top"></span>
+        <span class="strut strut-canopy"></span>
+      </div>
+      <!-- arka as a presence: a fixed locus you turn toward. The light's calm is
+           drift atmosphere (data hook only); arka's words live in its panel. -->
+      <div class="arka-presence" id="arkaPresence" aria-hidden="true">
+        <span class="arka-eye"></span>
+      </div>
 
-      <main class="desk-grid">
-        <!-- arka advisory + command channel -->
-        <section
-          class="panel arka-panel"
-          id="arkaPanel"
-          aria-label="arka advisory channel"
-          style="grid-area: arka"
-        >
-          <h2>arka</h2>
-          <div class="arka-body" id="arkaBody"></div>
-          <form id="commandForm" class="command-bar" aria-label="Command channel">
-            <label for="commandInput" aria-hidden="true">&gt;</label>
-            <input
-              id="commandInput"
-              name="command"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="speak to arka, or type a command"
-              aria-label="Command to arka"
-            />
-            <button type="submit">Send</button>
-          </form>
-        </section>
+      <div class="desk">
+        <!-- MISSION STRIP: HUD across the top of the canopy. -->
+        <header class="mission-strip" id="missionStrip" aria-label="Mission status"></header>
 
-        <!-- ACTIVE SYSTEM PANEL -->
-        <section
-          class="panel system-panel"
-          id="systemPanel"
-          aria-label="Active system"
-          style="grid-area: system"
-        >
-          <div class="system-tabs" id="systemTabs" role="tablist" aria-label="Ship systems"></div>
-          <div class="system-body" id="systemBody" role="tabpanel" tabindex="0"></div>
-        </section>
+        <!-- Station rail: turn the head between cabin stations. Buttons are the
+             accessible primary control; edge-hover and keys enhance it. -->
+        <nav class="station-rail" id="stationRail" aria-label="Look around the cabin"></nav>
 
-        <!-- SHIP SCHEMATIC -->
-        <section
-          class="panel schematic-panel"
-          id="schematicPanel"
-          aria-label="Ship schematic"
-          style="grid-area: schematic"
-        >
-          <h2>Ship Schematic</h2>
-          <div class="schematic-body" id="schematicBody"></div>
-        </section>
+        <main class="desk-grid" id="deskGrid">
+          <!-- WINDOW READOUT: the straight-ahead station, a diegetic view label. -->
+          <section
+            class="panel window-panel"
+            id="windowPanel"
+            aria-label="Forward view"
+            data-station="window"
+            style="grid-area: window"
+          >
+            <h2>Forward View</h2>
+            <div class="window-body" id="windowBody"></div>
+          </section>
 
-        <!-- INCIDENT / OBJECTIVE -->
-        <section
-          class="panel objective-panel"
-          id="objectivePanel"
-          aria-label="Objective and incident"
-          style="grid-area: objective"
-        >
-          <h2>Watch</h2>
-          <div class="objective-body" id="objectiveBody"></div>
-        </section>
+          <!-- arka advisory + command channel -->
+          <section
+            class="panel arka-panel"
+            id="arkaPanel"
+            aria-label="arka advisory channel"
+            data-station="arka"
+            style="grid-area: arka"
+          >
+            <h2>arka</h2>
+            <div class="arka-body" id="arkaBody"></div>
+            <form id="commandForm" class="command-bar" aria-label="Command channel">
+              <label for="commandInput" aria-hidden="true">&gt;</label>
+              <input
+                id="commandInput"
+                name="command"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="speak to arka, or type a command"
+                aria-label="Command to arka"
+              />
+              <button type="submit">Send</button>
+            </form>
+          </section>
 
-        <!-- RAW TELEMETRY DRAWER -->
-        <section
-          class="panel raw-panel"
-          id="rawPanel"
-          aria-label="Raw telemetry drawer"
-          style="grid-area: raw"
-        >
-          <h2>Raw Telemetry</h2>
-          <div class="raw-body" id="rawBody"></div>
-        </section>
+          <!-- ACTIVE SYSTEM PANEL -->
+          <section
+            class="panel system-panel"
+            id="systemPanel"
+            aria-label="Active system"
+            data-station="console"
+            style="grid-area: system"
+          >
+            <div class="system-tabs" id="systemTabs" role="tablist" aria-label="Ship systems"></div>
+            <div class="system-body" id="systemBody" role="tabpanel" tabindex="0"></div>
+          </section>
 
-        <!-- ACTION LOG / TRANSCRIPT -->
-        <section
-          class="panel log-panel"
-          id="logPanel"
-          aria-label="Transcript and action log"
-          style="grid-area: log"
-        >
-          <div class="log-tabs" id="logTabs" role="tablist" aria-label="Record view"></div>
-          <div class="log-body" id="logBody" role="tabpanel" tabindex="0"></div>
-        </section>
-      </main>
+          <!-- SHIP SCHEMATIC -->
+          <section
+            class="panel schematic-panel"
+            id="schematicPanel"
+            aria-label="Ship schematic"
+            data-station="port"
+            style="grid-area: schematic"
+          >
+            <h2>Ship Schematic</h2>
+            <div class="schematic-body" id="schematicBody"></div>
+          </section>
 
-      <!-- DIAGNOSTICS FOOTER: save/load, preferences, keyboard help -->
-      <footer class="desk-footer">
-        <details id="diagnostics" class="diagnostics">
-          <summary>Console diagnostics</summary>
-          <div class="diagnostics-body">
-            <div class="diagnostics-group" aria-label="Session image">
-              <label for="saveBuffer">Session image</label>
-              <textarea id="saveBuffer" spellcheck="false" rows="3"></textarea>
-              <div class="button-row">
-                <button id="saveButton" type="button">Save</button>
-                <button id="loadButton" type="button">Load</button>
+          <!-- INCIDENT / OBJECTIVE -->
+          <section
+            class="panel objective-panel"
+            id="objectivePanel"
+            aria-label="Objective and incident"
+            data-station="port"
+            style="grid-area: objective"
+          >
+            <h2>Watch</h2>
+            <div class="objective-body" id="objectiveBody"></div>
+          </section>
+
+          <!-- RAW TELEMETRY DRAWER -->
+          <section
+            class="panel raw-panel"
+            id="rawPanel"
+            aria-label="Raw telemetry drawer"
+            data-station="console"
+            style="grid-area: raw"
+          >
+            <h2>Raw Telemetry</h2>
+            <div class="raw-body" id="rawBody"></div>
+          </section>
+
+          <!-- ACTION LOG / TRANSCRIPT -->
+          <section
+            class="panel log-panel"
+            id="logPanel"
+            aria-label="Transcript and action log"
+            data-station="arka"
+            style="grid-area: log"
+          >
+            <div class="log-tabs" id="logTabs" role="tablist" aria-label="Record view"></div>
+            <div class="log-body" id="logBody" role="tabpanel" tabindex="0"></div>
+          </section>
+        </main>
+
+        <!-- DIAGNOSTICS FOOTER: save/load, preferences, keyboard help -->
+        <footer class="desk-footer">
+          <details id="diagnostics" class="diagnostics">
+            <summary>Console diagnostics</summary>
+            <div class="diagnostics-body">
+              <div class="diagnostics-group" aria-label="Session image">
+                <label for="saveBuffer">Session image</label>
+                <textarea id="saveBuffer" spellcheck="false" rows="3"></textarea>
+                <div class="button-row">
+                  <button id="saveButton" type="button">Save</button>
+                  <button id="loadButton" type="button">Load</button>
+                </div>
+              </div>
+              <div class="diagnostics-group" aria-label="Preferences">
+                <label>
+                  <input id="reducedMotionToggle" type="checkbox" />
+                  Reduced motion
+                </label>
+                <dl class="key-help">
+                  <div><dt>1–4</dt><dd>switch system panel</dd></div>
+                  <div><dt>&larr; &rarr;</dt><dd>turn between cabin stations</dd></div>
+                  <div><dt>/</dt><dd>focus command channel</dd></div>
+                  <div><dt>.</dt><dd>wait one beat</dd></div>
+                  <div><dt>?</dt><dd>open console diagnostics</dd></div>
+                </dl>
               </div>
             </div>
-            <div class="diagnostics-group" aria-label="Preferences">
-              <label>
-                <input id="reducedMotionToggle" type="checkbox" />
-                Reduced motion
-              </label>
-              <dl class="key-help">
-                <div><dt>1–4</dt><dd>switch system panel</dd></div>
-                <div><dt>/</dt><dd>focus command channel</dd></div>
-                <div><dt>.</dt><dd>wait one beat</dd></div>
-                <div><dt>?</dt><dd>open console diagnostics</dd></div>
-              </dl>
-            </div>
-          </div>
-        </details>
-        <p class="session-label" id="sessionLabel">no session</p>
-      </footer>
+          </details>
+          <p class="session-label" id="sessionLabel">no session</p>
+        </footer>
+      </div>
     </div>
 
     <script src="/static/app.js"></script>

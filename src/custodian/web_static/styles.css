@@ -75,14 +75,125 @@ textarea,
   top: 8px;
 }
 
+/* ---- Cabin shell ---- */
+
+/* The cabin is the flight deck: a dark viewport with the window (a starfield
+   canvas) behind, a glass/vignette overlay, decorative struts, an arka presence
+   light, and the operating desk floating on top as a cluster of lit screens.
+   Every layer except the desk panels is aria-hidden atmosphere. */
+.cabin {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(140% 120% at 50% 8%, #0b1418 0%, #060809 60%, #040506 100%);
+}
+
+/* The window: the space view straight ahead. The canvas paints stars and the
+   Dark; it carries no text and renders only from deterministic snapshot fields. */
+.cabin-window {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+
+/* Glass: a soft canopy glare and a vignette that seats the view inside a hull. */
+.cabin-glass {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(125% 85% at 50% 16%, transparent 38%, rgba(0, 0, 0, 0.55) 100%),
+    linear-gradient(180deg, rgba(150, 205, 215, 0.06), transparent 20%);
+}
+
+/* Frame: dark chrome struts around the viewport, so the window reads as glass in
+   a hull rather than a web page. Purely decorative. */
+.cabin-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.strut {
+  position: absolute;
+  background: linear-gradient(180deg, #1a2226, #0c1013);
+  box-shadow: inset 0 0 0 1px rgba(120, 150, 160, 0.06), 0 0 24px rgba(0, 0, 0, 0.6);
+}
+
+.strut-left,
+.strut-right {
+  top: 0;
+  bottom: 0;
+  width: 18px;
+}
+
+.strut-left {
+  left: 0;
+  background: linear-gradient(90deg, #161d21, #0a0e10 80%, transparent);
+}
+
+.strut-right {
+  right: 0;
+  background: linear-gradient(270deg, #161d21, #0a0e10 80%, transparent);
+}
+
+.strut-top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: linear-gradient(180deg, #1a2226, #0a0e10 80%, transparent);
+}
+
+/* A faint canopy spar arcing across the top of the glass. */
+.strut-canopy {
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 46%;
+  background: none;
+  box-shadow: none;
+  border-bottom: 1px solid rgba(120, 150, 160, 0.05);
+  border-radius: 0 0 48% 48% / 0 0 70px 70px;
+}
+
+/* arka as presence: a fixed locus near the canopy you can turn toward. Its calm
+   is drift atmosphere (data hook only) — arka's words live in its panel. */
+.arka-presence {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.arka-eye {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--arka);
+  box-shadow: 0 0 10px 2px rgba(143, 217, 210, 0.5), 0 0 26px 6px rgba(143, 217, 210, 0.22);
+}
+
 /* ---- Layout shell ---- */
 
 .desk {
+  position: relative;
+  z-index: 3;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: var(--gap);
-  height: 100vh;
+  height: 100%;
   padding: var(--gap);
+  background: transparent;
 }
 
 .desk-grid {
@@ -90,8 +201,9 @@ textarea,
   gap: var(--gap);
   min-height: 0;
   grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.4fr) minmax(300px, 1.1fr);
-  grid-template-rows: minmax(0, 1.55fr) minmax(0, 1fr);
+  grid-template-rows: minmax(64px, 0.6fr) minmax(0, 1.45fr) minmax(0, 1fr);
   grid-template-areas:
+    "window    window window"
     "schematic system arka"
     "objective raw    log";
 }
@@ -102,9 +214,15 @@ textarea,
   min-height: 0;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 14px 36px var(--shadow);
+  /* Screens, not pages: translucent so the window glows behind the cluster, with
+     an inset bevel that reads as a mounted display. */
+  background: linear-gradient(180deg, rgba(22, 27, 25, 0.93), rgba(14, 17, 16, 0.95));
+  box-shadow:
+    inset 0 0 0 1px rgba(120, 150, 160, 0.04),
+    inset 0 1px 0 rgba(180, 210, 215, 0.05),
+    0 14px 36px var(--shadow);
   overflow: hidden;
+  backdrop-filter: blur(2px);
 }
 
 .panel > h2,
@@ -132,9 +250,11 @@ textarea,
   gap: 2px 0;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: var(--panel-strong);
-  box-shadow: 0 14px 36px var(--shadow);
+  /* HUD across the canopy: translucent so the view reads behind it. */
+  background: linear-gradient(180deg, rgba(29, 36, 33, 0.92), rgba(18, 22, 20, 0.94));
+  box-shadow: inset 0 1px 0 rgba(180, 210, 215, 0.05), 0 14px 36px var(--shadow);
   overflow: hidden;
+  backdrop-filter: blur(2px);
 }
 
 .mission-brand {
@@ -199,7 +319,7 @@ textarea,
 
 .arka-panel {
   grid-area: arka;
-  background: linear-gradient(180deg, #16201f, var(--panel));
+  background: linear-gradient(180deg, rgba(22, 32, 31, 0.95), rgba(14, 17, 16, 0.96));
 }
 
 .arka-panel > h2 {
@@ -249,6 +369,7 @@ html[data-focus="true"] .desk-grid {
   grid-template-areas: "arka";
 }
 
+html[data-focus="true"] .window-panel,
 html[data-focus="true"] .schematic-panel,
 html[data-focus="true"] .system-panel,
 html[data-focus="true"] .objective-panel,
@@ -1258,17 +1379,188 @@ button.danger-action:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
-/* ---- Motion ---- */
+/* ---- Cabin screens, window, head-turn ---- */
 
-@media (prefers-reduced-motion: no-preference) {
-  button,
-  [role="tab"],
-  .sector-node {
-    transition:
-      border-color 120ms ease,
-      background 120ms ease;
-  }
+/* Faint scanlines seat every panel as a lit display. Static (no animation), so
+   they are safe under reduced motion. */
+.panel,
+.mission-strip {
+  position: relative;
 }
+
+.panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.015) 0,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* The forward-view window panel is mostly glass: it frames the starfield canvas
+   behind the desk rather than drawing its own. Its readout carries only
+   already-shown fields and never a Dark number. */
+.window-panel {
+  grid-area: window;
+  background: linear-gradient(180deg, rgba(12, 20, 24, 0.34), rgba(8, 12, 14, 0.18));
+  border-color: rgba(120, 160, 170, 0.16);
+  backdrop-filter: none;
+}
+
+.window-panel > h2 {
+  border-bottom-color: rgba(120, 160, 170, 0.14);
+  color: var(--cyan);
+  background: linear-gradient(180deg, rgba(8, 12, 14, 0.5), transparent);
+}
+
+.window-panel::after {
+  background: none;
+}
+
+.window-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  padding: 8px 14px;
+  min-height: 0;
+}
+
+.window-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.window-readout dt {
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.window-readout dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.window-readout.alert dd {
+  color: var(--amber);
+}
+
+/* ---- Station rail (turn the head) ---- */
+
+.station-rail {
+  display: none;
+  flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+}
+
+html[data-cabin="on"] .station-rail {
+  display: flex;
+}
+
+.station-rail button {
+  background: linear-gradient(180deg, rgba(29, 36, 33, 0.85), rgba(16, 20, 18, 0.85));
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  color: var(--muted);
+  padding: 5px 12px;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.station-rail button[aria-pressed="true"] {
+  color: var(--text);
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px rgba(120, 201, 194, 0.3), 0 0 14px rgba(120, 201, 194, 0.18);
+}
+
+/* ---- Head-turn: cabin mode only ----
+
+   Cabin mode is enabled (html[data-cabin="on"]) only on a wide viewport with
+   motion allowed. It turns the desk into a flight deck you look around: the
+   looked-at station is bright and square-on; the others sit dim and angled in
+   peripheral vision. Under reduced motion or narrow widths data-cabin is "off"
+   and every panel is full-opacity and static — today's stacked layout. */
+html[data-cabin="on"] .desk-grid {
+  transform-origin: 50% 30%;
+  will-change: transform;
+}
+
+html[data-cabin="on"] [data-station] {
+  opacity: 0.52;
+  transform: scale(0.99);
+}
+
+html[data-cabin="on"] .cabin[data-look="port"] [data-station="port"],
+html[data-cabin="on"] .cabin[data-look="console"] [data-station="console"],
+html[data-cabin="on"] .cabin[data-look="arka"] [data-station="arka"],
+html[data-cabin="on"] .cabin[data-look="ahead"] [data-station="window"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Looking out the window: the console recedes and tilts down out of the way so
+   the view fills the canopy. The window readout stays bright. */
+html[data-cabin="on"] .cabin[data-look="ahead"] .desk-grid {
+  transform: perspective(1500px) translateY(7%) scale(0.95);
+}
+
+html[data-cabin="on"] .cabin[data-look="port"] .desk-grid {
+  transform: perspective(1500px) translateX(3%) rotateY(3deg);
+}
+
+html[data-cabin="on"] .cabin[data-look="console"] .desk-grid {
+  transform: perspective(1500px) rotateY(0deg);
+}
+
+html[data-cabin="on"] .cabin[data-look="arka"] .desk-grid {
+  transform: perspective(1500px) translateX(-3%) rotateY(-3deg);
+}
+
+html[data-cabin="on"]:not([data-reduced-motion="true"]) .desk-grid,
+html[data-cabin="on"]:not([data-reduced-motion="true"]) [data-station] {
+  transition: transform 320ms ease, opacity 320ms ease;
+}
+
+/* arka presence: brightens and rises toward centre when you look at arka or hand
+   it the watch; dims to a steady pilot light otherwise. Calm only — never a tell. */
+html[data-cabin="on"] .cabin[data-look="arka"] .arka-eye,
+html[data-focus="true"] .arka-eye {
+  box-shadow: 0 0 16px 4px rgba(143, 217, 210, 0.7), 0 0 40px 12px rgba(143, 217, 210, 0.3);
+}
+
+/* Focus / take-the-watch: the cabin dims toward arka. The window settles into a
+   calm dark and arka's light is the thing you are looking at. */
+html[data-focus="true"] .cabin-glass {
+  background:
+    radial-gradient(120% 90% at 50% 30%, transparent 22%, rgba(0, 0, 0, 0.74) 100%),
+    linear-gradient(180deg, rgba(143, 217, 210, 0.05), transparent 26%);
+}
+
+/* In focus the desk is just arka: keep it square-on and full-opacity, never
+   dimmed or angled by the head-turn rules. */
+html[data-focus="true"] .desk-grid {
+  transform: none !important;
+}
+
+html[data-focus="true"] [data-station="arka"] {
+  opacity: 1;
+  transform: none;
+}
+
+
 
 html[data-reduced-motion="true"] * {
   transition: none !important;
@@ -1279,8 +1571,20 @@ html[data-reduced-motion="true"] * {
 /* ---- Responsive ---- */
 
 @media (max-width: 1100px) {
-  /* Below the desktop width the desk stops being a single viewport-locked
-     console and becomes a scrolling stack of panels. */
+  /* Below the desktop width the cabin stops being a viewport-locked flight deck
+     and becomes a scrolling stack of panels (head-turn is off here). */
+  .cabin {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .cabin-window,
+  .cabin-glass,
+  .cabin-frame {
+    position: fixed;
+  }
+
   .desk {
     height: auto;
     min-height: 100vh;
@@ -1290,10 +1594,15 @@ html[data-reduced-motion="true"] * {
     max-height: 72vh;
   }
 
+  .window-panel {
+    max-height: 30vh;
+  }
+
   .desk-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
     grid-template-areas:
+      "window    window"
       "arka      arka"
       "system    schematic"
       "raw       objective"
@@ -1309,6 +1618,7 @@ html[data-reduced-motion="true"] * {
   .desk-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
+      "window"
       "arka"
       "system"
       "schematic"
