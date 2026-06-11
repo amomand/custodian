@@ -221,14 +221,6 @@ function renderSnapshot(snapshot) {
   detectJump(view);
   applyView();
 
-  // Hand keyboard focus to the way back the moment the watch changes hands.
-  if (!wasFocus && ui.inFocus) {
-    const leave = els.darkFocus.querySelector(".focus-leave");
-    if (leave) leave.focus();
-  } else if (wasFocus && !ui.inFocus) {
-    els.commandInput.focus();
-  }
-
   els.sessionLabel.textContent = `${snapshot.session_id.slice(0, 8)} / beat ${snapshot.turn}`;
 }
 
