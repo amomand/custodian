@@ -93,6 +93,11 @@ html[data-view="dark"] .desk {
   display: none;
 }
 
+html[data-view="map"] .skip-link,
+html[data-view="dark"] .skip-link {
+  display: none;
+}
+
 html[data-view="map"] .map-view {
   display: flex;
 }

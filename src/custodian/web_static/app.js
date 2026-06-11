@@ -1048,14 +1048,42 @@ function setView(target) {
     ui.pendingConfirm = null;
     renderConfirmSurfaces();
   }
-  applyView();
+  applyView({ forceFocus: true });
 }
 
-function applyView() {
+function applyView({ forceFocus = false } = {}) {
   const showing = warpHold ? "dark" : effectiveView();
+  const previous = document.documentElement.dataset.view;
   document.documentElement.dataset.view = showing;
   els.darkView.dataset.mode = ui.inFocus ? "focus" : "outside";
   syncSpaceView();
+  reconcileViewFocus(showing, forceFocus || previous !== showing);
+}
+
+function reconcileViewFocus(view, forceFocus) {
+  const surface = activeViewSurface();
+  if (forceFocus || (surface && surface !== view)) focusView(view);
+}
+
+function activeViewSurface() {
+  const active = document.activeElement;
+  if (!active || active === document.body) return null;
+  if (active.classList && active.classList.contains("skip-link")) return "desk";
+  if (active.closest(".desk")) return "desk";
+  if (active.closest(".map-view")) return "map";
+  if (active.closest(".dark-view")) return "dark";
+  return null;
+}
+
+function focusView(view) {
+  let target = els.commandInput;
+  if (view === "map") {
+    target = els.mapReturn;
+  } else if (view === "dark") {
+    target = ui.inFocus ? els.darkFocus.querySelector(".focus-leave") : els.darkReturn;
+  }
+  if (!target) return;
+  target.focus({ preventScroll: true });
 }
 
 // ---- The Dark: full-screen window ----
