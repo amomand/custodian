@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-view="desk">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,9 +9,69 @@
   <body>
     <a class="skip-link" href="#systemPanel">Skip to active system</a>
 
+    <!-- THE DARK: the full-screen forward window. A deliberate place to go, not
+         wallpaper. The canvas paints stars from deterministic snapshot fields
+         only (distance, jumps, the qualitative exposure band) and carries no
+         text; the readouts repeat fields already shown on the desk. Focus mode
+         ("arka has the watch") renders here too: the desk drops away and the
+         player is left with the void, arka's light, and arka's words. -->
+    <section class="dark-view" id="darkView" data-mode="outside" aria-label="Outside — the forward window">
+      <canvas id="spaceView" aria-hidden="true"></canvas>
+      <div class="dark-glass" aria-hidden="true"></div>
+      <!-- arka as presence: a calm light in the glass. Its intensity is the same
+           deniable drift atmosphere as the arka panel — a data hook, never text. -->
+      <div class="arka-presence" id="arkaPresence" aria-hidden="true">
+        <span class="arka-eye"></span>
+      </div>
+
+      <!-- Looking outside by choice: a minimal corner readout and the way back. -->
+      <div class="dark-outside" id="darkOutside">
+        <div class="dark-readouts" id="darkReadouts" aria-label="Forward readout"></div>
+        <button type="button" class="dark-return" id="darkReturn" title="Esc">Back to the desk</button>
+      </div>
+
+      <!-- Focus ("arka has the watch"): built by app.js while focus is on. -->
+      <div class="dark-focus" id="darkFocus"></div>
+    </section>
+
+    <!-- NAV PLOT: the full-screen chart. Routes drawn as paths through the Dark
+         (exposure band as territory), with the same plot/execute action specs
+         the desk dispatches, plus the deck plan with containment per sector.
+         The chart SVG is aria-hidden decoration; the cards carry every fact. -->
+    <section class="map-view" id="mapView" aria-label="Nav plot and deck plan">
+      <header class="map-head">
+        <div class="map-brand">
+          <h2>Nav Plot</h2>
+          <span>chart of record</span>
+        </div>
+        <div class="map-head-stats" id="mapHeadStats"></div>
+        <button type="button" class="map-return" id="mapReturn" title="Esc">Back to the desk</button>
+      </header>
+      <div class="map-confirm" id="mapConfirm"></div>
+      <div class="map-grid">
+        <section class="map-pane map-chart-pane" aria-label="Route chart">
+          <div class="map-chart" id="mapChart"></div>
+          <div class="map-routes" id="mapRoutes"></div>
+        </section>
+        <section class="map-pane map-ship-pane" aria-label="Deck plan">
+          <h3>Deck Plan</h3>
+          <div class="map-schematic" id="mapSchematic"></div>
+          <div class="map-sector" id="mapSector"></div>
+        </section>
+      </div>
+    </section>
+
     <div class="desk">
-      <!-- MISSION STRIP -->
-      <header class="mission-strip" id="missionStrip" aria-label="Mission status"></header>
+      <div class="desk-top">
+        <!-- MISSION STRIP -->
+        <header class="mission-strip" id="missionStrip" aria-label="Mission status"></header>
+        <!-- VIEW RAIL: the other places to go. Static buttons so focus is never
+             lost to a re-render; m / o / Esc mirror them. -->
+        <nav class="view-rail" aria-label="Console views">
+          <button type="button" id="railMap" title="Open the nav plot (m)">Nav plot</button>
+          <button type="button" id="railDark" title="Look outside (o)">Outside</button>
+        </nav>
+      </div>
 
       <main class="desk-grid">
         <!-- arka advisory + command channel -->
@@ -113,9 +173,12 @@
               </label>
               <dl class="key-help">
                 <div><dt>1–4</dt><dd>switch system panel</dd></div>
+                <div><dt>m</dt><dd>open / close the nav plot</dd></div>
+                <div><dt>o</dt><dd>look outside / back</dd></div>
                 <div><dt>/</dt><dd>focus command channel</dd></div>
                 <div><dt>.</dt><dd>wait one beat</dd></div>
                 <div><dt>?</dt><dd>open console diagnostics</dd></div>
+                <div><dt>Esc</dt><dd>cancel, take the watch back, return to the desk</dd></div>
               </dl>
             </div>
           </div>
