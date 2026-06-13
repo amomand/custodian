@@ -321,7 +321,7 @@ class SessionStore:
             now,
         ):
             return THROTTLED_COMMAND_MESSAGE
-        if len(command_text.strip()) > self._limits.max_command_chars:
+        if len(command_text) > self._limits.max_command_chars:
             return OVERSIZE_COMMAND_MESSAGE
         return None
 

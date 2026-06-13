@@ -63,6 +63,23 @@ class WebSessionTests(unittest.TestCase):
         self.assertIn("signal clipped", transcript)
         self.assertNotIn("x" * 9, transcript)
 
+    def test_whitespace_counts_toward_command_length_cap(self) -> None:
+        store = SessionStore(
+            engine_factory=no_ai_engine,
+            limits=WebSessionLimits(
+                max_command_chars=8,
+                max_session_commands=99,
+                max_client_commands=99,
+            ),
+        )
+        session = store.create()
+
+        response = store.command(session.session_id, " " * 9)
+
+        self.assertEqual(response.snapshot["turn"], 1)
+        self.assertEqual(session.state.history, ())
+        self.assertIn("arka: Too much is arriving", "\n".join(response.messages))
+
     def test_session_rate_limit_rejects_without_advancing_state(self) -> None:
         store = SessionStore(
             engine_factory=no_ai_engine,
