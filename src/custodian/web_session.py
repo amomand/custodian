@@ -122,7 +122,9 @@ class BrowserSession:
         with self._lock:
             return tuple(event.to_dict() for event in self.transcript)
 
-    def transcript_lines(self, *, limit: int | None = None) -> list[str]:
+    def transcript_lines(
+        self, *, limit: int | None = None, safe: bool = False
+    ) -> list[str]:
         with self._lock:
             lines: list[str] = []
             for event in self.transcript:
@@ -131,7 +133,9 @@ class BrowserSession:
                 else:
                     lines.extend(event.lines)
             if limit is not None and len(lines) > limit:
-                return lines[-limit:]
+                lines = lines[-limit:]
+            if safe:
+                return list(project_safe_lines(self.state, tuple(lines)))
             return lines
 
 
@@ -174,7 +178,7 @@ class SessionStore:
         return {
             "session_id": session_id,
             "events": list(session.transcript_events()),
-            "lines": session.transcript_lines(),
+            "lines": session.transcript_lines(safe=True),
         }
 
 

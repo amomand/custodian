@@ -67,6 +67,27 @@ class WebSessionTests(unittest.TestCase):
             "exposure band moderate",
             "\n".join(response.snapshot["transcript_tail"]),
         )
+        raw_transcript = "\n".join(session.transcript_lines())
+        safe_transcript = "\n".join(session.transcript_lines(safe=True))
+        self.assertIn("Dark exposure 9", raw_transcript)
+        self.assertNotIn("Dark exposure 9", safe_transcript)
+        self.assertIn("exposure band moderate", safe_transcript)
+
+    def test_store_transcript_lines_are_safe_for_export(self) -> None:
+        store = SessionStore(engine_factory=no_ai_engine)
+        session = BrowserSession(
+            "jumping",
+            no_ai_engine(),
+            ShipState(navigation=NavigationState(plotted_route_id="argos-12")),
+        )
+        store._sessions[session.session_id] = session
+
+        session.command("jump")
+        transcript = store.transcript(session.session_id)
+
+        text = "\n".join(transcript["lines"])
+        self.assertNotIn("Dark exposure 9", text)
+        self.assertIn("exposure band moderate", text)
 
     def test_sessions_do_not_share_mutable_ship_state(self) -> None:
         first = self.store.create()
