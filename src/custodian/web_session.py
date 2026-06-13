@@ -288,6 +288,17 @@ class SessionStore:
         for session_id in expired:
             self._sessions.pop(session_id, None)
             self._session_attempts.pop(session_id, None)
+        self._purge_attempts(self._session_attempts, now)
+        self._purge_attempts(self._client_attempts, now)
+
+    def _purge_attempts(self, buckets: dict[str, list[float]], now: float) -> None:
+        window = self._limits.rate_window_seconds
+        for key, timestamps in list(buckets.items()):
+            recent = [then for then in timestamps if now - then < window]
+            if recent:
+                buckets[key] = recent
+            else:
+                buckets.pop(key, None)
 
     def _command_rejection(
         self,

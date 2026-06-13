@@ -101,6 +101,32 @@ class WebSessionTests(unittest.TestCase):
         self.assertEqual(second.state.history, ())
         self.assertIn("arka: Slow the channel", "\n".join(blocked.messages))
 
+    def test_client_rate_limit_buckets_are_pruned_after_window(self) -> None:
+        now = 0.0
+
+        def clock() -> float:
+            return now
+
+        store = SessionStore(
+            engine_factory=no_ai_engine,
+            limits=WebSessionLimits(
+                rate_window_seconds=5,
+                max_session_commands=99,
+                max_client_commands=99,
+            ),
+            clock=clock,
+        )
+        session = store.create()
+        store.command(session.session_id, "wait", client_id="192.0.2.1")
+        store.command(session.session_id, "wait", client_id="192.0.2.2")
+
+        now = 6.0
+        store.command(session.session_id, "wait", client_id="192.0.2.3")
+
+        self.assertNotIn("192.0.2.1", store._client_attempts)
+        self.assertNotIn("192.0.2.2", store._client_attempts)
+        self.assertIn("192.0.2.3", store._client_attempts)
+
     def test_idle_sessions_expire_and_stop_counting_against_capacity(self) -> None:
         now = 0.0
 
