@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-from custodian.web_session import SessionNotFound, SessionStore
+from custodian.web_session import (
+    SessionCapacityExceeded,
+    SessionNotFound,
+    SessionStore,
+)
 
 
 STATIC_ROOT = Path(__file__).with_name("web_static")
@@ -82,7 +86,11 @@ class CustodianRequestHandler(BaseHTTPRequestHandler):
             if len(parts) == 3 and parts[0] == "session" and parts[2] == "command":
                 body = self._read_json()
                 command = str(body.get("command", ""))
-                response = self.server.store.command(parts[1], command)
+                response = self.server.store.command(
+                    parts[1],
+                    command,
+                    client_id=self.client_address[0],
+                )
                 self._send_json(
                     {
                         "session_id": response.session_id,
@@ -109,6 +117,9 @@ class CustodianRequestHandler(BaseHTTPRequestHandler):
                     )
                 )
                 return
+        except SessionCapacityExceeded as exc:
+            self._send_json({"error": str(exc)}, HTTPStatus.TOO_MANY_REQUESTS)
+            return
         except SessionNotFound:
             self._send_json({"error": "session not found"}, HTTPStatus.NOT_FOUND)
             return

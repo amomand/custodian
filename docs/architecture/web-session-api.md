@@ -87,6 +87,16 @@ Dispatches the text through `GameEngine.handle()`, appends player input and ship
 output to the transcript, and returns the command messages plus a fresh
 snapshot.
 
+The web transport guards this path before it reaches the engine:
+
+- command text is capped at 200 characters;
+- commands are throttled per session and per client address over a short rolling
+  window;
+- oversized or throttled commands return an `arka:` refusal and a fresh snapshot
+  without advancing ship state or calling the model-backed interpreter;
+- rejected oversized input is clipped in the transcript rather than stored in
+  full.
+
 ### `POST /api/session/{id}/save`
 
 Returns the current state as existing persistence JSON:
@@ -113,6 +123,8 @@ Returns structured transcript events and a plain line transcript.
 ## Contracts
 
 - Text commands route through the same engine path as terminal commands.
+- Browser-session admission is capped, and idle sessions expire so abandoned
+  consoles stop counting against the cap.
 - The browser client renders API data and sends player commands; it does not
   decide game consequences or reconstruct simulation truth from dataclasses.
 - Sessions do not share mutable `ShipState`.
