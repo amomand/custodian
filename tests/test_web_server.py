@@ -8,7 +8,7 @@ from custodian.arka_interpreter import ArkaInterpreter
 from custodian.config import Config
 from custodian.engine import GameEngine
 from custodian.web_server import _is_loopback_address, make_server
-from custodian.web_session import SessionStore
+from custodian.web_session import SessionStore, WebSessionLimits
 
 
 def no_ai_engine() -> GameEngine:
@@ -72,6 +72,38 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(last_record["action"], "delegate")
         self.assertEqual(last_record["target"], "coolant")
         self.assertEqual(dev["ui"]["dev"]["delegated_controls"], 1)
+
+    def test_command_endpoint_throttles_by_client_address(self) -> None:
+        self.server.store = SessionStore(
+            engine_factory=no_ai_engine,
+            limits=WebSessionLimits(
+                rate_window_seconds=60,
+                max_session_commands=99,
+                max_client_commands=1,
+            ),
+        )
+        created = self._post("/api/session")
+        session_id = created["session_id"]
+
+        allowed = self._post(f"/api/session/{session_id}/command", {"command": "wait"})
+        blocked = self._post(f"/api/session/{session_id}/command", {"command": "wait"})
+
+        self.assertEqual(allowed["snapshot"]["turn"], 2)
+        self.assertEqual(blocked["snapshot"]["turn"], 2)
+        self.assertIn("arka: Slow the channel", "\n".join(blocked["messages"]))
+
+    def test_session_capacity_returns_429_with_diegetic_message(self) -> None:
+        self.server.store = SessionStore(
+            engine_factory=no_ai_engine,
+            limits=WebSessionLimits(max_sessions=0),
+        )
+
+        with self.assertRaises(HTTPError) as context:
+            self._post("/api/session")
+
+        self.assertEqual(context.exception.code, 429)
+        payload = json.loads(context.exception.read().decode("utf-8"))
+        self.assertIn("arka: No free console lanes", payload["error"])
 
     def test_dev_snapshot_loopback_guard(self) -> None:
         self.assertTrue(_is_loopback_address("127.0.0.1"))
