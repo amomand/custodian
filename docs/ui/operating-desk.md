@@ -60,7 +60,8 @@ arka and the command channel near the top.
 - **Raw telemetry drawer** holds the five raw panels (mission, coolant,
   cryostasis, navigation, schematic) as expandable, source-labelled readouts.
 - **Transcript / action log** toggles between the narrative transcript and the
-  structured command history.
+  structured command history. Its export control downloads the full browser
+  transcript from the session API for playtest review.
 
 ## Actions come from the snapshot
 

@@ -118,7 +118,9 @@ line noting the restored beat.
 
 ### `GET /api/session/{id}/transcript`
 
-Returns structured transcript events and a plain line transcript.
+Returns structured transcript events and a web-safe plain line transcript.
+The operating desk's transcript export control downloads the plain line version
+as a text file.
 
 ## Contracts
 
