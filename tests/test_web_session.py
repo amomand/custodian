@@ -17,6 +17,16 @@ def no_ai_engine() -> GameEngine:
     return GameEngine(ArkaInterpreter(Config(custodian_ai=False)))
 
 
+class CountingEngine(GameEngine):
+    def __init__(self) -> None:
+        super().__init__(ArkaInterpreter(Config(custodian_ai=False)))
+        self.commands: list[str] = []
+
+    def handle(self, state: ShipState, command_text: str):
+        self.commands.append(command_text)
+        return super().handle(state, command_text)
+
+
 class WebSessionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.store = SessionStore(engine_factory=no_ai_engine)
@@ -79,6 +89,24 @@ class WebSessionTests(unittest.TestCase):
         self.assertEqual(response.snapshot["turn"], 1)
         self.assertEqual(session.state.history, ())
         self.assertIn("arka: Too much is arriving", "\n".join(response.messages))
+
+    def test_rejected_command_snapshot_does_not_call_engine(self) -> None:
+        engine = CountingEngine()
+        store = SessionStore(
+            engine_factory=lambda: engine,
+            limits=WebSessionLimits(
+                max_command_chars=8,
+                max_session_commands=99,
+                max_client_commands=99,
+            ),
+        )
+        session = store.create()
+        self.assertEqual(engine.commands, ["status"])
+
+        response = store.command(session.session_id, "x" * 9)
+
+        self.assertEqual(response.snapshot["turn"], 1)
+        self.assertEqual(engine.commands, ["status"])
 
     def test_session_rate_limit_rejects_without_advancing_state(self) -> None:
         store = SessionStore(

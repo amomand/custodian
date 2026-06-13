@@ -76,7 +76,8 @@ class BrowserSession:
         self.state = state or engine.initial_state()
         self.last_access = last_access
         self._lock = RLock()
-        self.last_messages = _initial_messages(engine, self.state)
+        self.status_messages = _status_messages(engine, self.state)
+        self.last_messages = opening_lines() + self.status_messages
         self.transcript: list[TranscriptEvent] = [
             TranscriptEvent("output", self.last_messages, self.state.turn)
         ]
@@ -87,7 +88,7 @@ class BrowserSession:
 
     def snapshot(self, *, include_dev: bool = False) -> dict:
         with self._lock:
-            status_lines = tuple(_status_messages(self.engine, self.state))
+            status_lines = self.status_messages
             transcript_tail = tuple(self.transcript_lines(limit=120))
             ui = project_ui_snapshot(
                 self.state,
@@ -118,6 +119,7 @@ class BrowserSession:
             messages = result.messages
             if self.state.is_finished and not was_finished:
                 messages = messages + closing_lines(self.state)
+            self.status_messages = _status_messages(self.engine, self.state)
             self.last_messages = messages
             self.transcript.append(TranscriptEvent("output", messages, self.state.turn))
             safe_messages = project_safe_lines(self.state, messages)
@@ -163,6 +165,7 @@ class BrowserSession:
                 "arka: Session image restored. Same ship, fewer fresh mistakes.",
                 f"maintenance beat restored: {self.state.turn}",
             )
+            self.status_messages = _status_messages(self.engine, self.state)
             self.transcript.append(
                 TranscriptEvent("output", self.last_messages, self.state.turn)
             )
@@ -342,10 +345,6 @@ class SessionStore:
         recent.append(now)
         buckets[key] = recent
         return False
-
-
-def _initial_messages(engine: GameEngine, state: ShipState) -> tuple[str, ...]:
-    return opening_lines() + _status_messages(engine, state)
 
 
 def _status_messages(engine: GameEngine, state: ShipState) -> tuple[str, ...]:
