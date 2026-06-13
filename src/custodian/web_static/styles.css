@@ -216,7 +216,7 @@ html[data-view="dark"] .dark-view {
 
 .panel > h2,
 .system-tabs,
-.log-tabs {
+.log-head {
   flex: 0 0 auto;
 }
 
@@ -544,6 +544,21 @@ summary:focus-visible,
   border-bottom: 1px solid var(--line-soft);
 }
 
+.log-head {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 6px 6px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.log-head .log-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border-bottom: none;
+}
+
 [role="tab"] {
   min-height: 34px;
   border: 1px solid transparent;
@@ -565,6 +580,24 @@ summary:focus-visible,
   margin-left: 6px;
   color: var(--amber);
   font-size: 0.72rem;
+}
+
+.log-export {
+  margin-left: auto;
+  min-height: 28px;
+  flex: 0 0 auto;
+  align-self: center;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  background: rgba(177, 233, 224, 0.07);
+  color: var(--cyan);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.log-export:hover {
+  border-color: var(--cyan);
 }
 
 /* ---- Active system body ---- */

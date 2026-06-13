@@ -75,6 +75,7 @@ const els = {
   objectiveBody: document.querySelector("#objectiveBody"),
   rawBody: document.querySelector("#rawBody"),
   logTabs: document.querySelector("#logTabs"),
+  transcriptExport: document.querySelector("#transcriptExport"),
   logBody: document.querySelector("#logBody"),
   commandForm: document.querySelector("#commandForm"),
   commandInput: document.querySelector("#commandInput"),
@@ -179,6 +180,22 @@ async function loadSession() {
   // A restored run resumes quietly: no warp moment for the jump count it loads with.
   ui.prevJumps = null;
   renderSnapshot(data.snapshot);
+}
+
+async function exportTranscript() {
+  if (!ui.sessionId) return;
+  const data = await api(`/api/session/${ui.sessionId}/transcript`);
+  const lines = data.lines || [];
+  const blob = new Blob([`${lines.join("\n")}\n`], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = el("a", {
+    href: url,
+    download: `custodian-transcript-${ui.sessionId.slice(0, 8)}.txt`,
+  });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 // ---- Top-level render ----
@@ -1540,6 +1557,7 @@ els.commandForm.addEventListener("submit", async (event) => {
 
 els.saveButton.addEventListener("click", () => saveSession().catch(showFault));
 els.loadButton.addEventListener("click", () => loadSession().catch(showFault));
+els.transcriptExport.addEventListener("click", () => exportTranscript().catch(showFault));
 els.reducedMotionToggle.addEventListener("change", (event) => applyReducedMotion(event.target.checked));
 
 // View rail and the ways back. Static buttons — never re-rendered, never lose focus.

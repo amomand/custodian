@@ -13,6 +13,20 @@ from custodian.playtest import (
 
 
 class PlaytestTests(unittest.TestCase):
+    def test_section_nine_golden_routes_are_named(self) -> None:
+        expected = {
+            "pure-delegation",
+            "practised-manual",
+            "raw-curious",
+            "deep-route-fast-arrival",
+            "short-route-cautious-decay",
+            "containment-heavy",
+            "arka-override-late",
+            "focus-mode",
+        }
+
+        self.assertTrue(expected.issubset(SCENARIOS))
+
     def test_practised_manual_scenario_completes_window(self) -> None:
         report = run_scenario(SCENARIOS["practised-manual"])
 
@@ -77,6 +91,52 @@ class PlaytestTests(unittest.TestCase):
         self.assertEqual(report.final_state.manual_familiarity, 0)
         self.assertIn("focus dwell beats:", summary)
         self.assertIn("arka drift: wrong", summary)
+        self.assertEqual(report.forbidden_hits, ())
+
+    def test_deep_route_fast_arrival_reaches_destination_by_hand(self) -> None:
+        report = run_scenario(SCENARIOS["deep-route-fast-arrival"])
+        state = report.final_state
+
+        self.assertTrue(report.completed)
+        self.assertEqual(state.mission.distance_remaining_tenths_ly, 0)
+        self.assertGreater(
+            state.navigation.manual_plots, state.navigation.delegated_plots
+        )
+        self.assertEqual(state.story.arrival_verification, "manual")
+        self.assertEqual(report.forbidden_hits, ())
+
+    def test_short_route_cautious_decay_tracks_attrition(self) -> None:
+        report = run_scenario(SCENARIOS["short-route-cautious-decay"])
+        state = report.final_state
+
+        self.assertTrue(report.completed)
+        self.assertGreaterEqual(state.navigation.jumps_executed, 5)
+        self.assertEqual(state.navigation.delegated_plots, 0)
+        self.assertGreater(state.mission.cryo_decay_pct, 24)
+        self.assertGreater(state.sleepers_lost, 0)
+        self.assertEqual(report.forbidden_hits, ())
+
+    def test_containment_heavy_records_multiple_containment_actions(self) -> None:
+        report = run_scenario(SCENARIOS["containment-heavy"])
+        state = report.final_state
+
+        self.assertTrue(report.completed)
+        self.assertGreaterEqual(state.spatial.containment_actions, 3)
+        self.assertGreaterEqual(state.spatial.sealed_count, 2)
+        self.assertGreaterEqual(state.spatial.abandoned_count, 1)
+        self.assertEqual(report.forbidden_hits, ())
+
+    def test_arka_override_late_records_arrival_contradiction_catch(self) -> None:
+        report = run_scenario(SCENARIOS["arka-override-late"])
+        state = report.final_state
+        summary = "\n".join(report.summary_lines())
+
+        self.assertTrue(report.completed)
+        self.assertEqual(state.story.arrival_verification, "manual")
+        self.assertIn("arrival-disagreement", state.story.resolved_incidents)
+        self.assertGreaterEqual(state.behaviour.contradictions_caught, 1)
+        self.assertGreaterEqual(state.behaviour.arka_advice_overridden, 1)
+        self.assertIn("contradictions missed:", summary)
         self.assertEqual(report.forbidden_hits, ())
 
     def test_transcript_includes_opening_commands_and_closing(self) -> None:

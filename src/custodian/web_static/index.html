@@ -148,7 +148,18 @@
           aria-label="Transcript and action log"
           style="grid-area: log"
         >
-          <div class="log-tabs" id="logTabs" role="tablist" aria-label="Record view"></div>
+          <div class="log-head">
+            <div class="log-tabs" id="logTabs" role="tablist" aria-label="Record view"></div>
+            <button
+              class="log-export"
+              id="transcriptExport"
+              type="button"
+              title="Download transcript"
+              aria-label="Download transcript"
+            >
+              Export
+            </button>
+          </div>
           <div class="log-body" id="logBody" role="tabpanel" tabindex="0"></div>
         </section>
       </main>
