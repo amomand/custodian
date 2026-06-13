@@ -68,8 +68,12 @@ class WebSessionTests(unittest.TestCase):
             "\n".join(response.snapshot["transcript_tail"]),
         )
         raw_transcript = "\n".join(session.transcript_lines())
+        raw_events = "\n".join(
+            line for event in session.transcript_events() for line in event["lines"]
+        )
         safe_transcript = "\n".join(session.transcript_lines(safe=True))
         self.assertIn("Dark exposure 9", raw_transcript)
+        self.assertIn("Dark exposure 9", raw_events)
         self.assertNotIn("Dark exposure 9", safe_transcript)
         self.assertIn("exposure band moderate", safe_transcript)
 
@@ -86,8 +90,13 @@ class WebSessionTests(unittest.TestCase):
         transcript = store.transcript(session.session_id)
 
         text = "\n".join(transcript["lines"])
+        event_text = "\n".join(
+            line for event in transcript["events"] for line in event["lines"]
+        )
         self.assertNotIn("Dark exposure 9", text)
+        self.assertNotIn("Dark exposure 9", event_text)
         self.assertIn("exposure band moderate", text)
+        self.assertIn("exposure band moderate", event_text)
 
     def test_sessions_do_not_share_mutable_ship_state(self) -> None:
         first = self.store.create()

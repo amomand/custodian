@@ -118,9 +118,18 @@ class BrowserSession:
             )
             return {"session_id": self.session_id, "snapshot": self.snapshot()}
 
-    def transcript_events(self) -> tuple[dict, ...]:
+    def transcript_events(self, *, safe: bool = False) -> tuple[dict, ...]:
         with self._lock:
-            return tuple(event.to_dict() for event in self.transcript)
+            if not safe:
+                return tuple(event.to_dict() for event in self.transcript)
+            return tuple(
+                {
+                    "kind": event.kind,
+                    "lines": list(project_safe_lines(self.state, event.lines)),
+                    "beat": event.beat,
+                }
+                for event in self.transcript
+            )
 
     def transcript_lines(
         self, *, limit: int | None = None, safe: bool = False
@@ -177,7 +186,7 @@ class SessionStore:
         session = self.get(session_id)
         return {
             "session_id": session_id,
-            "events": list(session.transcript_events()),
+            "events": list(session.transcript_events(safe=True)),
             "lines": session.transcript_lines(safe=True),
         }
 
