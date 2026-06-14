@@ -64,9 +64,9 @@ class TelemetryTests(unittest.TestCase):
         self.assertIn("NAVIGATION", hud)
         self.assertIn("WAKEFUL DRIFT", hud)
         self.assertIn("ARGOS-12", hud)
-        self.assertIn("medium solution held", hud)
+        self.assertIn("medium depth held", hud)
         self.assertIn("last KHEPRI-4, dark 4", hud)
-        self.assertIn("short, medium, deep", hud)
+        self.assertIn("KHEPRI-4, ARGOS-12, CARINA-EDGE", hud)
         self.assertNotIn("arka:", hud)
 
     def test_navigation_hud_has_breathing_room_around_block(self) -> None:

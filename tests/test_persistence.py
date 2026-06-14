@@ -469,6 +469,46 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(restored.behaviour.arka_advice_followed, 0)
         self.assertEqual(restored.behaviour.contradictions_caught, 0)
 
+    def test_version_nine_save_upgrades_route_options_for_depth_map(self) -> None:
+        restored = loads(
+            """
+            {
+              "version": 9,
+              "turn": 1,
+              "reactor": {},
+              "cryostasis": {},
+              "mission": {},
+              "navigation": {
+                "options": [
+                  {
+                    "route_id": "argos-12",
+                    "label": "ARGOS-12",
+                    "jump_class": "medium",
+                    "distance_tenths_ly": 36,
+                    "elapsed_days": 84,
+                    "dark_exposure": 9,
+                    "instability_pct": 13,
+                    "wear_delta_pct": 2,
+                    "cryo_decay_delta_pct": 2
+                  }
+                ],
+                "plotted_route_id": "argos-12"
+              },
+              "manual_familiarity": 0,
+              "cryo_familiarity": 0,
+              "delegated_controls": 0,
+              "delegated_cryo_controls": 0,
+              "raw_inspections": 0,
+              "sleepers_lost": 0
+            }
+            """
+        )
+
+        self.assertEqual(restored.navigation.plotted_route_id, "argos-12")
+        self.assertEqual(len(restored.navigation.options), 9)
+        self.assertIsNotNone(restored.navigation.option_by_id("argos-12-deep"))
+        self.assertIsNotNone(restored.navigation.option_by_id("khepri-4-medium"))
+
     def test_active_incident_without_id_is_dropped_on_load(self) -> None:
         data = json.loads(dumps(ShipState()))
         data["story"]["active_incident"] = {

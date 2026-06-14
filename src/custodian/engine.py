@@ -278,7 +278,7 @@ class GameEngine:
             reply = intent.reply or (
                 "arka: I can file that under psychological maintenance, but the ship "
                 "accepts status, raw, delegate, manual coolant controls, cryostasis work, "
-                "route plotting, and jump execution."
+                "plotting a star and jump depth, and jump execution."
             )
             return StepResult(state, correction + (reply,))
 
@@ -292,7 +292,7 @@ class GameEngine:
             (
                 "arka: I can file that under psychological maintenance, but the ship console "
                 "accepts status, raw, delegate, pump up, pump down, vent, flush, balance, "
-                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot short, jump, wait.",
+                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot argos-12 medium, jump, wait.",
             ),
         )
 
@@ -413,7 +413,7 @@ class GameEngine:
             return (
                 state,
                 (
-                    "arka: route key not found. Available candidates are short, medium, and deep.",
+                    "arka: I cannot match that to an onward star. Try plot argos-12 medium.",
                 ),
             )
 
@@ -425,7 +425,8 @@ class GameEngine:
         return (
             replace(state, navigation=navigation),
             (
-                f"You plot {option.label} by hand. The solution holds, ugly but yours.",
+                f"You plot {option.label} at {option.jump_class} depth by hand. "
+                "The solution holds, ugly but yours.",
             ),
         )
 
@@ -457,7 +458,7 @@ class GameEngine:
         ).clamped()
         navigation = replace(
             state.navigation,
-            current_fix_id=option.route_id,
+            current_fix_id=option.destination_fix_id,
             plotted_route_id=None,
             last_jump_route_id=option.route_id,
             jumps_executed=state.navigation.jumps_executed + 1,
@@ -1121,9 +1122,10 @@ def _spatial_jump_line(before: SpatialState, after: SpatialState) -> str:
 
 
 def _jump_focus_sector(option: RouteOption) -> str:
-    if option.route_id == "khepri-4":
+    destination = option.destination_fix_id
+    if destination == "khepri-4":
         return "cargo-spine"
-    if option.route_id == "argos-12":
+    if destination == "argos-12":
         return "hydroponics"
     return "maintenance-d"
 
@@ -1783,7 +1785,7 @@ def _arka_route_plot_line(state: ShipState, option: RouteOption) -> str:
     stage = drift_stage(state)
     if stage == DriftStage.ACCURATE:
         return (
-            f"arka: I have {option.label} plotted: {option.jump_class} route, "
+            f"arka: I have {option.label} plotted at {option.jump_class} depth: "
             f"{option.elapsed_days} days, instability {option.instability_pct}%."
         )
     if stage == DriftStage.INTERPRETIVE:
@@ -1813,20 +1815,61 @@ def _arka_jump_line(state: ShipState, option: RouteOption) -> str:
 
 
 def _route_option(navigation: NavigationState, route_id: str) -> RouteOption | None:
-    normalised = route_id.strip().lower()
+    normalised = _normalise_route_key(route_id)
     aliases = {
         "short": "khepri-4",
+        "shallow": "khepri-4",
         "khepri": "khepri-4",
         "khepri-4": "khepri-4",
+        "khepri shallow": "khepri-4",
+        "khepri-4 shallow": "khepri-4",
+        "shallow khepri": "khepri-4",
+        "shallow khepri-4": "khepri-4",
+        "khepri medium": "khepri-4-medium",
+        "khepri-4 medium": "khepri-4-medium",
+        "medium khepri": "khepri-4-medium",
+        "medium khepri-4": "khepri-4-medium",
+        "khepri deep": "khepri-4-deep",
+        "khepri-4 deep": "khepri-4-deep",
+        "deep khepri": "khepri-4-deep",
+        "deep khepri-4": "khepri-4-deep",
         "medium": "argos-12",
         "argos": "argos-12",
         "argos-12": "argos-12",
+        "argos shallow": "argos-12-shallow",
+        "argos-12 shallow": "argos-12-shallow",
+        "shallow argos": "argos-12-shallow",
+        "shallow argos-12": "argos-12-shallow",
+        "argos medium": "argos-12",
+        "argos-12 medium": "argos-12",
+        "medium argos": "argos-12",
+        "medium argos-12": "argos-12",
+        "argos deep": "argos-12-deep",
+        "argos-12 deep": "argos-12-deep",
+        "deep argos": "argos-12-deep",
+        "deep argos-12": "argos-12-deep",
         "long": "carina-edge",
         "deep": "carina-edge",
         "carina": "carina-edge",
         "carina-edge": "carina-edge",
+        "carina shallow": "carina-edge-shallow",
+        "carina-edge shallow": "carina-edge-shallow",
+        "shallow carina": "carina-edge-shallow",
+        "shallow carina-edge": "carina-edge-shallow",
+        "carina medium": "carina-edge-medium",
+        "carina-edge medium": "carina-edge-medium",
+        "medium carina": "carina-edge-medium",
+        "medium carina-edge": "carina-edge-medium",
+        "carina deep": "carina-edge",
+        "carina-edge deep": "carina-edge",
+        "deep carina": "carina-edge",
+        "deep carina-edge": "carina-edge",
     }
     return navigation.option_by_id(aliases.get(normalised, normalised))
+
+
+def _normalise_route_key(value: str) -> str:
+    return " ".join(value.strip().lower().replace("_", " ").split())
 
 
 def _apply_cryo_losses(state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
@@ -2184,9 +2227,11 @@ def _help_lines() -> tuple[str, ...]:
         "raw nav          detailed route telemetry",
         "schematic        quick sector readout",
         "raw schematic    detailed sector signal and controls",
-        "plot short       manually plot the short route",
-        "plot medium      manually plot the medium route",
-        "plot deep        manually plot the deep route",
+        "plot argos-12 medium",
+        "                 manually plot a star and depth route",
+        "plot short       legacy shortcut for KHEPRI-4 shallow",
+        "plot medium      legacy shortcut for ARGOS-12 medium",
+        "plot deep        legacy shortcut for CARINA-EDGE deep",
         "jump             execute the plotted route",
         "seal thermal     isolate a physical sector",
         "abandon cargo    write off a physical sector",

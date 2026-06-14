@@ -33,7 +33,7 @@ Intent(
         "operation": "pump_up|pump_down|vent|flush|balance",
         "target": "coolant|cryo|mission|nav|schematic",
         "system": "coolant|cryostasis|navigation",
-        "route_id": "short|medium|deep|khepri-4|argos-12|carina-edge",
+        "route_id": "short|medium|deep|khepri-4 shallow|argos-12 medium|carina-edge deep",
         "sector_id": "bridge|cryo-1-3|thermal-ring|maintenance-d|cargo-spine|hydroponics|arka",
     },
     confidence=0.0,

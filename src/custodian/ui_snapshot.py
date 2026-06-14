@@ -77,12 +77,15 @@ class RouteSnapshot:
     id: str
     label: str
     jump_class: str
+    destination_fix_id: str
     distance_label: str
     elapsed_days: int
     exposure_band: str
     instability_pct: int
     wear_delta_pct: int
     cryo_decay_delta_pct: int
+    map_x: int
+    map_y: int
     is_plotted: bool
     is_last_jump: bool
 
@@ -93,6 +96,8 @@ class NavigationSnapshot:
     current_fix_label: str
     current_signal: str
     current_purpose: str
+    current_map_x: int
+    current_map_y: int
     plotted_route_id: str | None
     plotted_route_label: str | None
     last_jump_route_id: str | None
@@ -230,7 +235,7 @@ def _mission_snapshot(state: ShipState) -> MissionSnapshot:
         sleepers_at_risk=state.cryostasis.sleepers_at_risk,
         watch_label=_watch_label(state),
         current_fix_label=state.navigation.current_fix.label,
-        plotted_route_label=None if plotted is None else plotted.label,
+        plotted_route_label=None if plotted is None else _route_display_label(plotted),
         is_finished=state.is_finished,
         outcome=state.outcome,
     )
@@ -282,10 +287,12 @@ def _navigation_snapshot(state: ShipState) -> NavigationSnapshot:
         current_fix_label=nav.current_fix.label,
         current_signal=nav.current_fix.signal,
         current_purpose=nav.current_fix.purpose,
+        current_map_x=nav.current_fix.map_x,
+        current_map_y=nav.current_fix.map_y,
         plotted_route_id=nav.plotted_route_id,
-        plotted_route_label=None if plotted is None else plotted.label,
+        plotted_route_label=None if plotted is None else _route_display_label(plotted),
         last_jump_route_id=nav.last_jump_route_id,
-        last_jump_route_label=None if last_jump is None else last_jump.label,
+        last_jump_route_label=None if last_jump is None else _route_display_label(last_jump),
         jumps_executed=nav.jumps_executed,
         exposure_band=_exposure_band(nav.total_dark_exposure),
         standing="navigation" in state.behaviour.standing_delegations,
@@ -298,15 +305,22 @@ def _route_snapshot(state: ShipState, option: RouteOption) -> RouteSnapshot:
         id=option.route_id,
         label=option.label,
         jump_class=option.jump_class,
+        destination_fix_id=option.destination_fix_id,
         distance_label=option.distance_label,
         elapsed_days=option.elapsed_days,
         exposure_band=_exposure_band(option.dark_exposure),
         instability_pct=option.instability_pct,
         wear_delta_pct=option.wear_delta_pct,
         cryo_decay_delta_pct=option.cryo_decay_delta_pct,
+        map_x=option.map_x,
+        map_y=option.map_y,
         is_plotted=state.navigation.plotted_route_id == option.route_id,
         is_last_jump=state.navigation.last_jump_route_id == option.route_id,
     )
+
+
+def _route_display_label(option: RouteOption) -> str:
+    return f"{option.label} {option.jump_class}"
 
 
 def _schematic_snapshot(state: ShipState) -> SchematicSnapshot:
@@ -649,12 +663,12 @@ def _route_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
     actions = [
         ActionSpec(
             id=f"plot-{option.route_id}",
-            label=f"Plot {option.label}",
-            command=f"plot {option.jump_class}",
+            label=f"Plot {option.label} {option.jump_class}",
+            command=f"plot {option.label.lower()} {option.jump_class}",
             kind="navigation",
             target="navigation",
             detail=(
-                f"{option.jump_class} route, {option.distance_label}, "
+                f"{option.jump_class} depth, {option.distance_label}, "
                 f"{option.elapsed_days} days, exposure {_exposure_band(option.dark_exposure)}"
             ),
         )
@@ -671,7 +685,7 @@ def _route_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
             enabled=plotted is not None,
             reason=None if plotted is not None else "no route plotted",
             requires_confirmation=True,
-            detail=None if plotted is None else f"Commit {plotted.label}.",
+            detail=None if plotted is None else f"Commit {_route_display_label(plotted)}.",
         )
     )
     return tuple(actions)

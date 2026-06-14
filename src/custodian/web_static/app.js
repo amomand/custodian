@@ -33,7 +33,7 @@ const SCHEMATIC_LAYOUT = {
 const BAND_STEPS = ["none", "low", "moderate", "high", "severe"];
 
 // UI-local state, preserved across snapshot re-renders. `view` is which place
-// the player is looking at — desk (home), map (nav plot), or dark (outside).
+// the player is looking at — desk (home), map (star map), or dark (outside).
 // It is presentation only: never persisted, never sent to the engine.
 const ui = {
   sessionId: null,
@@ -543,7 +543,7 @@ function routeGraph(view) {
 
 function routeBranch(view, route) {
   const plotAction = view.actions.find(
-    (action) => action.kind === "navigation" && action.command === `plot ${route.jump_class}`,
+    (action) => action.kind === "navigation" && action.id === `plot-${route.id}`,
   );
   const jumpAction = view.actions.find((action) => action.id === "execute-jump");
   const instability = instabilityBand(route.instability_pct);
@@ -1302,7 +1302,7 @@ function detectJump(view) {
   }
 }
 
-// ---- Map: nav plot + deck plan ----
+// ---- Map: star map + deck plan ----
 
 function renderMap(view) {
   renderMapHead(view);
@@ -1328,17 +1328,18 @@ function renderMapConfirm() {
   replace(els.mapConfirm, ui.snapshot && effectiveView() === "map" ? confirmStrip() : null);
 }
 
-// The chart: the fix on the left, candidate routes fanning out as paths, and
-// the Dark as territory in the lower-right — each path dips toward it by its
-// exposure band. Drawn only from band words and route facts the cards beside
-// it already carry as text, so the whole SVG stays decorative (aria-hidden).
+// The chart: current fix and onward stars in fixed map positions, with each
+// depth drawn as a separate solution path. The Dark remains territory rather
+// than a meter: deeper paths bend further into it.
 function renderMapChart(view) {
   const nav = view.navigation;
   const routes = nav.route_options || [];
   const W = 1000;
   const H = 540;
-  const fx = 130;
-  const fy = 250;
+  const chartX = (value) => 60 + ((value || 0) / 100) * (W - 140);
+  const chartY = (value) => 50 + ((value || 0) / 100) * (H - 110);
+  const fx = chartX(nav.current_map_x ?? 14);
+  const fy = chartY(nav.current_map_y ?? 55);
 
   const children = [];
 
@@ -1368,15 +1369,18 @@ function renderMapChart(view) {
     children.push(svgEl("line", { x1: 30, y1: gy, x2: W - 30, y2: gy, class: "chart-grid" }));
   }
 
-  // Routes fan to onward lanes ordered by exposure (calm lanes high, the deep
-  // ones bending down into the field).
-  const ordered = [...routes].sort(
-    (a, b) => (EXPOSURE_LEVEL[a.exposure_band] ?? 0) - (EXPOSURE_LEVEL[b.exposure_band] ?? 0),
-  );
-  ordered.forEach((route, index) => {
-    const count = ordered.length;
-    const endX = 880;
-    const endY = count === 1 ? 240 : 110 + index * (300 / Math.max(1, count - 1));
+  // Routes lead to onward stars. Depth variants share a star but are offset
+  // slightly so the map can show the choice without hiding the destination.
+  const depthOffset = { shallow: -24, medium: 0, deep: 24 };
+  const depthOrder = { shallow: 0, medium: 1, deep: 2 };
+  const ordered = [...routes].sort((a, b) => {
+    const star = a.label.localeCompare(b.label);
+    if (star !== 0) return star;
+    return (depthOrder[a.jump_class] ?? 9) - (depthOrder[b.jump_class] ?? 9);
+  });
+  ordered.forEach((route) => {
+    const endX = chartX(route.map_x ?? 82);
+    const endY = chartY(route.map_y ?? 50) + (depthOffset[route.jump_class] ?? 0);
     const bandIdx = EXPOSURE_LEVEL[route.exposure_band] ?? 0;
     const dip = bandIdx * 62;
     const cpY = (fy + endY) / 2 + dip;
@@ -1393,9 +1397,9 @@ function renderMapChart(view) {
         style: `stroke-opacity:${0.95 - bandIdx * 0.13}`,
       }),
       svgEl("circle", { cx: endX, cy: endY, r: 5, class: "chart-end", "data-plotted": route.is_plotted ? "true" : "false" }),
-      svgEl("text", { x: W - 16, y: endY - 12, class: "chart-route-label", "text-anchor": "end" }, route.label),
-      svgEl("text", { x: W - 16, y: endY + 22, class: "chart-route-detail", "text-anchor": "end" },
-        `${route.distance_label} · exposure ${route.exposure_band}`),
+      svgEl("text", { x: endX + 14, y: endY - 8, class: "chart-route-label" }, route.label),
+      svgEl("text", { x: endX + 14, y: endY + 17, class: "chart-route-detail" },
+        `${route.jump_class} · ${route.elapsed_days}d · exposure ${route.exposure_band}`),
     );
   });
 
@@ -1431,7 +1435,7 @@ function renderMapRoutes(view) {
   replace(
     els.mapRoutes,
     el("div", { class: "map-routes-head" }, [
-      el("h3", { text: "Candidate routes" }),
+      el("h3", { text: "Star map routes" }),
       standingBadge(nav.standing),
       plottedLine,
     ]),

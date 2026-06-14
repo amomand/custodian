@@ -513,11 +513,14 @@ The player can perform manual actions from here without typing.
 
 Show the current fix and route options as a graph.
 
-Route options should include:
+Route options should separate onward star from jump depth:
 
-- short route: more time, lower immediate exposure,
-- medium route: balanced,
-- deep route: fast, high exposure.
+- shallow depth: more time, lower immediate exposure,
+- medium depth: balanced,
+- deep depth: fast, high exposure.
+
+Stars provide topology and progress through the route graph; depth provides the
+risk/speed lever for each star.
 
 Do not present route choice as a simple expected-value table. Use bands, confidence, and incomplete data. Raw nav can expose more detail, but not a perfect answer.
 

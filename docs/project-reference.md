@@ -53,8 +53,8 @@ Core ideas:
 - **Event refreshes** - interactive terminals clear on launch and major pressure beats
 - **Legible objective block** - every status opens with goal, horizon, and the metric failing fastest
 - **Mission clock** - elapsed mission time, distance remaining, ship wear, and cryostasis decay
-- **Navigation options** - short, medium, and deep routes can be inspected, plotted, and jumped
-- **Current fix** - the ship reports where the latest jump leaves it without becoming a map
+- **Navigation options** - onward stars and route depths can be inspected, plotted, and jumped
+- **Current fix** - the ship reports where the latest jump leaves it on the star map
 - **Ship schematic** - sectors report qualitative symptoms without exposing a Dark percentage
 - **Containment choices** - seal, abandon, and reroute physical sectors, with local costs
 - **Browser session shell** - local web play through the same engine command path
