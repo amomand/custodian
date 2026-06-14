@@ -143,12 +143,19 @@ class RouteOption:
     instability_pct: int
     wear_delta_pct: int
     cryo_decay_delta_pct: int
+    arrival_fix_id: str | None = None
+    map_x: int = 0
+    map_y: int = 0
 
     @property
     def distance_label(self) -> str:
         whole = self.distance_tenths_ly // 10
         decimal = self.distance_tenths_ly % 10
         return f"{whole}.{decimal} ly"
+
+    @property
+    def destination_fix_id(self) -> str:
+        return self.arrival_fix_id or self.route_id
 
 
 @dataclass(frozen=True)
@@ -157,6 +164,8 @@ class NavigationFix:
     label: str
     signal: str
     purpose: str
+    map_x: int = 0
+    map_y: int = 0
 
 
 def default_route_options() -> tuple[RouteOption, ...]:
@@ -164,13 +173,58 @@ def default_route_options() -> tuple[RouteOption, ...]:
         RouteOption(
             route_id="khepri-4",
             label="KHEPRI-4",
-            jump_class="short",
+            jump_class="shallow",
             distance_tenths_ly=18,
             elapsed_days=126,
             dark_exposure=4,
             instability_pct=6,
             wear_delta_pct=3,
             cryo_decay_delta_pct=3,
+            arrival_fix_id="khepri-4",
+            map_x=34,
+            map_y=34,
+        ),
+        RouteOption(
+            route_id="khepri-4-medium",
+            label="KHEPRI-4",
+            jump_class="medium",
+            distance_tenths_ly=18,
+            elapsed_days=84,
+            dark_exposure=7,
+            instability_pct=10,
+            wear_delta_pct=2,
+            cryo_decay_delta_pct=2,
+            arrival_fix_id="khepri-4",
+            map_x=34,
+            map_y=34,
+        ),
+        RouteOption(
+            route_id="khepri-4-deep",
+            label="KHEPRI-4",
+            jump_class="deep",
+            distance_tenths_ly=18,
+            elapsed_days=42,
+            dark_exposure=12,
+            instability_pct=18,
+            wear_delta_pct=1,
+            cryo_decay_delta_pct=1,
+            arrival_fix_id="khepri-4",
+            map_x=34,
+            map_y=34,
+        ),
+        RouteOption(
+            route_id="argos-12-shallow",
+            label="ARGOS-12",
+            jump_class="shallow",
+            distance_tenths_ly=36,
+            elapsed_days=210,
+            dark_exposure=6,
+            instability_pct=10,
+            wear_delta_pct=5,
+            cryo_decay_delta_pct=5,
+            arrival_fix_id="argos-12",
+            map_x=56,
+            map_y=53,
         ),
         RouteOption(
             route_id="argos-12",
@@ -182,6 +236,51 @@ def default_route_options() -> tuple[RouteOption, ...]:
             instability_pct=13,
             wear_delta_pct=2,
             cryo_decay_delta_pct=2,
+            arrival_fix_id="argos-12",
+            map_x=56,
+            map_y=53,
+        ),
+        RouteOption(
+            route_id="argos-12-deep",
+            label="ARGOS-12",
+            jump_class="deep",
+            distance_tenths_ly=36,
+            elapsed_days=63,
+            dark_exposure=18,
+            instability_pct=26,
+            wear_delta_pct=2,
+            cryo_decay_delta_pct=2,
+            arrival_fix_id="argos-12",
+            map_x=56,
+            map_y=53,
+        ),
+        RouteOption(
+            route_id="carina-edge-shallow",
+            label="CARINA-EDGE",
+            jump_class="shallow",
+            distance_tenths_ly=71,
+            elapsed_days=336,
+            dark_exposure=9,
+            instability_pct=16,
+            wear_delta_pct=8,
+            cryo_decay_delta_pct=8,
+            arrival_fix_id="carina-edge",
+            map_x=78,
+            map_y=25,
+        ),
+        RouteOption(
+            route_id="carina-edge-medium",
+            label="CARINA-EDGE",
+            jump_class="medium",
+            distance_tenths_ly=71,
+            elapsed_days=168,
+            dark_exposure=15,
+            instability_pct=24,
+            wear_delta_pct=5,
+            cryo_decay_delta_pct=5,
+            arrival_fix_id="carina-edge",
+            map_x=78,
+            map_y=25,
         ),
         RouteOption(
             route_id="carina-edge",
@@ -193,6 +292,9 @@ def default_route_options() -> tuple[RouteOption, ...]:
             instability_pct=31,
             wear_delta_pct=1,
             cryo_decay_delta_pct=1,
+            arrival_fix_id="carina-edge",
+            map_x=78,
+            map_y=25,
         ),
     )
 
@@ -204,24 +306,32 @@ def default_navigation_fixes() -> tuple[NavigationFix, ...]:
             label="WAKEFUL DRIFT",
             signal="destination solution unresolved",
             purpose="starting fix; no reliable local signal",
+            map_x=14,
+            map_y=55,
         ),
         NavigationFix(
             fix_id="khepri-4",
             label="KHEPRI-4",
             signal="cold beacon, long coast corridor",
             purpose="safe nav reference at the cost of mission time",
+            map_x=34,
+            map_y=34,
         ),
         NavigationFix(
             fix_id="argos-12",
             label="ARGOS-12",
             signal="broken relay shadow, partial triangulation",
             purpose="balanced fix for the next destination solution",
+            map_x=56,
+            map_y=53,
         ),
         NavigationFix(
             fix_id="carina-edge",
             label="CARINA EDGE",
             signal="thin Dark boundary, poor audit trail",
             purpose="fast arrival fix with unreliable surrounding data",
+            map_x=78,
+            map_y=25,
         ),
     )
 
@@ -279,11 +389,11 @@ class NavigationState:
             f"last_jump_route      {last_jump_label}",
             f"jumps_executed       {self.jumps_executed}",
             f"dark_exposure_total  {self.total_dark_exposure}",
-            "id                  class   dist     elapsed  dark  instab  wear  cryo-age",
+            "destination       depth    dist     elapsed  dark  instab  wear  cryo-age",
         ]
         for option in self.options:
             lines.append(
-                f"{option.label:<19} {option.jump_class:<6} "
+                f"{option.label:<17} {option.jump_class:<7} "
                 f"{option.distance_label:>6}  {option.elapsed_days:>4} d"
                 f"   {option.dark_exposure:>2}    {option.instability_pct:>3}%"
                 f"    +{option.wear_delta_pct:<2}   +{option.cryo_decay_delta_pct}"

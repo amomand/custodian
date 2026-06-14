@@ -1572,7 +1572,7 @@ button.danger-action:hover:not(:disabled) {
   background: rgba(12, 16, 14, 0.7);
 }
 
-/* ---- Map: nav plot + deck plan ---- */
+/* ---- Map: star map + deck plan ---- */
 
 .map-view {
   position: fixed;

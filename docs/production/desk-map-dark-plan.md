@@ -37,8 +37,8 @@ lives: **beauty lands hardest on the surface where decisions happen.**
    wearing the #33 screen re-skin. Everything visible at a glance; catching
    arka's drift by eye stays possible. No head-turn, no station rail, no
    edge-hover, no starfield behind it.
-2. **Map** (nav plot) — full-screen chart: the current fix, the candidate
-   routes drawn as paths through the Dark (exposure band rendered as territory
+2. **Map** (star map) — full-screen chart: the current fix, onward stars, depth
+   variants drawn as paths through the Dark (exposure band rendered as territory
    — how deep each path cuts into the dark field), and the ship deck plan grown
    up, with containment per sector. This is where route and containment
    *decisions* happen, so it is where the visual investment goes. Drawn only

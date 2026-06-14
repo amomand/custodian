@@ -25,8 +25,8 @@ from custodian.models import (
 )
 
 
-SAVE_VERSION = 9
-SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, 6, 7, 8, SAVE_VERSION}
+SAVE_VERSION = 10
+SUPPORTED_SAVE_VERSIONS = set(range(1, SAVE_VERSION + 1))
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -75,7 +75,7 @@ def state_from_dict(data: dict) -> ShipState:
         reactor=ReactorCoolantSystem(**data["reactor"]),
         cryostasis=CryostasisSystem(**data["cryostasis"]),
         mission=MissionStatus(**data.get("mission", {})),
-        navigation=_navigation_from_data(data.get("navigation")),
+        navigation=_navigation_from_data(data.get("navigation"), version=version),
         spatial=_spatial_from_data(data.get("spatial")),
         manual_familiarity=data["manual_familiarity"],
         cryo_familiarity=data["cryo_familiarity"],
@@ -200,13 +200,13 @@ def _optional_cryo(data: dict | None) -> CryostasisSystem | None:
     return None if data is None else CryostasisSystem(**data)
 
 
-def _navigation_from_data(data: object) -> NavigationState:
+def _navigation_from_data(data: object, *, version: int = SAVE_VERSION) -> NavigationState:
     if not isinstance(data, dict):
         return NavigationState()
 
     raw_options = data.get("options", ())
     options: list[RouteOption] = []
-    if isinstance(raw_options, (list, tuple)):
+    if version >= 10 and isinstance(raw_options, (list, tuple)):
         for option in raw_options:
             if isinstance(option, dict):
                 options.append(RouteOption(**option))

@@ -34,15 +34,15 @@
       <div class="dark-focus" id="darkFocus"></div>
     </section>
 
-    <!-- NAV PLOT: the full-screen chart. Routes drawn as paths through the Dark
-         (exposure band as territory), with the same plot/execute action specs
+    <!-- STAR MAP: the full-screen chart. Routes drawn as paths through the Dark
+         (depth and exposure as territory), with the same plot/execute action specs
          the desk dispatches, plus the deck plan with containment per sector.
          The chart SVG is aria-hidden decoration; the cards carry every fact. -->
-    <section class="map-view" id="mapView" aria-label="Nav plot and deck plan">
+    <section class="map-view" id="mapView" aria-label="Star map and deck plan">
       <header class="map-head">
         <div class="map-brand">
-          <h2>Nav Plot</h2>
-          <span>chart of record</span>
+          <h2>Star Map</h2>
+          <span>route depth chart</span>
         </div>
         <div class="map-head-stats" id="mapHeadStats"></div>
         <button type="button" class="map-return" id="mapReturn" title="Esc">Back to the desk</button>
@@ -68,7 +68,7 @@
         <!-- VIEW RAIL: the other places to go. Static buttons so focus is never
              lost to a re-render; m / o / Esc mirror them. -->
         <nav class="view-rail" aria-label="Console views">
-          <button type="button" id="railMap" title="Open the nav plot (m)">Nav plot</button>
+          <button type="button" id="railMap" title="Open the star map (m)">Star map</button>
           <button type="button" id="railDark" title="Look outside (o)">Outside</button>
         </nav>
       </div>
@@ -184,7 +184,7 @@
               </label>
               <dl class="key-help">
                 <div><dt>1–4</dt><dd>switch system panel</dd></div>
-                <div><dt>m</dt><dd>open / close the nav plot</dd></div>
+                <div><dt>m</dt><dd>open / close the star map</dd></div>
                 <div><dt>o</dt><dd>look outside / back</dd></div>
                 <div><dt>/</dt><dd>focus command channel</dd></div>
                 <div><dt>.</dt><dd>wait one beat</dd></div>

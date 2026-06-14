@@ -46,7 +46,7 @@ def navigation_hud_lines(state: ShipState) -> tuple[str, ...]:
         plot_line = "PLOT      none          raw nav for candidate routes"
     else:
         plot_line = (
-            f"PLOT      {plotted.label:<13} {plotted.jump_class} solution held"
+            f"PLOT      {plotted.label:<13} {plotted.jump_class} depth held"
         )
 
     last_jump = state.navigation.last_jump_route
@@ -58,14 +58,17 @@ def navigation_hud_lines(state: ShipState) -> tuple[str, ...]:
             f"last {last_jump.label}, dark {state.navigation.total_dark_exposure}"
         )
 
-    options = ", ".join(option.jump_class for option in state.navigation.options)
+    destinations = []
+    for option in state.navigation.options:
+        if option.label not in destinations:
+            destinations.append(option.label)
     return (
         "",
         "NAVIGATION",
         fix_line,
         plot_line,
         jump_line,
-        f"OPTIONS   {options} routes available; plot or delegate nav",
+        f"OPTIONS   {', '.join(destinations)}; choose star plus depth",
         "",
     )
 
