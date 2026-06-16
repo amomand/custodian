@@ -44,6 +44,33 @@ steps:
       python tools/playtest_runner.py --all --write reports/playtests
       echo "--- transcripts generated ---"
       ls -1 reports/playtests
+  - name: Stage engine-truth source pack (deterministic)
+    # Cost fix: the first run spent ~half its turns hunting for and re-reading
+    # source files. Stage the engine-truth anchors the reviewer reliably needs
+    # into one known dir so it reads them directly instead of exploring the tree.
+    run: |
+      set -euo pipefail
+      mkdir -p reports/playtests/_context
+      for f in \
+        src/custodian/arka.py \
+        src/custodian/story.py \
+        src/custodian/playtest.py \
+        src/custodian/engine.py \
+        src/custodian/models.py \
+        src/custodian/arka_interpreter.py \
+        design.md \
+        docs/architecture/ai-interpreter.md \
+        .codex/skills/custodian-simulation-truth-review/SKILL.md ; do
+        if [ -f "$f" ]; then
+          dest="reports/playtests/_context/$f"
+          mkdir -p "$(dirname "$dest")"
+          cp "$f" "$dest"
+        else
+          echo "  (skip, not found: $f)"
+        fi
+      done
+      echo "--- engine-truth source pack staged ---"
+      find reports/playtests/_context -type f | sort
 
 tools:
   # Single-repo, so the DEFAULT GITHUB_TOKEN is enough — no cross-repo PAT needed.
@@ -91,6 +118,18 @@ These transcripts are ground truth and were generated **without any model
 calls** — do not regenerate them, and never assume the model should be inventing
 any of this. Read them.
 
+**Pre-staged for you — read from these paths, don't go hunting:**
+
+- All 17 full transcripts: `reports/playtests/*.md`.
+- The engine-truth source this review keeps needing, already copied into
+  `reports/playtests/_context/` (`src/custodian/arka.py`, `story.py`,
+  `playtest.py`, `engine.py`, `models.py`, `arka_interpreter.py`, `design.md`,
+  `docs/architecture/ai-interpreter.md`, and the simulation-truth-review skill).
+
+Read these from where they already are. Do **not** re-run the runner to
+regenerate transcripts, and do **not** search the tree for source you can read
+under `_context/`. Spend your turns on judgement, not fetching.
+
 ## The thesis you are protecting
 
 Custodian is about the cost of delegation. A run is healthy when:
@@ -122,14 +161,17 @@ Custodian is about the cost of delegation. A run is healthy when:
    immersion leak the simple forbidden-phrase scan would miss, arka turning suspect
    too early or too late, raw telemetry reading as noise, a beat that feels like a
    softlock, a debrief that doesn't land the cost of the player's choices.
-4. **Probe before you file.** When something looks off, *test it*. Write an ad-hoc
-   route to a file (one command per line; `#` comments and leading `>` are
-   stripped) and run `python tools/playtest_runner.py --commands-file <file>`, or
-   re-run `python tools/playtest_runner.py --scenario <name>`. Confirm the problem
+4. **Probe before you file — but only with NEW routes.** Every scenario's full
+   transcript already exists under `reports/playtests/`; do **not** re-run `--all`
+   or re-run a scenario you already have. When a hypothesis needs a test the
+   existing transcripts don't cover, *then* write an ad-hoc route to a file (one
+   command per line; `#` comments and leading `>` are stripped) and run
+   `python tools/playtest_runner.py --commands-file <file>`. Confirm it
    reproduces, or drop it. Do not file on a hunch.
-5. **Check intent.** Read `design.md` / the truth-review lens before calling
-   something a defect — it may be deliberate. Prefer "this may be crossing the
-   line" framing for design-boundary questions over hard claims.
+5. **Check intent.** Read `design.md` and the truth-review lens (both staged under
+   `reports/playtests/_context/`) before calling something a defect — it may be
+   deliberate. Prefer "this may be crossing the line" framing for design-boundary
+   questions over hard claims.
 
 ## What NOT to do
 
