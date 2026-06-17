@@ -71,9 +71,11 @@ class ArkaTests(unittest.TestCase):
         self.assertEqual(drift_stage(vigilant), DriftStage.SELECTIVE)
 
     def test_vigilance_is_a_weak_backstop_not_an_off_switch(self) -> None:
-        # Even relentless raw reading only buys four honest beats, so time still
-        # erodes arka to SELECTIVE by the finale -- never back to ACCURATE.
-        relentless = ShipState(turn=13, raw_inspections=20)
+        # Each raw inspection also advances the turn, so reading raw on every
+        # beat of a 13-beat watch is the in-game ceiling (~12 inspections). Even
+        # that only buys the four-beat cap, so time still erodes arka to
+        # SELECTIVE by the finale -- never back to ACCURATE.
+        relentless = ShipState(turn=13, raw_inspections=12)
 
         self.assertEqual(drift_stage(relentless), DriftStage.SELECTIVE)
 
