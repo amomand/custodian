@@ -71,9 +71,16 @@ def summarize_schematic(state: ShipState) -> str:
 def crisis_line(state: ShipState) -> str | None:
     if state.crisis is None:
         return None
+    label = state.crisis.label.lower()
+    if drift_stage(state) == DriftStage.WRONG:
+        # WRONG arka has just called the loop stable; it will not sound an alarm
+        # against its own calm. It names the crisis only to wave it off, so the
+        # voice stays of a piece. The contradiction the player has to catch is
+        # arka against the raw feed, not arka against its own previous sentence.
+        return f"arka: {label} is settling within tolerance. Nothing that needs your hands."
     return (
         "arka: active advisory, "
-        f"{state.crisis.label.lower()}, {_crisis_window(state.crisis.turns_left)}"
+        f"{label}, {_crisis_window(state.crisis.turns_left)}"
     )
 
 
