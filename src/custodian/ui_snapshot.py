@@ -776,6 +776,7 @@ def _dev_snapshot(state: ShipState) -> dict[str, Any]:
             "arka_advice_overridden": behaviour.arka_advice_overridden,
             "advice_followed_during_contradiction": behaviour.advice_followed_during_contradiction,
             "contradictions_caught": behaviour.contradictions_caught,
+            "contradictions_missed": behaviour.contradictions_missed,
             "irreversible_choices_on_arka_advice": behaviour.irreversible_choices_on_arka_advice,
             "focus_during_contradiction": behaviour.focus_during_contradiction,
             "urgent_incident_ejects": behaviour.urgent_incident_ejects,

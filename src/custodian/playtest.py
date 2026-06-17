@@ -114,7 +114,7 @@ class PlaytestReport:
             f"manifest anchors saved: {len(self.final_state.story.anchors_saved)}",
             f"manifest anchors lost: {len(self.final_state.story.anchors_lost)}",
             f"contradictions caught: {self.final_state.behaviour.contradictions_caught}",
-            f"contradictions missed: {self.final_state.behaviour.advice_followed_during_contradiction}",
+            f"contradictions missed: {self.final_state.behaviour.contradictions_missed}",
             f"arka advice followed: {self.final_state.behaviour.arka_advice_followed}",
             f"arka advice overridden: {self.final_state.behaviour.arka_advice_overridden}",
             f"irreversible choices on arka advice: {self.final_state.behaviour.irreversible_choices_on_arka_advice}",

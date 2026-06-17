@@ -563,6 +563,7 @@ class BehaviourLedger:
     arka_advice_overridden: int = 0
     advice_followed_during_contradiction: int = 0
     contradictions_caught: int = 0
+    contradictions_missed: int = 0
     irreversible_choices_on_arka_advice: int = 0
     focus_during_contradiction: int = 0
     urgent_incident_ejects: int = 0
@@ -666,6 +667,9 @@ class BehaviourLedger:
 
     def record_contradiction_caught(self) -> "BehaviourLedger":
         return replace(self, contradictions_caught=self.contradictions_caught + 1)
+
+    def record_contradiction_missed(self) -> "BehaviourLedger":
+        return replace(self, contradictions_missed=self.contradictions_missed + 1)
 
     def record_focus_during_contradiction(self) -> "BehaviourLedger":
         return replace(

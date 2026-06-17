@@ -126,6 +126,7 @@ def _behaviour_to_dict(ledger: BehaviourLedger) -> dict:
         "arka_advice_overridden": ledger.arka_advice_overridden,
         "advice_followed_during_contradiction": ledger.advice_followed_during_contradiction,
         "contradictions_caught": ledger.contradictions_caught,
+        "contradictions_missed": ledger.contradictions_missed,
         "irreversible_choices_on_arka_advice": ledger.irreversible_choices_on_arka_advice,
         "focus_during_contradiction": ledger.focus_during_contradiction,
         "urgent_incident_ejects": ledger.urgent_incident_ejects,
@@ -157,6 +158,7 @@ def _behaviour_from_data(data: object) -> BehaviourLedger:
             data.get("advice_followed_during_contradiction", 0)
         ),
         contradictions_caught=int(data.get("contradictions_caught", 0)),
+        contradictions_missed=int(data.get("contradictions_missed", 0)),
         irreversible_choices_on_arka_advice=int(
             data.get("irreversible_choices_on_arka_advice", 0)
         ),

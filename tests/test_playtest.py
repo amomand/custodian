@@ -139,6 +139,23 @@ class PlaytestTests(unittest.TestCase):
         self.assertIn("contradictions missed:", summary)
         self.assertEqual(report.forbidden_hits, ())
 
+    def test_arrival_accepted_records_missed_contradictions(self) -> None:
+        # Regression for the habit-report bug: the player accepts arka's
+        # unverified arrival and never reads the omitted metric, so the report
+        # must show missed contradictions and leave no incident dangling active.
+        report = run_scenario(SCENARIOS["arrival-accepted"])
+        state = report.final_state
+        summary = "\n".join(report.summary_lines())
+
+        self.assertTrue(report.completed)
+        self.assertGreater(state.behaviour.contradictions_missed, 0)
+        self.assertIsNone(state.story.active_incident)
+        self.assertIn(
+            f"contradictions missed: {state.behaviour.contradictions_missed}", summary
+        )
+        self.assertNotIn("active incident: selective-arka-omission", summary)
+        self.assertEqual(report.forbidden_hits, ())
+
     def test_transcript_includes_opening_commands_and_closing(self) -> None:
         report = run_commands(("status", "quit"))
         transcript = "\n".join(report.transcript_lines())
