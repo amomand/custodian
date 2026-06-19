@@ -93,6 +93,26 @@ class ArkaTests(unittest.TestCase):
         self.assertEqual(drift_stage(state), DriftStage.INTERPRETIVE)
         self.assertIn("active advisory", crisis_line(state))
 
+    def test_vigilant_player_holds_arka_short_of_wrong_at_the_finale(self) -> None:
+        # The design promises that reading raw "keeps arka honest longer." At the
+        # closing beats a blind watch is WRONG, but a player who actually kept
+        # reading the raw panels has held arka back to SELECTIVE -- the drift is
+        # traceable to behaviour, not just to the watch lasting long enough.
+        blind = ShipState(turn=13)
+        vigilant = ShipState(turn=13, raw_inspections=4)
+
+        self.assertEqual(drift_stage(blind), DriftStage.WRONG)
+        self.assertEqual(drift_stage(vigilant), DriftStage.SELECTIVE)
+
+    def test_vigilance_is_a_weak_backstop_not_an_off_switch(self) -> None:
+        # Each raw inspection also advances the turn, so reading raw on every
+        # beat of a 13-beat watch is the in-game ceiling (~12 inspections). Even
+        # that only buys the four-beat cap, so time still erodes arka to
+        # SELECTIVE by the finale -- never back to ACCURATE.
+        relentless = ShipState(turn=13, raw_inspections=12)
+
+        self.assertEqual(drift_stage(relentless), DriftStage.SELECTIVE)
+
 
 if __name__ == "__main__":
     unittest.main()

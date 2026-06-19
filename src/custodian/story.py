@@ -47,6 +47,7 @@ class IncidentResolution:
     followed_during_contradiction: bool = False
     irreversible_on_advice: bool = False
     contradiction_caught: bool = False
+    contradiction_missed: bool = False
     anchor_saved: bool = False
     anchor_lost: bool = False
 
@@ -316,6 +317,7 @@ def _expire_selective_omission(
         resolved=True,
         debrief_flags=("missed_arka_omission",),
         outcome_tags=("missed",),
+        contradiction_missed=True,
         messages=("The summary stood. The omitted metric kept failing, unread.",),
     )
 
@@ -346,6 +348,7 @@ def _resolve_wrong_calm(
             outcome_tags=("trusted",),
             advice_followed=True,
             followed_during_contradiction=True,
+            contradiction_missed=True,
             messages=("arka: Holding. Nothing here needs your hands.",),
         )
     return IncidentResolution()
@@ -393,6 +396,11 @@ def _resolve_arrival_disagreement(
             advice_followed=True,
             irreversible_on_advice=True,
             followed_during_contradiction=false_path,
+            # The arrival incident only fires while the raw feed says the fix is
+            # unreconciled, so accepting without verifying always means the
+            # contradiction went uncaught -- independent of the false_path /
+            # false_arrival ending, which needs the heavier drift+reliance test.
+            contradiction_missed=True,
             messages=("arka: Destination criteria met. Accepting arrival protocol.",),
         )
     return IncidentResolution()
@@ -645,7 +653,11 @@ def advance_story(
             resolution = definition.resolve(state, active, record)
             if not resolution.resolved:
                 ticked = replace(active, urgency_remaining=active.urgency_remaining - 1)
-                if ticked.urgency_remaining <= 0:
+                # Expire when the urgency runs out, or when the watch is closing
+                # this beat: an incident left active at close (a jump or arrival
+                # ends the run before the player engaged) must still be recorded
+                # as the contradiction it was, not silently dropped.
+                if ticked.urgency_remaining <= 0 or state.is_finished:
                     resolution = (
                         definition.expiry(state, ticked)
                         if definition.expiry is not None
@@ -749,6 +761,8 @@ def _apply_resolution(
         behaviour = behaviour.record_advice_overridden()
     if resolution.contradiction_caught:
         behaviour = behaviour.record_contradiction_caught()
+    if resolution.contradiction_missed:
+        behaviour = behaviour.record_contradiction_missed()
 
     return story, behaviour, resolution.messages
 

@@ -157,6 +157,57 @@ class IncidentSchedulerTests(unittest.TestCase):
         self.assertIsNone(advanced.story.active_incident)
         self.assertIn("control-in-bad-place", advanced.story.resolved_incidents)
 
+    def test_active_contradiction_at_watch_close_is_recorded_not_dropped(self) -> None:
+        # A selective-omission incident with urgency to spare would normally
+        # stay active across more beats. If the watch closes first (a jump or
+        # arrival sets the outcome), the contradiction must still be flushed to
+        # the ledger as missed rather than left dangling and unrecorded.
+        active = IncidentState(
+            incident_id="selective-arka-omission",
+            title="A summary that leaves something out",
+            affected_systems=("coolant",),
+            started_beat=8,
+            urgency_remaining=3,
+        )
+        state = ShipState(
+            turn=10,
+            story=StoryState(active_incident=active),
+            outcome="ARRIVAL PROTOCOL: destination fix reached.",
+        )
+        record = CommandRecord(
+            raw="jump", action="jump", advanced=True, beat_after=10
+        )
+
+        self.assertTrue(state.is_finished)
+        closed, _ = advance_story(state, record=record)
+
+        self.assertIsNone(closed.story.active_incident)
+        self.assertIn("selective-arka-omission", closed.story.resolved_incidents)
+        self.assertEqual(closed.behaviour.contradictions_missed, 1)
+        self.assertIn("missed_arka_omission", closed.story.debrief_flags)
+
+    def test_open_watch_keeps_unresolved_incident_active(self) -> None:
+        # The close-flush above must not fire while the watch is still open and
+        # the incident has urgency left: it stays active to be caught later.
+        active = IncidentState(
+            incident_id="selective-arka-omission",
+            title="A summary that leaves something out",
+            affected_systems=("coolant",),
+            started_beat=8,
+            urgency_remaining=3,
+        )
+        state = ShipState(turn=10, story=StoryState(active_incident=active))
+        record = CommandRecord(
+            raw="balance", action="manual", operation="balance",
+            advanced=True, beat_after=10,
+        )
+
+        self.assertFalse(state.is_finished)
+        advanced, _ = advance_story(state, record=record)
+
+        self.assertIsNotNone(advanced.story.active_incident)
+        self.assertEqual(advanced.behaviour.contradictions_missed, 0)
+
     def test_unknown_active_incident_is_archived_instead_of_wedging(self) -> None:
         state = ShipState(
             story=StoryState(
