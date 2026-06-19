@@ -468,6 +468,7 @@ class PersistenceTests(unittest.TestCase):
         # New behaviour-ledger fields default cleanly on an old save.
         self.assertEqual(restored.behaviour.arka_advice_followed, 0)
         self.assertEqual(restored.behaviour.contradictions_caught, 0)
+        self.assertEqual(restored.behaviour.contradictions_missed, 0)
 
     def test_active_incident_without_id_is_dropped_on_load(self) -> None:
         data = json.loads(dumps(ShipState()))
@@ -521,6 +522,13 @@ class PersistenceTests(unittest.TestCase):
             restored.behaviour.contradictions_caught,
             state.behaviour.contradictions_caught,
         )
+        self.assertEqual(
+            restored.behaviour.contradictions_missed,
+            state.behaviour.contradictions_missed,
+        )
+        # The scenario is the regression case, so it actually exercises a
+        # non-zero value rather than a trivial default round-trip.
+        self.assertGreater(state.behaviour.contradictions_missed, 0)
 
     def test_unsupported_version_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
