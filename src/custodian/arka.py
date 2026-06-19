@@ -5,9 +5,13 @@ from custodian.models import CryostasisSystem, DriftStage, ReactorCoolantSystem,
 
 def drift_stage(state: ShipState) -> DriftStage:
     # Delegation is the primary driver: handing arka the panels is what lets its
-    # account of the ship rot. Time is only a weak backstop, and reading the raw
-    # layer (vigilance) buys the player a few honest beats before the clock bites.
-    vigilance = min(state.raw_inspections // 2, 3)
+    # account of the ship rot. Time is only a weak backstop. Reading the raw
+    # layer (vigilance) holds that backstop off -- each raw inspection buys one
+    # honest beat, up to four. A player who actually keeps reading raw can hold
+    # arka short of WRONG through the finale (the design's "keeps arka honest
+    # longer"); a blind watch still drifts to WRONG on the clock alone, and
+    # heavy delegation rots arka regardless of how much raw the player reads.
+    vigilance = min(state.raw_inspections, 4)
     effective_turn = state.turn - vigilance
     delegated = state.delegated_controls
 
@@ -71,9 +75,16 @@ def summarize_schematic(state: ShipState) -> str:
 def crisis_line(state: ShipState) -> str | None:
     if state.crisis is None:
         return None
+    label = state.crisis.label.lower()
+    if drift_stage(state) == DriftStage.WRONG:
+        # WRONG arka has just called the loop stable; it will not sound an alarm
+        # against its own calm. It names the crisis only to wave it off, so the
+        # voice stays of a piece. The contradiction the player has to catch is
+        # arka against the raw feed, not arka against its own previous sentence.
+        return f"arka: {label} is settling within tolerance. Nothing that needs your hands."
     return (
         "arka: active advisory, "
-        f"{state.crisis.label.lower()}, {_crisis_window(state.crisis.turns_left)}"
+        f"{label}, {_crisis_window(state.crisis.turns_left)}"
     )
 
 
