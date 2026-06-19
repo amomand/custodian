@@ -1,8 +1,8 @@
 import unittest
 from dataclasses import replace
 
-from custodian.arka import drift_stage, summarize_coolant
-from custodian.models import DriftStage, ReactorCoolantSystem, ShipState
+from custodian.arka import crisis_line, drift_stage, summarize_coolant
+from custodian.models import CrisisState, DriftStage, ReactorCoolantSystem, ShipState
 
 class ArkaTests(unittest.TestCase):
     def test_delegation_accelerates_drift(self) -> None:
@@ -58,6 +58,40 @@ class ArkaTests(unittest.TestCase):
         state = ShipState(turn=3, delegated_controls=7, raw_inspections=8)
 
         self.assertEqual(drift_stage(state), DriftStage.WRONG)
+
+    def test_wrong_drift_crisis_line_does_not_contradict_its_own_calm(self) -> None:
+        # In the same beat, WRONG arka calls the loop stable and tells the player
+        # not to act. The crisis line must not flip to an alarm right below that;
+        # the contradiction the design wants is arka against the raw feed, not
+        # arka against its own previous sentence.
+        crisis = CrisisState(
+            kind="thermal_runaway",
+            label="Thermal runaway",
+            turns_left=3,
+            required_progress=2,
+        )
+        state = ShipState(turn=11, crisis=crisis)
+
+        self.assertEqual(drift_stage(state), DriftStage.WRONG)
+        line = crisis_line(state)
+        self.assertIsNotNone(line)
+        self.assertNotIn("active advisory", line)
+        self.assertNotIn("response window", line)
+        self.assertTrue(line.startswith("arka:"))
+
+    def test_honest_drift_still_raises_the_crisis_advisory(self) -> None:
+        # Before WRONG, arka still flags an active crisis plainly so the alarm
+        # is genuinely available to a player who trusts the voice.
+        crisis = CrisisState(
+            kind="thermal_runaway",
+            label="Thermal runaway",
+            turns_left=3,
+            required_progress=2,
+        )
+        state = ShipState(turn=6, crisis=crisis)
+
+        self.assertEqual(drift_stage(state), DriftStage.INTERPRETIVE)
+        self.assertIn("active advisory", crisis_line(state))
 
     def test_vigilant_player_holds_arka_short_of_wrong_at_the_finale(self) -> None:
         # The design promises that reading raw "keeps arka honest longer." At the
