@@ -130,12 +130,22 @@ class EngineTests(unittest.TestCase):
         result = self.engine.handle(state, "plot deep")
 
         self.assertEqual(result.state.turn, 2)
-        self.assertEqual(result.state.navigation.plotted_route_id, "carina-edge")
+        self.assertEqual(result.state.navigation.plotted_route_id, "khepri-4-deep")
         self.assertEqual(result.state.navigation.manual_plots, 1)
         self.assertEqual(result.state.mission.distance_remaining_tenths_ly, 117)
-        self.assertTrue(any("CARINA-EDGE" in message for message in result.messages))
+        self.assertTrue(any("KHEPRI-4" in message for message in result.messages))
         self.assertEqual(result.state.history[0].action, "plot")
         self.assertEqual(result.state.history[0].target, "navigation")
+
+    def test_manual_route_plot_cannot_skip_staged_leg(self) -> None:
+        state = self.engine.initial_state()
+
+        result = self.engine.handle(state, "plot argos-12 medium")
+
+        self.assertFalse(result.advanced)
+        self.assertEqual(result.state.navigation.current_fix_id, "wakeful-drift")
+        self.assertIsNone(result.state.navigation.plotted_route_id)
+        self.assertIn("open leg is for KHEPRI-4", "\n".join(result.messages))
 
     def test_delegate_nav_plots_recommended_route_and_logs_delegation(self) -> None:
         state = self.engine.initial_state()
@@ -143,19 +153,19 @@ class EngineTests(unittest.TestCase):
         result = self.engine.handle(state, "delegate nav")
 
         self.assertEqual(result.state.turn, 2)
-        self.assertEqual(result.state.navigation.plotted_route_id, "argos-12")
+        self.assertEqual(result.state.navigation.plotted_route_id, "khepri-4-medium")
         self.assertEqual(result.state.navigation.delegated_plots, 1)
         self.assertEqual(result.state.delegated_controls, 1)
-        self.assertTrue(any("ARGOS-12" in message for message in result.messages))
+        self.assertTrue(any("KHEPRI-4" in message for message in result.messages))
 
     def test_drifted_delegate_nav_plots_fast_route_with_selective_framing(self) -> None:
         state = ShipState(delegated_controls=5)
 
         result = self.engine.handle(state, "delegate nav")
 
-        self.assertEqual(result.state.navigation.plotted_route_id, "carina-edge")
+        self.assertEqual(result.state.navigation.plotted_route_id, "khepri-4-deep")
         self.assertTrue(any("Fast arrival" in message for message in result.messages))
-        self.assertNotIn("Dark exposure 21", "\n".join(result.messages))
+        self.assertNotIn("Dark exposure 12", "\n".join(result.messages))
 
     def test_jump_requires_plotted_route_without_advancing(self) -> None:
         state = self.engine.initial_state()
@@ -170,19 +180,20 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(result.state.history[0].target, "navigation")
 
     def test_jump_applies_plotted_route_consequences_and_clears_plot(self) -> None:
-        state = ShipState(navigation=NavigationState(plotted_route_id="argos-12"))
+        state = ShipState(navigation=NavigationState(plotted_route_id="khepri-4-medium"))
 
         result = self.engine.handle(state, "jump")
 
         self.assertTrue(result.advanced)
         self.assertEqual(result.state.turn, 2)
         self.assertIsNone(result.state.navigation.plotted_route_id)
-        self.assertEqual(result.state.navigation.current_fix_id, "argos-12")
-        self.assertEqual(result.state.navigation.last_jump_route_id, "argos-12")
+        self.assertEqual(result.state.navigation.current_fix_id, "khepri-4")
+        self.assertEqual(result.state.navigation.last_jump_route_id, "khepri-4-medium")
+        self.assertEqual(result.state.navigation.completed_route_ids, ("khepri-4-medium",))
         self.assertEqual(result.state.navigation.jumps_executed, 1)
-        self.assertEqual(result.state.navigation.total_dark_exposure, 9)
+        self.assertEqual(result.state.navigation.total_dark_exposure, 7)
         self.assertEqual(result.state.mission.elapsed_days, 14_361)
-        self.assertEqual(result.state.mission.distance_remaining_tenths_ly, 81)
+        self.assertEqual(result.state.mission.distance_remaining_tenths_ly, 75)
         self.assertEqual(result.state.mission.ship_wear_pct, 19)
         self.assertEqual(result.state.mission.cryo_decay_pct, 10)
         self.assertGreater(result.state.reactor.temperature_c, state.reactor.temperature_c)
@@ -190,10 +201,24 @@ class EngineTests(unittest.TestCase):
             result.state.cryostasis.neural_stability_pct,
             state.cryostasis.neural_stability_pct,
         )
-        self.assertIn("Dark exposure 9", "\n".join(result.messages))
-        self.assertIn("ARRIVAL FIX ARGOS-12", "\n".join(result.messages))
+        self.assertIn("Dark exposure 7", "\n".join(result.messages))
+        self.assertIn("ARRIVAL FIX KHEPRI-4", "\n".join(result.messages))
         self.assertEqual(result.state.history[0].action, "jump")
         self.assertEqual(result.state.history[0].target, "navigation")
+
+    def test_jumps_open_next_route_leg_in_order(self) -> None:
+        state = ShipState(navigation=NavigationState(plotted_route_id="khepri-4"))
+
+        state = self.engine.handle(state, "jump").state
+        plotted = self.engine.handle(state, "plot argos-12 medium")
+
+        self.assertTrue(plotted.advanced)
+        self.assertEqual(plotted.state.navigation.current_fix_id, "khepri-4")
+        self.assertEqual(plotted.state.navigation.plotted_route_id, "argos-12")
+
+        blocked = self.engine.handle(state, "plot carina-edge deep")
+        self.assertFalse(blocked.advanced)
+        self.assertIn("open leg is for ARGOS-12", "\n".join(blocked.messages))
 
     def test_arrival_verify_and_accept_do_not_work_before_disagreement(self) -> None:
         for command in ("verify", "accept"):
@@ -243,7 +268,12 @@ class EngineTests(unittest.TestCase):
         self.assertIn("arrival-disagreement", result.state.story.resolved_incidents)
 
     def test_deep_jump_creates_qualitative_sector_symptoms(self) -> None:
-        state = ShipState(navigation=NavigationState(plotted_route_id="carina-edge"))
+        state = ShipState(
+            navigation=NavigationState(
+                current_fix_id="argos-12",
+                plotted_route_id="carina-edge",
+            )
+        )
 
         result = self.engine.handle(state, "jump")
         maintenance = result.state.spatial.sector_by_id("maintenance-d")

@@ -39,36 +39,46 @@ def mission_hud_lines(state: ShipState) -> tuple[str, ...]:
 
 
 def navigation_hud_lines(state: ShipState) -> tuple[str, ...]:
-    fix = state.navigation.current_fix
+    nav = state.navigation
+    fix = nav.current_fix
     fix_line = f"FIX       {fix.label:<13} {fix.signal}"
-    plotted = state.navigation.plotted_route
+    next_fix = nav.next_fix
+    if next_fix is None:
+        leg_line = "LEG       complete      route chain through final fix"
+    else:
+        leg_line = f"LEG       {next_fix.label:<13} next staged fix"
+
+    plotted = nav.plotted_route
     if plotted is None:
-        plot_line = "PLOT      none          raw nav for candidate routes"
+        plot_line = "PLOT      none          choose depth for open leg"
     else:
         plot_line = (
             f"PLOT      {plotted.label:<13} {plotted.jump_class} depth held"
         )
 
-    last_jump = state.navigation.last_jump_route
+    last_jump = nav.last_jump_route
     if last_jump is None:
         jump_line = "JUMP      none          plot a route, then jump"
     else:
         jump_line = (
-            f"JUMP      {state.navigation.jumps_executed:<13} "
-            f"last {last_jump.label}, dark {state.navigation.total_dark_exposure}"
+            f"JUMP      {nav.jumps_executed:<13} "
+            f"last {last_jump.label}, dark {nav.total_dark_exposure}"
         )
 
-    destinations = []
-    for option in state.navigation.options:
-        if option.label not in destinations:
-            destinations.append(option.label)
+    depths = ", ".join(option.jump_class for option in nav.active_route_options)
+    options_line = (
+        "OPTIONS   none; route chain complete"
+        if not depths
+        else f"OPTIONS   {depths}; depth changes time and Dark exposure"
+    )
     return (
         "",
         "NAVIGATION",
         fix_line,
+        leg_line,
         plot_line,
         jump_line,
-        f"OPTIONS   {', '.join(destinations)}; choose star plus depth",
+        options_line,
         "",
     )
 

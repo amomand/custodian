@@ -22,8 +22,8 @@ Included:
 - One `CryostasisSystem` with raw telemetry and sleeper viability pressure.
 - One `MissionStatus` clock with elapsed mission time, distance remaining, ship
   wear, and long-duration cryostasis decay.
-- One `NavigationState` with onward stars and shallow, medium, and deep route
-  depths.
+- One `NavigationState` with a staged route chain and shallow, medium, and deep
+  choices per leg.
 - A lightweight current navigation fix and star map, enough to say where the
   ship thinks it is after a jump without becoming free movement.
 - One `SpatialState` with physical ship sectors, qualitative symptoms,
@@ -75,8 +75,9 @@ Core commands:
 - `raw nav`: read detailed route telemetry.
 - `schematic`: read the current ship schematic quickly.
 - `raw schematic`: read detailed sector reports, signals, controls, and routing.
-- `plot argos-12 medium`: manually plot a star/depth route.
-- `plot short|medium|deep`: legacy route shortcuts.
+- `plot medium`: manually plot the open route leg at medium depth.
+- `plot argos-12 medium`: explicit star/depth form when that leg is open.
+- `plot short|medium|deep`: depth shortcuts for the open leg.
 - `jump`: execute the plotted route.
 - `seal thermal`: seal a physical sector.
 - `abandon cargo`: write off a physical sector.
@@ -142,9 +143,10 @@ shown as a number.
 `NavigationState` owns route telemetry:
 
 - Current navigation fix.
-- Candidate route options.
+- Staged route options.
 - Currently plotted route.
 - Last executed jump.
+- Completed route ids.
 - Manual route plot count.
 - Delegated route plot count.
 - Executed jump count.
@@ -259,10 +261,12 @@ ship wear or cryostasis decay. The current coolant slice keeps that pressure
 gentle; future jump execution should push these same fields harder.
 
 Phase 2B adds route options and plotting. `raw nav` exposes dense navigation
-solutions. The current route surface separates onward star from jump depth:
-players can plot explicit star/depth solutions such as `plot argos-12 medium`
-or use the legacy shortcuts `plot short|medium|deep`. Plotting costs attention
-but does not execute a jump by itself.
+solutions. The current route surface is a staged chain: the player must pass
+through KHEPRI-4, ARGOS-12, then CARINA-EDGE / the destination corridor, choosing
+shallow, medium, or deep depth for each leg. Depth shortcuts such as
+`plot short|medium|deep` apply to the open leg; explicit star/depth commands
+work only when that star is open. Plotting costs attention but does not execute
+a jump by itself.
 
 Phase 2C/D adds `jump`. Jumping requires a plotted route, clears the plot,
 records the last jump, closes distance, spends the route's mission time, applies
@@ -272,10 +276,10 @@ it starts to reframe or omit the cost of the faster deep route.
 
 Phase 2E adds the current navigation fix and route comparison playtests. The web
 client now treats the map view as a small star map: the player sees the current
-fix, onward stars, and depth variants, while full generated maze traversal
-remains future work. Each jump gives a place-like arrival reference so the
-player can see where the ship is after a route commit, while leaving local
-spatial consequences for Phase 3.
+fix, the open leg, locked future legs, and taken depth variants, while full
+generated maze traversal remains future work. Each jump gives a place-like
+arrival reference so the player can see where the ship is after a route commit,
+while leaving local spatial consequences for Phase 3.
 
 Phase 3 adds the first spatial ship layer. The schematic shows qualitative
 sector reports rather than a Dark percentage. Jumps create local symptoms,

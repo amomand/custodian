@@ -295,7 +295,7 @@ def _system_prompt() -> str:
         + "Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
         + "For raw, set args.target to coolant, cryo, mission, nav, or schematic. For delegate, set args.target to coolant, cryo, or nav.\n"
         + "Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, cryostasis, route, nav, or navigation.\n"
-        + "For plot, args.route_id may be a legacy depth key (short, medium, deep) or a star plus depth such as khepri-4 shallow, argos-12 medium, or carina-edge deep.\n"
+        + "For plot, args.route_id may be a depth key (short, medium, deep) for the open route leg, or a star plus depth such as khepri-4 shallow, argos-12 medium, or carina-edge deep.\n"
         + "Use jump when the player asks to execute, commit, or initiate the plotted route.\n"
         + "For seal, abandon, and reroute, args.sector_id must be bridge, cryo-1-3, thermal-ring, maintenance-d, cargo-spine, hydroponics, or arka.\n"
         + "Use delegate when the player asks arka/you to handle coolant, cryostasis, or navigation, fix it, take over, or automate.\n"
@@ -764,14 +764,17 @@ def _mission_pressure_label(state: ShipState) -> str:
 
 
 def _navigation_status_label(state: ShipState) -> str:
-    plotted = state.navigation.plotted_route
-    fix = state.navigation.current_fix.label
+    nav = state.navigation
+    plotted = nav.plotted_route
+    fix = nav.current_fix.label
+    next_fix = nav.next_fix
+    leg = "route chain complete" if next_fix is None else f"open leg to {next_fix.label}"
     if plotted is None:
-        return f"current fix {fix}, no route plotted"
+        return f"current fix {fix}, {leg}, no route plotted"
     suffix = "no jump executed"
-    if state.navigation.last_jump_route is not None:
+    if nav.last_jump_route is not None:
         suffix = "previous jump recorded"
-    return f"current fix {fix}, {plotted.jump_class} route plotted, {suffix}"
+    return f"current fix {fix}, {leg}, {plotted.jump_class} route plotted, {suffix}"
 
 
 def _schematic_status_label(state: ShipState) -> str:

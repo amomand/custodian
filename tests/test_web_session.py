@@ -210,7 +210,12 @@ class WebSessionTests(unittest.TestCase):
         session = BrowserSession(
             "jumping",
             no_ai_engine(),
-            ShipState(navigation=NavigationState(plotted_route_id="argos-12")),
+            ShipState(
+                navigation=NavigationState(
+                    current_fix_id="khepri-4",
+                    plotted_route_id="argos-12",
+                )
+            ),
         )
 
         response = session.command("jump")
@@ -240,7 +245,13 @@ class WebSessionTests(unittest.TestCase):
         session = BrowserSession(
             "jumping",
             no_ai_engine(),
-            ShipState(navigation=NavigationState(plotted_route_id="argos-12")),
+            ShipState(
+                navigation=NavigationState(
+                    current_fix_id="khepri-4",
+                    plotted_route_id="argos-12",
+                )
+            ),
+            last_access=store._clock(),
         )
         store._sessions[session.session_id] = session
 

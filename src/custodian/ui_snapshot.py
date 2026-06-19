@@ -20,6 +20,7 @@ from custodian.models import (
     ShipSector,
     ShipState,
     SYSTEM_KEYS,
+    navigation_fix_by_id,
 )
 from custodian.objectives import objective_lines, trend
 
@@ -77,7 +78,11 @@ class RouteSnapshot:
     id: str
     label: str
     jump_class: str
+    origin_fix_id: str
     destination_fix_id: str
+    stage_index: int
+    origin_map_x: int
+    origin_map_y: int
     distance_label: str
     elapsed_days: int
     exposure_band: str
@@ -86,6 +91,9 @@ class RouteSnapshot:
     cryo_decay_delta_pct: int
     map_x: int
     map_y: int
+    is_active: bool
+    is_locked: bool
+    is_completed: bool
     is_plotted: bool
     is_last_jump: bool
 
@@ -98,6 +106,12 @@ class NavigationSnapshot:
     current_purpose: str
     current_map_x: int
     current_map_y: int
+    active_stage_index: int
+    route_stage_count: int
+    next_fix_id: str | None
+    next_fix_label: str | None
+    next_map_x: int | None
+    next_map_y: int | None
     plotted_route_id: str | None
     plotted_route_label: str | None
     last_jump_route_id: str | None
@@ -282,6 +296,7 @@ def _navigation_snapshot(state: ShipState) -> NavigationSnapshot:
     nav = state.navigation
     plotted = nav.plotted_route
     last_jump = nav.last_jump_route
+    next_fix = nav.next_fix
     return NavigationSnapshot(
         current_fix_id=nav.current_fix.fix_id,
         current_fix_label=nav.current_fix.label,
@@ -289,6 +304,12 @@ def _navigation_snapshot(state: ShipState) -> NavigationSnapshot:
         current_purpose=nav.current_fix.purpose,
         current_map_x=nav.current_fix.map_x,
         current_map_y=nav.current_fix.map_y,
+        active_stage_index=nav.active_stage_index,
+        route_stage_count=nav.route_stage_count,
+        next_fix_id=None if next_fix is None else next_fix.fix_id,
+        next_fix_label=None if next_fix is None else next_fix.label,
+        next_map_x=None if next_fix is None else next_fix.map_x,
+        next_map_y=None if next_fix is None else next_fix.map_y,
         plotted_route_id=nav.plotted_route_id,
         plotted_route_label=None if plotted is None else _route_display_label(plotted),
         last_jump_route_id=nav.last_jump_route_id,
@@ -301,11 +322,17 @@ def _navigation_snapshot(state: ShipState) -> NavigationSnapshot:
 
 
 def _route_snapshot(state: ShipState, option: RouteOption) -> RouteSnapshot:
+    nav = state.navigation
+    origin = navigation_fix_by_id(option.origin_fix_id)
     return RouteSnapshot(
         id=option.route_id,
         label=option.label,
         jump_class=option.jump_class,
+        origin_fix_id=option.origin_fix_id,
         destination_fix_id=option.destination_fix_id,
+        stage_index=option.stage_index,
+        origin_map_x=origin.map_x,
+        origin_map_y=origin.map_y,
         distance_label=option.distance_label,
         elapsed_days=option.elapsed_days,
         exposure_band=_exposure_band(option.dark_exposure),
@@ -314,8 +341,11 @@ def _route_snapshot(state: ShipState, option: RouteOption) -> RouteSnapshot:
         cryo_decay_delta_pct=option.cryo_decay_delta_pct,
         map_x=option.map_x,
         map_y=option.map_y,
-        is_plotted=state.navigation.plotted_route_id == option.route_id,
-        is_last_jump=state.navigation.last_jump_route_id == option.route_id,
+        is_active=nav.is_option_active(option),
+        is_locked=option.stage_index > nav.active_stage_index,
+        is_completed=nav.is_option_completed(option),
+        is_plotted=nav.plotted_route_id == option.route_id,
+        is_last_jump=nav.last_jump_route_id == option.route_id,
     )
 
 
@@ -672,9 +702,10 @@ def _route_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
                 f"{option.elapsed_days} days, exposure {_exposure_band(option.dark_exposure)}"
             ),
         )
-        for option in state.navigation.options
+        for option in state.navigation.active_route_options
     ]
     plotted = state.navigation.plotted_route
+    plotted_ready = plotted is not None and state.navigation.is_option_active(plotted)
     actions.append(
         ActionSpec(
             id="execute-jump",
@@ -682,8 +713,14 @@ def _route_action_specs(state: ShipState) -> tuple[ActionSpec, ...]:
             command="jump",
             kind="navigation",
             target="navigation",
-            enabled=plotted is not None,
-            reason=None if plotted is not None else "no route plotted",
+            enabled=plotted_ready,
+            reason=(
+                None
+                if plotted_ready
+                else "no route plotted"
+                if plotted is None
+                else "plot belongs to another leg"
+            ),
             requires_confirmation=True,
             detail=None if plotted is None else f"Commit {_route_display_label(plotted)}.",
         )

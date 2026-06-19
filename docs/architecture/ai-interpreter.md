@@ -43,12 +43,13 @@ Intent(
 )
 ```
 
-`manual`, `plot`, `seal`, `abandon`, and `reroute` require arguments. `raw` and
-`delegate` can carry a target. `assign` and `release` require a `system`.
-`focus`, `unfocus`, `jump`, and `schematic` carry no arguments; the engine
-executes only the currently plotted route or displays the current deterministic
-schematic. The engine ignores model state-change suggestions because there are
-none.
+`manual`, `plot`, `seal`, `abandon`, and `reroute` require arguments. `plot`
+accepts a depth key for the open route leg (`short`, `medium`, `deep`) or an
+explicit star/depth pair when that star is the open leg. `raw` and `delegate`
+can carry a target. `assign` and `release` require a `system`. `focus`,
+`unfocus`, `jump`, and `schematic` carry no arguments; the engine executes only
+the currently plotted route or displays the current deterministic schematic.
+The engine ignores model state-change suggestions because there are none.
 
 ## Authority Boundary
 
@@ -83,10 +84,10 @@ for raw telemetry, the interpreter should return `action="raw"` and let the
 engine print the raw panel.
 
 Route handling follows the same rule. The model may classify a route command as
-`raw`, `plot`, `delegate`, or `jump`, but route options, plotted route state,
-current fix, and jump consequences come from the deterministic engine. Natural
-location questions such as "where are we?" resolve to `status`, which surfaces
-the deterministic navigation HUD.
+`raw`, `plot`, `delegate`, or `jump`, but staged route options, plotted route
+state, current fix, open leg, and jump consequences come from the deterministic
+engine. Natural location questions such as "where are we?" resolve to `status`,
+which surfaces the deterministic navigation HUD.
 
 Schematic handling follows the same rule. The model may classify a sector
 command as `schematic`, `raw`, `seal`, `abandon`, or `reroute`, but sector

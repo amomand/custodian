@@ -860,6 +860,18 @@ button.danger-action:hover:not(:disabled) {
   border-color: var(--cyan);
 }
 
+.route-node[data-active="true"] {
+  box-shadow: inset 3px 0 0 rgba(146, 213, 183, 0.65);
+}
+
+.route-node[data-completed="true"] {
+  border-color: rgba(120, 201, 194, 0.7);
+}
+
+.route-node[data-locked="true"] {
+  opacity: 0.62;
+}
+
 .route-head {
   display: flex;
   align-items: baseline;
@@ -880,6 +892,12 @@ button.danger-action:hover:not(:disabled) {
   letter-spacing: 0.08em;
 }
 
+.route-stage {
+  color: var(--muted);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
 .route-flag {
   margin-left: auto;
   font-size: 0.6rem;
@@ -892,6 +910,15 @@ button.danger-action:hover:not(:disabled) {
 
 .route-flag.plotted {
   color: var(--green);
+}
+
+.route-flag.open,
+.route-flag.taken {
+  color: var(--cyan);
+}
+
+.route-flag.locked {
+  color: var(--muted);
 }
 
 .route-flag.last {
@@ -1709,6 +1736,19 @@ button.danger-action:hover:not(:disabled) {
   stroke-linecap: round;
 }
 
+.chart-route[data-active="true"] {
+  stroke: #92d5b7;
+}
+
+.chart-route[data-completed="true"] {
+  stroke: var(--cyan);
+  stroke-width: 3.5;
+}
+
+.chart-route[data-locked="true"] {
+  stroke: rgba(93, 111, 103, 0.38);
+}
+
 .chart-route[data-plotted="true"] {
   stroke: var(--green);
   stroke-width: 4;
@@ -1720,6 +1760,18 @@ button.danger-action:hover:not(:disabled) {
 
 .chart-end {
   fill: #44544c;
+}
+
+.chart-end[data-active="true"] {
+  fill: #92d5b7;
+}
+
+.chart-end[data-completed="true"] {
+  fill: var(--cyan);
+}
+
+.chart-end[data-locked="true"] {
+  fill: rgba(68, 84, 76, 0.55);
 }
 
 .chart-end[data-plotted="true"] {
@@ -1739,8 +1791,22 @@ button.danger-action:hover:not(:disabled) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-.chart-fix {
+.chart-fix,
+.chart-node {
   fill: var(--cyan);
+}
+
+.chart-node {
+  stroke: rgba(4, 14, 16, 0.86);
+  stroke-width: 2;
+}
+
+.chart-node[data-current="true"] {
+  fill: var(--cyan);
+}
+
+.chart-node[data-next="true"] {
+  fill: #92d5b7;
 }
 
 .chart-fix-ring {

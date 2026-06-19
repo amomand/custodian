@@ -22,6 +22,7 @@ class UiSnapshotTests(unittest.TestCase):
     def test_normal_snapshot_projects_renderable_panels_without_hidden_values(self) -> None:
         state = ShipState(
             navigation=NavigationState(
+                current_fix_id="khepri-4",
                 plotted_route_id="argos-12",
                 last_jump_route_id="khepri-4",
                 jumps_executed=1,
@@ -90,7 +91,8 @@ class UiSnapshotTests(unittest.TestCase):
 
         self.assertEqual(by_id["delegate-coolant"]["command"], "delegate coolant")
         self.assertEqual(by_id["manual-balance"]["command"], "balance")
-        self.assertEqual(by_id["plot-argos-12"]["command"], "plot argos-12 medium")
+        self.assertEqual(by_id["plot-khepri-4-medium"]["command"], "plot khepri-4 medium")
+        self.assertNotIn("plot-argos-12", by_id)
         self.assertFalse(by_id["execute-jump"]["enabled"])
         self.assertEqual(by_id["execute-jump"]["reason"], "no route plotted")
         self.assertFalse(by_id["seal-bridge"]["enabled"])
@@ -249,7 +251,12 @@ class UiSnapshotTests(unittest.TestCase):
 
         for state in (
             ShipState(),
-            ShipState(navigation=NavigationState(plotted_route_id="argos-12")),
+            ShipState(
+                navigation=NavigationState(
+                    current_fix_id="khepri-4",
+                    plotted_route_id="argos-12",
+                )
+            ),
             # A standing delegation flips assign specs to release specs, so this
             # state exercises the "release coolant" command path too.
             ShipState(behaviour=BehaviourLedger(standing_delegations=("coolant",))),
@@ -392,6 +399,12 @@ class UiSnapshotTests(unittest.TestCase):
             self.assertEqual(instabilities, sorted(instabilities))
             self.assertLess(instabilities[0], instabilities[-1])
         self.assertTrue(nav["current_fix_label"])
+        self.assertEqual(nav["next_fix_label"], "KHEPRI-4")
+        self.assertEqual(
+            [o["is_active"] for o in options if o["label"] == "KHEPRI-4"],
+            [True, True, True],
+        )
+        self.assertTrue(all(o["is_locked"] for o in options if o["label"] != "KHEPRI-4"))
 
     def test_corruption_keeps_a_textual_equivalent_for_every_sector(self) -> None:
         # Visual corruption is allowed to degrade a sector's appearance, but never

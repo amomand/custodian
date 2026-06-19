@@ -52,6 +52,7 @@ class TelemetryTests(unittest.TestCase):
     def test_navigation_hud_shows_plot_without_arka_voice(self) -> None:
         state = ShipState(
             navigation=NavigationState(
+                current_fix_id="khepri-4",
                 plotted_route_id="argos-12",
                 last_jump_route_id="khepri-4",
                 jumps_executed=1,
@@ -62,11 +63,12 @@ class TelemetryTests(unittest.TestCase):
         hud = "\n".join(navigation_hud_lines(state))
 
         self.assertIn("NAVIGATION", hud)
-        self.assertIn("WAKEFUL DRIFT", hud)
         self.assertIn("ARGOS-12", hud)
+        self.assertIn("LEG", hud)
+        self.assertIn("KHEPRI-4", hud)
         self.assertIn("medium depth held", hud)
         self.assertIn("last KHEPRI-4, dark 4", hud)
-        self.assertIn("KHEPRI-4, ARGOS-12, CARINA-EDGE", hud)
+        self.assertIn("shallow, medium, deep", hud)
         self.assertNotIn("arka:", hud)
 
     def test_navigation_hud_has_breathing_room_around_block(self) -> None:

@@ -532,6 +532,9 @@ function routeGraph(view) {
     nav.plotted_route_label
       ? el("span", { class: "route-origin-plotted" }, ["plotted: ", el("b", { text: nav.plotted_route_label })])
       : el("span", { class: "route-origin-plotted muted", text: "no route plotted" }),
+    nav.next_fix_label
+      ? el("span", { class: "route-origin-purpose" }, `open leg: ${nav.current_fix_label} -> ${nav.next_fix_label}`)
+      : el("span", { class: "route-origin-purpose" }, "route chain complete"),
   ]);
   const branches = el(
     "div",
@@ -554,12 +557,19 @@ function routeBranch(view, route) {
       dataset: {
         plotted: route.is_plotted ? "true" : "false",
         lastjump: route.is_last_jump ? "true" : "false",
+        active: route.is_active ? "true" : "false",
+        completed: route.is_completed ? "true" : "false",
+        locked: route.is_locked ? "true" : "false",
       },
     },
     [
       el("div", { class: "route-head" }, [
         el("strong", { text: route.label }),
+        el("span", { class: "route-stage", text: `leg ${route.stage_index + 1}` }),
         el("span", { class: "route-class", text: route.jump_class }),
+        route.is_active ? el("span", { class: "route-flag open", text: "open" }) : null,
+        route.is_locked ? el("span", { class: "route-flag locked", text: "locked" }) : null,
+        route.is_completed ? el("span", { class: "route-flag taken", text: "taken" }) : null,
         route.is_plotted ? el("span", { class: "route-flag plotted", text: "plotted" }) : null,
         route.is_last_jump ? el("span", { class: "route-flag last", text: "last jump" }) : null,
       ]),
@@ -1317,6 +1327,7 @@ function renderMapHead(view) {
   replace(
     els.mapHeadStats,
     stat("Current fix", nav.current_fix_label),
+    stat("Open leg", nav.next_fix_label ? `${nav.current_fix_label} -> ${nav.next_fix_label}` : "complete"),
     stat("Signal", nav.current_signal),
     stat("Plotted", nav.plotted_route_label || "none"),
     stat("Exposure", nav.exposure_band, ["high", "severe"].includes(nav.exposure_band) ? "alert" : ""),
@@ -1328,9 +1339,9 @@ function renderMapConfirm() {
   replace(els.mapConfirm, ui.snapshot && effectiveView() === "map" ? confirmStrip() : null);
 }
 
-// The chart: current fix and onward stars in fixed map positions, with each
-// depth drawn as a separate solution path. The Dark remains territory rather
-// than a meter: deeper paths bend further into it.
+// The chart: current fix and staged legs in fixed map positions, with each depth
+// drawn as a separate solution path. The Dark remains territory rather than a
+// meter: deeper paths bend further into it.
 function renderMapChart(view) {
   const nav = view.navigation;
   const routes = nav.route_options || [];
@@ -1369,46 +1380,107 @@ function renderMapChart(view) {
     children.push(svgEl("line", { x1: 30, y1: gy, x2: W - 30, y2: gy, class: "chart-grid" }));
   }
 
-  // Routes lead to onward stars. Depth variants share a star but are offset
-  // slightly so the map can show the choice without hiding the destination.
-  const depthOffset = { shallow: -24, medium: 0, deep: 24 };
+  // Routes lead through the staged chain. Depth variants share a destination
+  // star but offset slightly so the choice remains visible.
+  const depthOffset = { shallow: -22, medium: 0, deep: 22 };
   const depthOrder = { shallow: 0, medium: 1, deep: 2 };
   const ordered = [...routes].sort((a, b) => {
-    const star = a.label.localeCompare(b.label);
-    if (star !== 0) return star;
+    const stage = (a.stage_index ?? 0) - (b.stage_index ?? 0);
+    if (stage !== 0) return stage;
     return (depthOrder[a.jump_class] ?? 9) - (depthOrder[b.jump_class] ?? 9);
   });
   ordered.forEach((route) => {
+    const startX = chartX(route.origin_map_x ?? nav.current_map_x ?? 14);
+    const startY = chartY(route.origin_map_y ?? nav.current_map_y ?? 55);
     const endX = chartX(route.map_x ?? 82);
     const endY = chartY(route.map_y ?? 50) + (depthOffset[route.jump_class] ?? 0);
     const bandIdx = EXPOSURE_LEVEL[route.exposure_band] ?? 0;
-    const dip = bandIdx * 62;
-    const cpY = (fy + endY) / 2 + dip;
+    const dip = bandIdx * 50;
+    const cpX = (startX + endX) / 2;
+    const cpY = (startY + endY) / 2 + dip;
     const dash = { none: "", low: "", moderate: "12 5", high: "7 6", severe: "3 7" }[
       instabilityBand(route.instability_pct)
     ];
     children.push(
       svgEl("path", {
-        d: `M ${fx + 18} ${fy} Q 520 ${cpY} ${endX} ${endY}`,
+        d: `M ${startX + 14} ${startY} Q ${cpX} ${cpY} ${endX - 10} ${endY}`,
         class: "chart-route",
         "data-plotted": route.is_plotted ? "true" : "false",
         "data-lastjump": route.is_last_jump ? "true" : "false",
+        "data-active": route.is_active ? "true" : "false",
+        "data-completed": route.is_completed ? "true" : "false",
+        "data-locked": route.is_locked ? "true" : "false",
         "stroke-dasharray": dash || null,
         style: `stroke-opacity:${0.95 - bandIdx * 0.13}`,
       }),
-      svgEl("circle", { cx: endX, cy: endY, r: 5, class: "chart-end", "data-plotted": route.is_plotted ? "true" : "false" }),
-      svgEl("text", { x: endX + 14, y: endY - 8, class: "chart-route-label" }, route.label),
+      svgEl("circle", {
+        cx: endX,
+        cy: endY,
+        r: 5,
+        class: "chart-end",
+        "data-plotted": route.is_plotted ? "true" : "false",
+        "data-active": route.is_active ? "true" : "false",
+        "data-completed": route.is_completed ? "true" : "false",
+        "data-locked": route.is_locked ? "true" : "false",
+      }),
+      route.is_active || route.is_plotted || route.is_completed
+        ? svgEl("text", { x: endX + 14, y: endY - 8, class: "chart-route-label" }, route.label)
+        : null,
       svgEl("text", { x: endX + 14, y: endY + 17, class: "chart-route-detail" },
         `${route.jump_class} · ${route.elapsed_days}d · exposure ${route.exposure_band}`),
     );
   });
 
+  const nodes = new Map();
+  nodes.set(nav.current_fix_id, {
+    label: nav.current_fix_label,
+    x: nav.current_map_x,
+    y: nav.current_map_y,
+    current: true,
+  });
+  routes.forEach((route) => {
+    if (!nodes.has(route.origin_fix_id)) {
+      nodes.set(route.origin_fix_id, {
+        label: route.origin_fix_id.replaceAll("-", " ").toUpperCase(),
+        x: route.origin_map_x,
+        y: route.origin_map_y,
+      });
+    }
+    nodes.set(route.destination_fix_id, {
+      label: route.label,
+      x: route.map_x,
+      y: route.map_y,
+      current: route.destination_fix_id === nav.current_fix_id,
+      next: route.destination_fix_id === nav.next_fix_id,
+    });
+  });
+  nodes.forEach((node) => {
+    const nx = chartX(node.x ?? 0);
+    const ny = chartY(node.y ?? 0);
+    children.push(
+      svgEl("circle", {
+        cx: nx,
+        cy: ny,
+        r: node.current ? 16 : 10,
+        class: "chart-node",
+        "data-current": node.current ? "true" : "false",
+        "data-next": node.next ? "true" : "false",
+      }),
+      svgEl("text", {
+        x: nx,
+        y: ny - 22,
+        class: "chart-fix-label",
+        "text-anchor": "middle",
+      }, node.label),
+    );
+  });
+
   // The current fix: where the ship believes it is.
   children.push(
-    svgEl("circle", { cx: fx, cy: fy, r: 16, class: "chart-fix-ring" }),
-    svgEl("circle", { cx: fx, cy: fy, r: 6, class: "chart-fix" }),
-    svgEl("text", { x: fx, y: fy - 28, class: "chart-fix-label", "text-anchor": "middle" }, nav.current_fix_label),
     svgEl("text", { x: 36, y: fy + 38, class: "chart-fix-detail" }, `signal ${nav.current_signal}`),
+    nav.next_fix_label
+      ? svgEl("text", { x: 36, y: fy + 62, class: "chart-fix-detail" }, `open leg ${nav.current_fix_label} -> ${nav.next_fix_label}`)
+      : svgEl("text", { x: 36, y: fy + 62, class: "chart-fix-detail" }, "route chain complete"),
   );
 
   const chart = svgEl(

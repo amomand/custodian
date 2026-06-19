@@ -47,9 +47,11 @@ arka and the command channel near the top.
 - **Active system panel** has four tabs — Coolant, Cryostasis, Navigation,
   Containment — each with arka's summary, raw metrics, and the manual / delegated
   controls for that system. The Navigation tab renders the current fix and the
-  candidate star/depth routes as a branching route display: each branch leads
-  with qualitative exposure / instability bands and keeps the exact route facts
-  as a detail line, with plot and execute-jump per route.
+  staged route chain as a branching route display: the open leg offers shallow /
+  medium / deep depth choices, future legs are locked, taken choices stay
+  visible, and each branch leads with qualitative exposure / instability bands
+  while keeping exact route facts as a detail line, with plot and execute-jump
+  per available route.
 - **Ship schematic** renders the sectors as a connected deck diagram: nodes sit
   on a fixed plan and the connecting edges come from each sector's reported
   adjacency. Node and edge styling follow reported state, signal confidence, and

@@ -39,18 +39,20 @@ scanlines do not animate).
 The full-screen chart of record. Beauty is spent here deliberately, because
 this is where decisions happen:
 
-- **Star map**: the current fix and onward stars sit in fixed chart positions;
-  each depth variant draws as its own path. The Dark is drawn as *territory* in
-  the lower corner of the chart and each path bends toward it by its qualitative
-  exposure band; instability bands render as increasingly broken dashes; the
-  plotted route is highlighted. The SVG is `aria-hidden` decoration — every fact
-  on it (band words, distances, depth, route names) is also text in the route
-  cards beside it.
-- **Route cards**: the same branching display as the desk's Navigation tab —
-  band rows, detail line, plot / execute-jump buttons from the same
-  `ui.actions` specs through the same dispatch, including the inline
-  confirmation strip (rendered at the top of the map when triggered there).
-  Delegate / standing / inspect groups for navigation ride along.
+- **Star map**: the current fix and staged route chain sit in fixed chart
+  positions. The open leg is bright, future legs are locked, and taken depth
+  variants stay visible as committed path history. Each depth variant draws as
+  its own path. The Dark is drawn as *territory* in the lower corner of the
+  chart and each path bends toward it by its qualitative exposure band;
+  instability bands render as increasingly broken dashes; the plotted route is
+  highlighted. The SVG is `aria-hidden` decoration -- every fact on it (open
+  leg, locked/taken state, band words, distances, depth, route names) is also
+  text in the route cards beside it.
+- **Route cards**: the same staged display as the desk's Navigation tab -- band
+  rows, detail line, open / locked / taken labels, and plot / execute-jump
+  buttons from the same `ui.actions` specs through the same dispatch, including
+  the inline confirmation strip (rendered at the top of the map when triggered
+  there). Delegate / standing / inspect groups for navigation ride along.
 - **Deck plan**: the desk's sector diagram at map scale (same renderer, same
   corruption visuals and textual states). Selecting a sector shows its facts
   and its containment action specs beside the plan instead of jumping tabs.

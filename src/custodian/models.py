@@ -144,6 +144,8 @@ class RouteOption:
     wear_delta_pct: int
     cryo_decay_delta_pct: int
     arrival_fix_id: str | None = None
+    origin_fix_id: str = "wakeful-drift"
+    stage_index: int = 0
     map_x: int = 0
     map_y: int = 0
 
@@ -174,13 +176,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="khepri-4",
             label="KHEPRI-4",
             jump_class="shallow",
-            distance_tenths_ly=18,
+            distance_tenths_ly=42,
             elapsed_days=126,
             dark_exposure=4,
             instability_pct=6,
             wear_delta_pct=3,
             cryo_decay_delta_pct=3,
             arrival_fix_id="khepri-4",
+            origin_fix_id="wakeful-drift",
+            stage_index=0,
             map_x=34,
             map_y=34,
         ),
@@ -188,13 +192,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="khepri-4-medium",
             label="KHEPRI-4",
             jump_class="medium",
-            distance_tenths_ly=18,
+            distance_tenths_ly=42,
             elapsed_days=84,
             dark_exposure=7,
             instability_pct=10,
             wear_delta_pct=2,
             cryo_decay_delta_pct=2,
             arrival_fix_id="khepri-4",
+            origin_fix_id="wakeful-drift",
+            stage_index=0,
             map_x=34,
             map_y=34,
         ),
@@ -202,13 +208,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="khepri-4-deep",
             label="KHEPRI-4",
             jump_class="deep",
-            distance_tenths_ly=18,
+            distance_tenths_ly=42,
             elapsed_days=42,
             dark_exposure=12,
             instability_pct=18,
             wear_delta_pct=1,
             cryo_decay_delta_pct=1,
             arrival_fix_id="khepri-4",
+            origin_fix_id="wakeful-drift",
+            stage_index=0,
             map_x=34,
             map_y=34,
         ),
@@ -216,13 +224,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="argos-12-shallow",
             label="ARGOS-12",
             jump_class="shallow",
-            distance_tenths_ly=36,
+            distance_tenths_ly=52,
             elapsed_days=210,
             dark_exposure=6,
             instability_pct=10,
             wear_delta_pct=5,
             cryo_decay_delta_pct=5,
             arrival_fix_id="argos-12",
+            origin_fix_id="khepri-4",
+            stage_index=1,
             map_x=56,
             map_y=53,
         ),
@@ -230,13 +240,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="argos-12",
             label="ARGOS-12",
             jump_class="medium",
-            distance_tenths_ly=36,
+            distance_tenths_ly=52,
             elapsed_days=84,
             dark_exposure=9,
             instability_pct=13,
             wear_delta_pct=2,
             cryo_decay_delta_pct=2,
             arrival_fix_id="argos-12",
+            origin_fix_id="khepri-4",
+            stage_index=1,
             map_x=56,
             map_y=53,
         ),
@@ -244,13 +256,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="argos-12-deep",
             label="ARGOS-12",
             jump_class="deep",
-            distance_tenths_ly=36,
+            distance_tenths_ly=52,
             elapsed_days=63,
             dark_exposure=18,
             instability_pct=26,
             wear_delta_pct=2,
             cryo_decay_delta_pct=2,
             arrival_fix_id="argos-12",
+            origin_fix_id="khepri-4",
+            stage_index=1,
             map_x=56,
             map_y=53,
         ),
@@ -258,13 +272,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="carina-edge-shallow",
             label="CARINA-EDGE",
             jump_class="shallow",
-            distance_tenths_ly=71,
+            distance_tenths_ly=24,
             elapsed_days=336,
             dark_exposure=9,
             instability_pct=16,
             wear_delta_pct=8,
             cryo_decay_delta_pct=8,
             arrival_fix_id="carina-edge",
+            origin_fix_id="argos-12",
+            stage_index=2,
             map_x=78,
             map_y=25,
         ),
@@ -272,13 +288,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="carina-edge-medium",
             label="CARINA-EDGE",
             jump_class="medium",
-            distance_tenths_ly=71,
+            distance_tenths_ly=24,
             elapsed_days=168,
             dark_exposure=15,
             instability_pct=24,
             wear_delta_pct=5,
             cryo_decay_delta_pct=5,
             arrival_fix_id="carina-edge",
+            origin_fix_id="argos-12",
+            stage_index=2,
             map_x=78,
             map_y=25,
         ),
@@ -286,13 +304,15 @@ def default_route_options() -> tuple[RouteOption, ...]:
             route_id="carina-edge",
             label="CARINA-EDGE",
             jump_class="deep",
-            distance_tenths_ly=71,
+            distance_tenths_ly=24,
             elapsed_days=42,
             dark_exposure=21,
             instability_pct=31,
             wear_delta_pct=1,
             cryo_decay_delta_pct=1,
             arrival_fix_id="carina-edge",
+            origin_fix_id="argos-12",
+            stage_index=2,
             map_x=78,
             map_y=25,
         ),
@@ -343,12 +363,28 @@ def navigation_fix_by_id(fix_id: str) -> NavigationFix:
     return default_navigation_fixes()[0]
 
 
+ROUTE_STAGE_FIX_IDS: tuple[str, ...] = (
+    "wakeful-drift",
+    "khepri-4",
+    "argos-12",
+    "carina-edge",
+)
+
+
+def route_stage_index_for_fix(fix_id: str) -> int:
+    try:
+        return ROUTE_STAGE_FIX_IDS.index(fix_id)
+    except ValueError:
+        return 0
+
+
 @dataclass(frozen=True)
 class NavigationState:
     options: tuple[RouteOption, ...] = field(default_factory=default_route_options)
     current_fix_id: str = "wakeful-drift"
     plotted_route_id: str | None = None
     last_jump_route_id: str | None = None
+    completed_route_ids: tuple[str, ...] = ()
     manual_plots: int = 0
     delegated_plots: int = 0
     jumps_executed: int = 0
@@ -370,30 +406,98 @@ class NavigationState:
     def current_fix(self) -> NavigationFix:
         return navigation_fix_by_id(self.current_fix_id)
 
+    @property
+    def active_stage_index(self) -> int:
+        return route_stage_index_for_fix(self.current_fix_id)
+
+    @property
+    def route_stage_count(self) -> int:
+        return max(0, len(ROUTE_STAGE_FIX_IDS) - 1)
+
+    @property
+    def next_fix(self) -> NavigationFix | None:
+        next_index = self.active_stage_index + 1
+        if next_index >= len(ROUTE_STAGE_FIX_IDS):
+            return None
+        return navigation_fix_by_id(ROUTE_STAGE_FIX_IDS[next_index])
+
+    @property
+    def active_route_options(self) -> tuple[RouteOption, ...]:
+        return tuple(
+            option for option in self.options if self.is_option_active(option)
+        )
+
+    @property
+    def completed_routes(self) -> tuple[RouteOption, ...]:
+        routes: list[RouteOption] = []
+        for route_id in self.completed_route_ids:
+            option = self.option_by_id(route_id)
+            if option is not None:
+                routes.append(option)
+        return tuple(routes)
+
     def option_by_id(self, route_id: str) -> RouteOption | None:
         for option in self.options:
             if option.route_id == route_id:
                 return option
         return None
 
+    def is_option_active(self, option: RouteOption) -> bool:
+        return option.stage_index == self.active_stage_index
+
+    def is_option_completed(self, option: RouteOption) -> bool:
+        return option.route_id in self.completed_route_ids
+
+    def option_by_depth(self, depth: str) -> RouteOption | None:
+        for option in self.active_route_options:
+            if option.jump_class == depth:
+                return option
+        return None
+
+    def option_by_destination_and_depth(
+        self, destination_fix_id: str, depth: str
+    ) -> RouteOption | None:
+        for option in self.active_route_options:
+            if option.destination_fix_id == destination_fix_id and option.jump_class == depth:
+                return option
+        return None
+
     def raw_lines(self) -> tuple[str, ...]:
         plotted = self.plotted_route
-        plotted_label = "none" if plotted is None else plotted.label
+        plotted_label = (
+            "none" if plotted is None else f"{plotted.label} {plotted.jump_class}"
+        )
         last_jump = self.last_jump_route
-        last_jump_label = "none" if last_jump is None else last_jump.label
+        last_jump_label = (
+            "none" if last_jump is None else f"{last_jump.label} {last_jump.jump_class}"
+        )
+        next_fix = self.next_fix
+        active_leg = (
+            "complete"
+            if next_fix is None
+            else f"{self.current_fix.label} -> {next_fix.label}"
+        )
         lines = [
             "RAW NAVIGATION SOLUTIONS",
             f"current_fix         {self.current_fix.label}",
             f"current_signal      {self.current_fix.signal}",
+            f"active_leg          {active_leg}",
             f"plotted_route        {plotted_label}",
             f"last_jump_route      {last_jump_label}",
             f"jumps_executed       {self.jumps_executed}",
             f"dark_exposure_total  {self.total_dark_exposure}",
-            "destination       depth    dist     elapsed  dark  instab  wear  cryo-age",
+            "stage  destination       depth    state      dist     elapsed  dark  instab  wear  cryo-age",
         ]
         for option in self.options:
+            if self.is_option_completed(option):
+                state = "taken"
+            elif self.is_option_active(option):
+                state = "open"
+            else:
+                state = "locked"
             lines.append(
-                f"{option.label:<17} {option.jump_class:<7} "
+                f"{option.stage_index + 1:<5}  {option.label:<17} {option.jump_class:<7} "
+                f"{state:<9} "
                 f"{option.distance_label:>6}  {option.elapsed_days:>4} d"
                 f"   {option.dark_exposure:>2}    {option.instability_pct:>3}%"
                 f"    +{option.wear_delta_pct:<2}   +{option.cryo_decay_delta_pct}"
