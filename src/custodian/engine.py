@@ -193,9 +193,11 @@ class GameEngine:
                 prior=state,
             )
         if intent.action == "delegate":
-            delegated_state, messages = self._delegate_to_arka(
+            delegated_state, messages, delegated = self._delegate_to_arka(
                 state, intent.args.get("target", "coolant")
             )
+            if not delegated:
+                return StepResult(state, correction + messages)
             return self._advance(delegated_state, correction + messages, prior=state)
         if intent.action == "plot":
             route_id = intent.args.get("route_id", "")
@@ -294,7 +296,7 @@ class GameEngine:
             (
                 "arka: I can file that under psychological maintenance, but the ship console "
                 "accepts status, raw, delegate, pump up, pump down, vent, flush, balance, "
-                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot argos-12 medium, jump, wait.",
+                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot medium, jump, wait.",
             ),
         )
 
@@ -382,21 +384,24 @@ class GameEngine:
 
     def _delegate_to_arka(
         self, state: ShipState, target: str
-    ) -> tuple[ShipState, tuple[str, ...]]:
+    ) -> tuple[ShipState, tuple[str, ...], bool]:
         if target in {"nav", "navigation"}:
             return self._delegate_navigation_to_arka(state)
         if target == "cryo":
-            return self._delegate_cryo_to_arka(state)
-        return self._delegate_coolant_to_arka(state)
+            delegated_state, messages = self._delegate_cryo_to_arka(state)
+            return delegated_state, messages, True
+        delegated_state, messages = self._delegate_coolant_to_arka(state)
+        return delegated_state, messages, True
 
     def _delegate_navigation_to_arka(
         self, state: ShipState
-    ) -> tuple[ShipState, tuple[str, ...]]:
+    ) -> tuple[ShipState, tuple[str, ...], bool]:
         option = _arka_route_recommendation(state)
         if option is None:
             return (
                 state,
                 ("arka: the route chain is already through the last fix.",),
+                False,
             )
         navigation = replace(
             state.navigation,
@@ -410,6 +415,7 @@ class GameEngine:
                 delegated_controls=state.delegated_controls + 1,
             ),
             (_arka_route_plot_line(state, option),),
+            True,
         )
 
     def _manual_route_plot(
@@ -2278,6 +2284,8 @@ def _help_lines() -> tuple[str, ...]:
         "raw nav          detailed route telemetry",
         "schematic        quick sector readout",
         "raw schematic    detailed sector signal and controls",
+        "plot short       slower, safer depth for the open leg",
+        "plot shallow     same as plot short",
         "plot medium      manually plot the open leg at medium depth",
         "plot deep        faster, darker depth for the open leg",
         "plot khepri-4 shallow",

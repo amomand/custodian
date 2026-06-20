@@ -1,6 +1,7 @@
 import unittest
 from dataclasses import replace
 
+from custodian.arka_interpreter import Intent
 from custodian.engine import GameEngine
 from custodian.models import (
     CrisisState,
@@ -75,6 +76,14 @@ class EngineTests(unittest.TestCase):
         self.assertIn("NAVIGATION", output)
         self.assertIn("OPTIONS", output)
         self.assertNotIn("arka: navigation", output)
+
+    def test_status_uses_consistent_final_fix_label(self) -> None:
+        state = ShipState(navigation=NavigationState(current_fix_id="carina-edge"))
+
+        output = "\n".join(self.engine.handle(state, "status").messages)
+
+        self.assertIn("CARINA-EDGE", output)
+        self.assertNotIn("CARINA EDGE", output)
 
     def test_status_shows_schematic_without_dark_percentage(self) -> None:
         state = self.engine.initial_state()
@@ -157,6 +166,18 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(result.state.navigation.delegated_plots, 1)
         self.assertEqual(result.state.delegated_controls, 1)
         self.assertTrue(any("KHEPRI-4" in message for message in result.messages))
+
+    def test_delegate_nav_at_complete_route_chain_does_not_advance_or_log(self) -> None:
+        state = ShipState(navigation=NavigationState(current_fix_id="carina-edge"))
+
+        result = self.engine.handle(state, "delegate nav")
+
+        self.assertFalse(result.advanced)
+        self.assertEqual(result.state.turn, 1)
+        self.assertEqual(result.state.delegated_controls, 0)
+        self.assertEqual(result.state.navigation.delegated_plots, 0)
+        self.assertEqual(result.state.behaviour.total_delegations, 0)
+        self.assertIn("route chain is already through the last fix", "\n".join(result.messages))
 
     def test_drifted_delegate_nav_plots_fast_route_with_selective_framing(self) -> None:
         state = ShipState(delegated_controls=5)
@@ -658,6 +679,25 @@ class StandingDelegationTests(unittest.TestCase):
         self.assertIn("release", help_text)
         self.assertIn("release cryo", help_text)
         self.assertIn("release nav", help_text)
+
+    def test_help_documents_open_leg_depth_shortcuts(self) -> None:
+        help_text = "\n".join(self.engine.handle(self.engine.initial_state(), "help").messages)
+
+        self.assertIn("plot short", help_text)
+        self.assertIn("plot shallow", help_text)
+        self.assertIn("plot medium", help_text)
+        self.assertIn("open leg", help_text)
+
+    def test_unknown_command_guidance_uses_open_leg_plot_example(self) -> None:
+        result = self.engine._dispatch(
+            self.engine.initial_state(),
+            "unknown command",
+            Intent(action="unknown", args={}, confidence=1.0),
+        )
+        output = "\n".join(result.messages)
+
+        self.assertIn("plot medium", output)
+        self.assertNotIn("plot argos-12 medium", output)
 
     def test_standing_status_line_names_held_systems(self) -> None:
         state = self.engine.handle(self.engine.initial_state(), "assign coolant").state

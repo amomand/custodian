@@ -347,7 +347,7 @@ def default_navigation_fixes() -> tuple[NavigationFix, ...]:
         ),
         NavigationFix(
             fix_id="carina-edge",
-            label="CARINA EDGE",
+            label="CARINA-EDGE",
             signal="thin Dark boundary, poor audit trail",
             purpose="fast arrival fix with unreliable surrounding data",
             map_x=78,

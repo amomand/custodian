@@ -69,7 +69,7 @@ Current fixes:
 - `WAKEFUL DRIFT` — starting fix, destination solution unresolved
 - `KHEPRI-4` — cold beacon, long coast corridor
 - `ARGOS-12` — broken relay shadow, partial triangulation
-- `CARINA EDGE` — thin Dark boundary, poor audit trail
+- `CARINA-EDGE` — thin Dark boundary, poor audit trail
 
 Each jump sets the current fix to that route's arrival reference, independent of
 the depth used to get there, and records the chosen route in
