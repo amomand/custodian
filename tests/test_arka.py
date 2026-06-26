@@ -1,8 +1,20 @@
 import unittest
 from dataclasses import replace
 
-from custodian.arka import crisis_line, drift_stage, summarize_coolant
-from custodian.models import CrisisState, DriftStage, ReactorCoolantSystem, ShipState
+from custodian.arka import (
+    crisis_line,
+    drift_stage,
+    summarize_coolant,
+    summarize_cryostasis,
+)
+from custodian.models import (
+    CrisisState,
+    CryostasisSystem,
+    DriftStage,
+    ReactorCoolantSystem,
+    ShipState,
+)
+
 
 class ArkaTests(unittest.TestCase):
     def test_delegation_accelerates_drift(self) -> None:
@@ -92,6 +104,34 @@ class ArkaTests(unittest.TestCase):
 
         self.assertEqual(drift_stage(state), DriftStage.INTERPRETIVE)
         self.assertIn("active advisory", crisis_line(state))
+
+    def test_interpretive_cryo_summary_keeps_soft_line_for_mild_distress(self) -> None:
+        state = ShipState(
+            turn=5,
+            cryostasis=CryostasisSystem(bank_temperature_c=-169),
+        )
+
+        summary = summarize_cryostasis(state)
+
+        self.assertIn("not asking loudly yet", summary)
+        self.assertNotIn("under strain", summary)
+
+    def test_interpretive_cryo_summary_escalates_for_severe_distress(self) -> None:
+        state = ShipState(
+            turn=5,
+            cryostasis=CryostasisSystem(
+                bank_temperature_c=-163,
+                neural_stability_pct=75,
+                pod_fault_load=18,
+                sleepers_at_risk=25,
+            ),
+        )
+
+        summary = summarize_cryostasis(state)
+
+        self.assertIn("cryostasis is under strain", summary)
+        self.assertIn("no longer quiet work", summary)
+        self.assertNotIn("not asking loudly yet", summary)
 
     def test_vigilant_player_holds_arka_short_of_wrong_at_the_finale(self) -> None:
         # The design promises that reading raw "keeps arka honest longer." At the
