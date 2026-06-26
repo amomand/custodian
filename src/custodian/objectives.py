@@ -22,7 +22,7 @@ COOLANT_METRICS: tuple[MetricSpec, ...] = (
     MetricSpec("coolant", "flow", "flow_lps", "low", 72, 90),
     MetricSpec("coolant", "impurity", "impurity_pct", "high", 0, 18),
     MetricSpec("coolant", "valve skew", "valve_skew_pct", "high", 0, 16),
-    MetricSpec("coolant", "coolant reserve", "coolant_reserve_pct", "low", 35, 100),
+    MetricSpec("coolant", "reserve", "coolant_reserve_pct", "low", 35, 100),
 )
 
 CRYO_METRICS: tuple[MetricSpec, ...] = (
