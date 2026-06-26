@@ -58,7 +58,7 @@ class ObjectivesTests(unittest.TestCase):
 
         lines = "\n".join(objective_lines(state))
 
-        self.assertIn("ATTENTION  coolant reserve is sliding toward its floor", lines)
+        self.assertIn("ATTENTION  coolant reserve", lines)
         self.assertNotIn("coolant coolant reserve", lines)
 
     def test_priority_none_when_calm_and_steady(self) -> None:

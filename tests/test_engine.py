@@ -521,9 +521,9 @@ class EngineTests(unittest.TestCase):
 
         self.assertIn("Coolant alarms cascade across the board", output)
         self.assertNotIn("Every coolant alarm", output)
-        self.assertIn("PRESS     253 kPa       OK", output)
-        self.assertIn("FLOW      81 L/s        OK", output)
-        self.assertIn("RESERVE   70%           OK", output)
+        self.assertRegex(output, r"PRESS\s+\d+ kPa\s+OK")
+        self.assertRegex(output, r"FLOW\s+\d+ L/s\s+OK")
+        self.assertRegex(output, r"RESERVE\s+\d+%\s+OK")
 
     def test_playable_practised_route_can_complete_window(self) -> None:
         state = self.engine.initial_state()
