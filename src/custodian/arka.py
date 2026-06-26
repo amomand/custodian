@@ -129,9 +129,42 @@ def _interpretive_cryo_summary(cryo: CryostasisSystem) -> str:
     flags = cryo.danger_flags()
     if not flags:
         return "arka: cryostasis remains comfortable."
+    if _cryo_distress_is_severe(cryo, flags):
+        return (
+            "arka: cryostasis is under strain. "
+            "The banks still answer, but this is no longer quiet work."
+        )
+    if _cryo_distress_is_moderate(cryo, flags):
+        if flags == ("sleepers at risk",):
+            return (
+                "arka: cryostasis is workable. "
+                "Sleeper risk is visible, but still recoverable."
+            )
+        return (
+            "arka: cryostasis is workable. "
+            "The banks are complaining, but still answering."
+        )
     return (
         "arka: cryostasis is workable. The sleepers are not asking loudly yet."
     )
+
+
+def _cryo_distress_is_severe(
+    cryo: CryostasisSystem,
+    flags: tuple[str, ...],
+) -> bool:
+    return (
+        len(flags) >= 3
+        or cryo.sleepers_at_risk >= 12
+        or (cryo.sleepers_at_risk > 0 and len(flags) >= 2)
+    )
+
+
+def _cryo_distress_is_moderate(
+    cryo: CryostasisSystem,
+    flags: tuple[str, ...],
+) -> bool:
+    return len(flags) >= 2 or cryo.sleepers_at_risk > 0
 
 
 def _crisis_window(turns_left: int) -> str:
