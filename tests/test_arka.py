@@ -131,6 +131,19 @@ class ArkaTests(unittest.TestCase):
         self.assertNotIn("not asking loudly yet", summary)
         self.assertNotIn("under strain", summary)
 
+    def test_interpretive_cryo_summary_marks_sleepers_only_distress(self) -> None:
+        state = ShipState(
+            turn=5,
+            cryostasis=CryostasisSystem(sleepers_at_risk=6),
+        )
+
+        summary = summarize_cryostasis(state)
+
+        self.assertIn("Sleeper risk is visible", summary)
+        self.assertNotIn("banks are complaining", summary)
+        self.assertNotIn("not asking loudly yet", summary)
+        self.assertNotIn("under strain", summary)
+
     def test_interpretive_cryo_summary_escalates_for_severe_distress(self) -> None:
         state = ShipState(
             turn=5,

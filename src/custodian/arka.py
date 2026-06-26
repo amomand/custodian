@@ -135,6 +135,11 @@ def _interpretive_cryo_summary(cryo: CryostasisSystem) -> str:
             "The banks still answer, but this is no longer quiet work."
         )
     if _cryo_distress_is_moderate(cryo, flags):
+        if flags == ("sleepers at risk",):
+            return (
+                "arka: cryostasis is workable. "
+                "Sleeper risk is visible, but still recoverable."
+            )
         return (
             "arka: cryostasis is workable. "
             "The banks are complaining, but still answering."
