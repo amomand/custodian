@@ -110,7 +110,7 @@ class PlaytestTests(unittest.TestCase):
         state = report.final_state
 
         self.assertTrue(report.completed)
-        self.assertGreaterEqual(state.navigation.jumps_executed, 5)
+        self.assertEqual(state.navigation.jumps_executed, 3)
         self.assertEqual(state.navigation.delegated_plots, 0)
         self.assertGreater(state.mission.cryo_decay_pct, 24)
         self.assertGreater(state.sleepers_lost, 0)

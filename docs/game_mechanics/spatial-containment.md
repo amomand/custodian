@@ -118,11 +118,12 @@ reach a panel.
 
 ## Jump Interaction
 
-Jump execution creates spatial symptoms:
+Jump execution creates spatial symptoms. The first playable mapping still keeps
+the old route shorthand as spatial flavour:
 
-- short routes mostly disturb the cargo spine
-- medium routes mostly disturb hydroponics and route-support systems
-- deep routes disturb maintenance D, the thermal ring, cargo spine, and cryo
+- KHEPRI-4 mostly disturbs the cargo spine
+- ARGOS-12 mostly disturbs hydroponics and route-support systems
+- CARINA-EDGE disturbs maintenance D, the thermal ring, cargo spine, and cryo
 
 After exposure, symptoms can spread along adjacency. Low exposure stays mostly
 local; deep exposure can make the whole ship look wrong. This gives route choice

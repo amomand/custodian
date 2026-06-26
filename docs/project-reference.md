@@ -14,8 +14,8 @@ Phase 0 is concluded. Phase 1A-D is now represented in the terminal loop:
 coolant is shorter, cryostasis is live, the systems can pressure each other, and
 runs can be saved and resumed. Phase 2A starts the mission-pressure layer:
 status now includes elapsed mission time, distance remaining, ship wear, and
-long-duration cryostasis decay. Phase 2B adds route options, raw navigation, and
-manual or delegated plotting. Phase 2C/D adds jump execution, route
+long-duration cryostasis decay. Phase 2B adds staged route options, raw
+navigation, and manual or delegated plotting. Phase 2C/D adds jump execution, route
 consequences, and drift-sensitive arka route advice. Phase 2E adds a lightweight
 current navigation fix and route comparison playtests, closing the route layer
 before spatial ship work. Phase 3 adds the terminal-native ship schematic,
@@ -38,7 +38,7 @@ Core ideas:
 - Optional AI-powered natural language input for arka
 - Deterministic reactor and cryostasis state
 - Deterministic mission clock with ship wear and cryostasis decay
-- Deterministic route options with current fix, plotting, delegation, and jump execution
+- Deterministic staged route options with current fix, plotting, delegation, and jump execution
 - Deterministic ship sectors with qualitative symptoms and containment choices
 - Raw telemetry as truth-adjacent, slower than reassurance
 - arka summaries that move from accurate to interpretive, selective, and wrong
@@ -53,8 +53,8 @@ Core ideas:
 - **Event refreshes** - interactive terminals clear on launch and major pressure beats
 - **Legible objective block** - every status opens with goal, horizon, and the metric failing fastest
 - **Mission clock** - elapsed mission time, distance remaining, ship wear, and cryostasis decay
-- **Navigation options** - short, medium, and deep routes can be inspected, plotted, and jumped
-- **Current fix** - the ship reports where the latest jump leaves it without becoming a map
+- **Navigation options** - staged route legs and route depths can be inspected, plotted, and jumped
+- **Current fix** - the ship reports where the latest jump leaves it on the star map
 - **Ship schematic** - sectors report qualitative symptoms without exposing a Dark percentage
 - **Containment choices** - seal, abandon, and reroute physical sectors, with local costs
 - **Browser session shell** - local web play through the same engine command path

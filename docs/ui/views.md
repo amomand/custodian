@@ -2,7 +2,7 @@
 
 Status: implemented. The web client has three full-screen places, switched
 deliberately: the **desk** (home — the synoptic operating desk), the **map**
-(the nav plot and deck plan), and the **dark** (the forward window). Moving
+(the star map and deck plan), and the **dark** (the forward window). Moving
 between them is an act of attention — there is no head-turn, no cockpit, no
 partial dimming; you are either at the board, at the chart table, or at the
 glass. This supersedes the cockpit cabin experiment (PR #33); the reasoning is
@@ -14,7 +14,7 @@ UI-local state like the active tab: never persisted, never sent to the engine.
 
 ## Switching
 
-- **View rail** next to the mission strip: "Nav plot" and "Outside". Static
+- **View rail** next to the mission strip: "Star map" and "Outside". Static
   buttons, never re-rendered, so keyboard focus is never lost to a snapshot.
 - **Keys**: `m` toggles the map, `o` toggles the window, `Esc` walks back to
   the desk. `/` returns to the desk first if needed, then focuses the command
@@ -34,22 +34,25 @@ mounted lit displays (translucent over the hull shell, inset bevel, static
 scanlines), which costs no legibility and is reduced-motion-safe (the
 scanlines do not animate).
 
-## The map (nav plot + deck plan)
+## The map (star map + deck plan)
 
 The full-screen chart of record. Beauty is spent here deliberately, because
 this is where decisions happen:
 
-- **Route chart**: the current fix on the left; candidate routes fan out as
-  paths. The Dark is drawn as *territory* in the lower corner of the chart and
-  each path dips toward it by its qualitative exposure band; instability bands
-  render as increasingly broken dashes; the plotted route is highlighted. The
-  SVG is `aria-hidden` decoration — every fact on it (band words, distances,
-  route names) is also text in the route cards beside it.
-- **Route cards**: the same branching display as the desk's Navigation tab —
-  band rows, detail line, plot / execute-jump buttons from the same
-  `ui.actions` specs through the same dispatch, including the inline
-  confirmation strip (rendered at the top of the map when triggered there).
-  Delegate / standing / inspect groups for navigation ride along.
+- **Star map**: the current fix and staged route chain sit in fixed chart
+  positions. The open leg is bright, future legs are locked, and taken depth
+  variants stay visible as committed path history. Each depth variant draws as
+  its own path. The Dark is drawn as *territory* in the lower corner of the
+  chart and each path bends toward it by its qualitative exposure band;
+  instability bands render as increasingly broken dashes; the plotted route is
+  highlighted. The SVG is `aria-hidden` decoration -- every fact on it (open
+  leg, locked/taken state, band words, distances, depth, route names) is also
+  text in the route cards beside it.
+- **Route cards**: the same staged display as the desk's Navigation tab -- band
+  rows, detail line, open / locked / taken labels, and plot / execute-jump
+  buttons from the same `ui.actions` specs through the same dispatch, including
+  the inline confirmation strip (rendered at the top of the map when triggered
+  there). Delegate / standing / inspect groups for navigation ride along.
 - **Deck plan**: the desk's sector diagram at map scale (same renderer, same
   corruption visuals and textual states). Selecting a sector shows its facts
   and its containment action specs beside the plan instead of jumping tabs.

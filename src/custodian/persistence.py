@@ -25,8 +25,8 @@ from custodian.models import (
 )
 
 
-SAVE_VERSION = 9
-SUPPORTED_SAVE_VERSIONS = {1, 2, 3, 4, 5, 6, 7, 8, SAVE_VERSION}
+SAVE_VERSION = 11
+SUPPORTED_SAVE_VERSIONS = set(range(1, SAVE_VERSION + 1))
 DEFAULT_SAVE_PATH = Path("saves/custodian-save.json")
 
 
@@ -75,7 +75,7 @@ def state_from_dict(data: dict) -> ShipState:
         reactor=ReactorCoolantSystem(**data["reactor"]),
         cryostasis=CryostasisSystem(**data["cryostasis"]),
         mission=MissionStatus(**data.get("mission", {})),
-        navigation=_navigation_from_data(data.get("navigation")),
+        navigation=_navigation_from_data(data.get("navigation"), version=version),
         spatial=_spatial_from_data(data.get("spatial")),
         manual_familiarity=data["manual_familiarity"],
         cryo_familiarity=data["cryo_familiarity"],
@@ -202,27 +202,62 @@ def _optional_cryo(data: dict | None) -> CryostasisSystem | None:
     return None if data is None else CryostasisSystem(**data)
 
 
-def _navigation_from_data(data: object) -> NavigationState:
+def _navigation_from_data(data: object, *, version: int = SAVE_VERSION) -> NavigationState:
     if not isinstance(data, dict):
         return NavigationState()
 
     raw_options = data.get("options", ())
     options: list[RouteOption] = []
-    if isinstance(raw_options, (list, tuple)):
+    if version >= 11 and isinstance(raw_options, (list, tuple)):
         for option in raw_options:
             if isinstance(option, dict):
                 options.append(RouteOption(**option))
 
+    current_fix_id = str(data.get("current_fix_id", "wakeful-drift"))
+    plotted_route_id = _optional_str(data.get("plotted_route_id"))
+    if version < 11:
+        plotted_route_id = _migrated_plotted_route_id(plotted_route_id, current_fix_id)
+    last_jump_route_id = _optional_str(data.get("last_jump_route_id"))
+    completed_route_ids = _str_tuple(data.get("completed_route_ids"))
+    if not completed_route_ids and last_jump_route_id is not None:
+        completed_route_ids = (last_jump_route_id,)
+
     return NavigationState(
         options=tuple(options) or NavigationState().options,
-        current_fix_id=str(data.get("current_fix_id", "wakeful-drift")),
-        plotted_route_id=_optional_str(data.get("plotted_route_id")),
-        last_jump_route_id=_optional_str(data.get("last_jump_route_id")),
+        current_fix_id=current_fix_id,
+        plotted_route_id=plotted_route_id,
+        last_jump_route_id=last_jump_route_id,
+        completed_route_ids=completed_route_ids,
         manual_plots=int(data.get("manual_plots", 0)),
         delegated_plots=int(data.get("delegated_plots", 0)),
         jumps_executed=int(data.get("jumps_executed", 0)),
         total_dark_exposure=int(data.get("total_dark_exposure", 0)),
     )
+
+
+def _migrated_plotted_route_id(route_id: str | None, current_fix_id: str) -> str | None:
+    if route_id is None:
+        return None
+    legacy_depth = {
+        "khepri-4": "shallow",
+        "khepri-4-medium": "medium",
+        "khepri-4-deep": "deep",
+        "argos-12-shallow": "shallow",
+        "argos-12": "medium",
+        "argos-12-deep": "deep",
+        "carina-edge-shallow": "shallow",
+        "carina-edge-medium": "medium",
+        "carina-edge": "deep",
+        "short": "shallow",
+        "shallow": "shallow",
+        "medium": "medium",
+        "long": "deep",
+        "deep": "deep",
+    }.get(route_id)
+    if legacy_depth is None:
+        return route_id
+    option = NavigationState(current_fix_id=current_fix_id).option_by_depth(legacy_depth)
+    return None if option is None else option.route_id
 
 
 def _spatial_from_data(data: object) -> SpatialState:

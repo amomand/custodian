@@ -295,7 +295,7 @@ def _system_prompt() -> str:
         + "Use raw when the player asks for raw telemetry, numbers, bands, or the panel.\n"
         + "For raw, set args.target to coolant, cryo, mission, nav, or schematic. For delegate, set args.target to coolant, cryo, or nav.\n"
         + "Default ambiguous delegation to coolant unless the player mentions sleepers, pods, banks, cryostasis, route, nav, or navigation.\n"
-        + "For plot, args.route_id must be short, medium, deep, khepri-4, argos-12, or carina-edge.\n"
+        + "For plot, args.route_id may be a depth key (short, medium, deep) for the open route leg, or a star plus depth such as khepri-4 shallow, argos-12 medium, or carina-edge deep.\n"
         + "Use jump when the player asks to execute, commit, or initiate the plotted route.\n"
         + "For seal, abandon, and reroute, args.sector_id must be bridge, cryo-1-3, thermal-ring, maintenance-d, cargo-spine, hydroponics, or arka.\n"
         + "Use delegate when the player asks arka/you to handle coolant, cryostasis, or navigation, fix it, take over, or automate.\n"
@@ -346,18 +346,12 @@ def _intent_from_model_data(data: Any) -> Intent:
         args = {}
 
     if action == "plot":
-        route_id = args.get("route_id", "")
-        if route_id not in {
-            "short",
-            "medium",
-            "deep",
-            "long",
-            "khepri-4",
-            "argos-12",
-            "carina-edge",
-        }:
+        route_id = _known_route_id(args.get("route_id", ""))
+        if route_id is None:
             action = "converse"
             args = {}
+        else:
+            args["route_id"] = route_id
 
     if action == "jump":
         args = {}
@@ -770,14 +764,17 @@ def _mission_pressure_label(state: ShipState) -> str:
 
 
 def _navigation_status_label(state: ShipState) -> str:
-    plotted = state.navigation.plotted_route
-    fix = state.navigation.current_fix.label
+    nav = state.navigation
+    plotted = nav.plotted_route
+    fix = nav.current_fix.label
+    next_fix = nav.next_fix
+    leg = "route chain complete" if next_fix is None else f"open leg to {next_fix.label}"
     if plotted is None:
-        return f"current fix {fix}, no route plotted"
+        return f"current fix {fix}, {leg}, no route plotted"
     suffix = "no jump executed"
-    if state.navigation.last_jump_route is not None:
+    if nav.last_jump_route is not None:
         suffix = "previous jump recorded"
-    return f"current fix {fix}, {plotted.jump_class} route plotted, {suffix}"
+    return f"current fix {fix}, {leg}, {plotted.jump_class} route plotted, {suffix}"
 
 
 def _schematic_status_label(state: ShipState) -> str:
@@ -903,19 +900,65 @@ def _route_plot_id(command: str) -> str | None:
     if route is None:
         return None
 
+    return _known_route_id(route)
+
+
+def _known_route_id(value: str) -> str | None:
+    route = _normalise_route_key(value)
     mapping = {
         "short": "short",
+        "shallow": "short",
         "khepri": "khepri-4",
         "khepri-4": "khepri-4",
+        "khepri shallow": "khepri-4",
+        "khepri-4 shallow": "khepri-4",
+        "shallow khepri": "khepri-4",
+        "shallow khepri-4": "khepri-4",
+        "khepri medium": "khepri-4-medium",
+        "khepri-4 medium": "khepri-4-medium",
+        "medium khepri": "khepri-4-medium",
+        "medium khepri-4": "khepri-4-medium",
+        "khepri deep": "khepri-4-deep",
+        "khepri-4 deep": "khepri-4-deep",
+        "deep khepri": "khepri-4-deep",
+        "deep khepri-4": "khepri-4-deep",
         "medium": "medium",
         "argos": "argos-12",
         "argos-12": "argos-12",
+        "argos shallow": "argos-12-shallow",
+        "argos-12 shallow": "argos-12-shallow",
+        "shallow argos": "argos-12-shallow",
+        "shallow argos-12": "argos-12-shallow",
+        "argos medium": "argos-12",
+        "argos-12 medium": "argos-12",
+        "medium argos": "argos-12",
+        "medium argos-12": "argos-12",
+        "argos deep": "argos-12-deep",
+        "argos-12 deep": "argos-12-deep",
+        "deep argos": "argos-12-deep",
+        "deep argos-12": "argos-12-deep",
         "long": "deep",
         "deep": "deep",
         "carina": "carina-edge",
         "carina-edge": "carina-edge",
+        "carina shallow": "carina-edge-shallow",
+        "carina-edge shallow": "carina-edge-shallow",
+        "shallow carina": "carina-edge-shallow",
+        "shallow carina-edge": "carina-edge-shallow",
+        "carina medium": "carina-edge-medium",
+        "carina-edge medium": "carina-edge-medium",
+        "medium carina": "carina-edge-medium",
+        "medium carina-edge": "carina-edge-medium",
+        "carina deep": "carina-edge",
+        "carina-edge deep": "carina-edge",
+        "deep carina": "carina-edge",
+        "deep carina-edge": "carina-edge",
     }
     return mapping.get(route)
+
+
+def _normalise_route_key(value: str) -> str:
+    return " ".join(value.strip().lower().replace("_", " ").split())
 
 
 def _sector_action(command: str) -> tuple[str, str] | None:
@@ -1185,16 +1228,26 @@ _KNOWN_COMMANDS = (
     "release navigation",
     "take back coolant",
     "resume coolant",
+    "plot shallow",
     "plot short",
     "plot medium",
     "plot long",
     "plot deep",
     "plot khepri",
     "plot khepri-4",
+    "plot khepri-4 shallow",
+    "plot khepri-4 medium",
+    "plot khepri-4 deep",
     "plot argos",
     "plot argos-12",
+    "plot argos-12 shallow",
+    "plot argos-12 medium",
+    "plot argos-12 deep",
     "plot carina",
     "plot carina-edge",
+    "plot carina-edge shallow",
+    "plot carina-edge medium",
+    "plot carina-edge deep",
     "jump",
     "execute jump",
     "execute route",

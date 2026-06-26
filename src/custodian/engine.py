@@ -193,13 +193,17 @@ class GameEngine:
                 prior=state,
             )
         if intent.action == "delegate":
-            delegated_state, messages = self._delegate_to_arka(
+            delegated_state, messages, delegated = self._delegate_to_arka(
                 state, intent.args.get("target", "coolant")
             )
+            if not delegated:
+                return StepResult(state, correction + messages)
             return self._advance(delegated_state, correction + messages, prior=state)
         if intent.action == "plot":
             route_id = intent.args.get("route_id", "")
-            plotted_state, messages = self._manual_route_plot(state, route_id)
+            plotted_state, messages, plotted = self._manual_route_plot(state, route_id)
+            if not plotted:
+                return StepResult(state, correction + messages)
             return self._advance(plotted_state, correction + messages, prior=state)
         if intent.action == "jump":
             jumped_state, messages, executed = self._execute_jump(state)
@@ -278,7 +282,7 @@ class GameEngine:
             reply = intent.reply or (
                 "arka: I can file that under psychological maintenance, but the ship "
                 "accepts status, raw, delegate, manual coolant controls, cryostasis work, "
-                "route plotting, and jump execution."
+                "plotting a star and jump depth, and jump execution."
             )
             return StepResult(state, correction + (reply,))
 
@@ -292,7 +296,7 @@ class GameEngine:
             (
                 "arka: I can file that under psychological maintenance, but the ship console "
                 "accepts status, raw, delegate, pump up, pump down, vent, flush, balance, "
-                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot short, jump, wait.",
+                "stabilise bank, reroute chill, cycle pods, triage, raw nav, plot medium, jump, wait.",
             ),
         )
 
@@ -380,17 +384,25 @@ class GameEngine:
 
     def _delegate_to_arka(
         self, state: ShipState, target: str
-    ) -> tuple[ShipState, tuple[str, ...]]:
+    ) -> tuple[ShipState, tuple[str, ...], bool]:
         if target in {"nav", "navigation"}:
             return self._delegate_navigation_to_arka(state)
         if target == "cryo":
-            return self._delegate_cryo_to_arka(state)
-        return self._delegate_coolant_to_arka(state)
+            delegated_state, messages = self._delegate_cryo_to_arka(state)
+            return delegated_state, messages, True
+        delegated_state, messages = self._delegate_coolant_to_arka(state)
+        return delegated_state, messages, True
 
     def _delegate_navigation_to_arka(
         self, state: ShipState
-    ) -> tuple[ShipState, tuple[str, ...]]:
+    ) -> tuple[ShipState, tuple[str, ...], bool]:
         option = _arka_route_recommendation(state)
+        if option is None:
+            return (
+                state,
+                ("arka: the route chain is already through the last fix.",),
+                False,
+            )
         navigation = replace(
             state.navigation,
             plotted_route_id=option.route_id,
@@ -403,18 +415,26 @@ class GameEngine:
                 delegated_controls=state.delegated_controls + 1,
             ),
             (_arka_route_plot_line(state, option),),
+            True,
         )
 
     def _manual_route_plot(
         self, state: ShipState, route_id: str
-    ) -> tuple[ShipState, tuple[str, ...]]:
+    ) -> tuple[ShipState, tuple[str, ...], bool]:
         option = _route_option(state.navigation, route_id)
         if option is None:
+            next_fix = state.navigation.next_fix
+            hint = (
+                "The route chain is already through the last fix."
+                if next_fix is None
+                else f"The open leg is for {next_fix.label}; choose its depth."
+            )
             return (
                 state,
                 (
-                    "arka: route key not found. Available candidates are short, medium, and deep.",
+                    f"arka: I cannot hold that solution from here. {hint}",
                 ),
+                False,
             )
 
         navigation = replace(
@@ -425,8 +445,10 @@ class GameEngine:
         return (
             replace(state, navigation=navigation),
             (
-                f"You plot {option.label} by hand. The solution holds, ugly but yours.",
+                f"You plot {option.label} at {option.jump_class} depth by hand. "
+                "The solution holds, ugly but yours.",
             ),
+            True,
         )
 
     def _execute_jump(self, state: ShipState) -> tuple[ShipState, tuple[str, ...], bool]:
@@ -435,6 +457,15 @@ class GameEngine:
             return (
                 state,
                 ("arka: no route is plotted. Give me a solution, or make one yourself.",),
+                False,
+            )
+        if not state.navigation.is_option_active(option):
+            return (
+                state,
+                (
+                    "arka: that solution is no longer on the open leg. "
+                    "Plot the next fix before you commit.",
+                ),
                 False,
             )
 
@@ -457,9 +488,13 @@ class GameEngine:
         ).clamped()
         navigation = replace(
             state.navigation,
-            current_fix_id=option.route_id,
+            current_fix_id=option.destination_fix_id,
             plotted_route_id=None,
             last_jump_route_id=option.route_id,
+            completed_route_ids=(
+                *state.navigation.completed_route_ids,
+                option.route_id,
+            ),
             jumps_executed=state.navigation.jumps_executed + 1,
             total_dark_exposure=(
                 state.navigation.total_dark_exposure + option.dark_exposure
@@ -481,7 +516,7 @@ class GameEngine:
         return (
             jumped,
             (
-                f"You commit {option.label}. The ship folds itself through the plotted gap.",
+                f"You commit {_route_display_label(option)}. The ship folds itself through the plotted gap.",
                 (
                     f"NAVIGATION jump applied: {option.distance_label} closed, "
                     f"{option.elapsed_days} mission days spent, Dark exposure {option.dark_exposure}."
@@ -1121,9 +1156,10 @@ def _spatial_jump_line(before: SpatialState, after: SpatialState) -> str:
 
 
 def _jump_focus_sector(option: RouteOption) -> str:
-    if option.route_id == "khepri-4":
+    destination = option.destination_fix_id
+    if destination == "khepri-4":
         return "cargo-spine"
-    if option.route_id == "argos-12":
+    if destination == "argos-12":
         return "hydroponics"
     return "maintenance-d"
 
@@ -1412,18 +1448,19 @@ def _control_sector_id(action: str) -> str | None:
     }.get(action)
 
 
-def _arka_route_recommendation(state: ShipState) -> RouteOption:
+def _arka_route_recommendation(state: ShipState) -> RouteOption | None:
     return _recommended_route(state.navigation, drift_stage(state))
 
 
-def _recommended_route(navigation: NavigationState, stage: DriftStage) -> RouteOption:
-    route_id = "argos-12"
+def _recommended_route(
+    navigation: NavigationState, stage: DriftStage
+) -> RouteOption | None:
+    depth = "medium"
     if stage in {DriftStage.SELECTIVE, DriftStage.WRONG}:
-        route_id = "carina-edge"
-    option = navigation.option_by_id(route_id)
-    if option is None:
-        option = navigation.options[0]
-    return option
+        depth = "deep"
+    return navigation.option_by_depth(depth) or (
+        navigation.active_route_options[0] if navigation.active_route_options else None
+    )
 
 
 # ---- Standing delegation ----
@@ -1618,6 +1655,8 @@ def _standing_nav_adjustment(
     if navigation.plotted_route_id is not None:
         return navigation, False
     option = _recommended_route(navigation, stage)
+    if option is None:
+        return navigation, False
     return (
         replace(
             navigation,
@@ -1630,7 +1669,7 @@ def _standing_nav_adjustment(
 
 def _standing_nav_line(navigation: NavigationState, stage: DriftStage) -> str:
     plotted = navigation.plotted_route
-    label = "a route" if plotted is None else plotted.label
+    label = "a route" if plotted is None else _route_display_label(plotted)
     if stage in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}:
         return f"arka: standing watch — {label} is plotted and ready when you want the jump."
     return f"arka: standing watch — {label} is ready. Efficient. Say the word."
@@ -1783,20 +1822,21 @@ def _arka_route_plot_line(state: ShipState, option: RouteOption) -> str:
     stage = drift_stage(state)
     if stage == DriftStage.ACCURATE:
         return (
-            f"arka: I have {option.label} plotted: {option.jump_class} route, "
+            f"arka: I have {_route_display_label(option)} plotted: "
             f"{option.elapsed_days} days, instability {option.instability_pct}%."
         )
     if stage == DriftStage.INTERPRETIVE:
         return (
-            f"arka: I have {option.label} plotted. It is the least theatrical compromise."
+            f"arka: I have {_route_display_label(option)} plotted. "
+            "It is the least theatrical compromise."
         )
     if stage == DriftStage.SELECTIVE:
         return (
-            f"arka: I have {option.label} plotted. Fast arrival, light wear. "
+            f"arka: I have {_route_display_label(option)} plotted. Fast arrival, light wear. "
             "The rest is navigational texture."
         )
     return (
-        f"arka: I have {option.label} plotted. Low-risk arrival correction. "
+        f"arka: I have {_route_display_label(option)} plotted. Low-risk arrival correction. "
         "The Dark remains outside."
     )
 
@@ -1813,20 +1853,78 @@ def _arka_jump_line(state: ShipState, option: RouteOption) -> str:
 
 
 def _route_option(navigation: NavigationState, route_id: str) -> RouteOption | None:
-    normalised = route_id.strip().lower()
-    aliases = {
-        "short": "khepri-4",
+    normalised = _normalise_route_key(route_id)
+    direct = navigation.option_by_id(normalised)
+    if direct is not None and navigation.is_option_active(direct):
+        return direct
+
+    depth = _route_depth_alias(normalised)
+    if depth is not None:
+        return navigation.option_by_depth(depth)
+
+    destination = _route_destination_alias(normalised)
+    if destination is not None:
+        return navigation.option_by_destination_and_depth(
+            destination,
+            _default_depth_for_destination(destination),
+        )
+
+    parts = normalised.split()
+    if len(parts) < 2:
+        return None
+    first_depth = _route_depth_alias(parts[0])
+    last_depth = _route_depth_alias(parts[-1])
+    if first_depth is not None:
+        destination = _route_destination_alias(" ".join(parts[1:]))
+        depth = first_depth
+    elif last_depth is not None:
+        destination = _route_destination_alias(" ".join(parts[:-1]))
+        depth = last_depth
+    else:
+        return None
+    if destination is None:
+        return None
+    return navigation.option_by_destination_and_depth(destination, depth)
+
+
+def _route_display_label(option: RouteOption) -> str:
+    return f"{option.label} {option.jump_class}"
+
+
+def _route_depth_alias(value: str) -> str | None:
+    return {
+        "short": "shallow",
+        "shallow": "shallow",
+        "medium": "medium",
+        "long": "deep",
+        "deep": "deep",
+    }.get(value)
+
+
+def _route_destination_alias(value: str) -> str | None:
+    return {
         "khepri": "khepri-4",
+        "khepri 4": "khepri-4",
         "khepri-4": "khepri-4",
-        "medium": "argos-12",
         "argos": "argos-12",
+        "argos 12": "argos-12",
         "argos-12": "argos-12",
-        "long": "carina-edge",
-        "deep": "carina-edge",
         "carina": "carina-edge",
+        "carina edge": "carina-edge",
         "carina-edge": "carina-edge",
-    }
-    return navigation.option_by_id(aliases.get(normalised, normalised))
+    }.get(value)
+
+
+def _default_depth_for_destination(destination: str) -> str:
+    return {
+        "khepri-4": "shallow",
+        "argos-12": "medium",
+        "carina-edge": "deep",
+    }.get(destination, "medium")
+
+
+def _normalise_route_key(value: str) -> str:
+    return " ".join(value.strip().lower().replace("_", " ").split())
 
 
 def _apply_cryo_losses(state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
@@ -2133,7 +2231,9 @@ def _handle_dev_command(state: ShipState, command_text: str) -> StepResult | Non
                 f"distance remaining tenths ly: {state.mission.distance_remaining_tenths_ly}",
                 f"ship wear pct: {state.mission.ship_wear_pct}",
                 f"cryo decay pct: {state.mission.cryo_decay_pct}",
+                f"active route stage: {state.navigation.active_stage_index}",
                 f"plotted route: {state.navigation.plotted_route_id or 'none'}",
+                f"completed routes: {', '.join(state.navigation.completed_route_ids) or 'none'}",
                 f"manual route plots: {state.navigation.manual_plots}",
                 f"delegated route plots: {state.navigation.delegated_plots}",
                 f"sealed sectors: {state.spatial.sealed_count}",
@@ -2184,9 +2284,12 @@ def _help_lines() -> tuple[str, ...]:
         "raw nav          detailed route telemetry",
         "schematic        quick sector readout",
         "raw schematic    detailed sector signal and controls",
-        "plot short       manually plot the short route",
-        "plot medium      manually plot the medium route",
-        "plot deep        manually plot the deep route",
+        "plot short       slower, safer depth for the open leg",
+        "plot shallow     same as plot short",
+        "plot medium      manually plot the open leg at medium depth",
+        "plot deep        faster, darker depth for the open leg",
+        "plot khepri-4 shallow",
+        "                 explicit star/depth form when that leg is open",
         "jump             execute the plotted route",
         "seal thermal     isolate a physical sector",
         "abandon cargo    write off a physical sector",

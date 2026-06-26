@@ -22,6 +22,7 @@ class UiSnapshotTests(unittest.TestCase):
     def test_normal_snapshot_projects_renderable_panels_without_hidden_values(self) -> None:
         state = ShipState(
             navigation=NavigationState(
+                current_fix_id="khepri-4",
                 plotted_route_id="argos-12",
                 last_jump_route_id="khepri-4",
                 jumps_executed=1,
@@ -34,7 +35,7 @@ class UiSnapshotTests(unittest.TestCase):
             transcript_tail=(
                 "RAW NAVIGATION SOLUTIONS",
                 "dark_exposure_total  4",
-                "KHEPRI-4            short     1.8 ly   126 d    4      6%    +3    +3",
+                "KHEPRI-4          shallow   1.8 ly   126 d    4      6%    +3    +3",
                 "NAVIGATION jump applied: 1.8 ly closed, 126 mission days spent, Dark exposure 4.",
             ),
         ).to_dict()
@@ -48,10 +49,8 @@ class UiSnapshotTests(unittest.TestCase):
         self.assertIn("raw_panels", snapshot)
         self.assertIn("actions", snapshot)
         self.assertEqual(snapshot["navigation"]["exposure_band"], "low")
-        self.assertEqual(
-            snapshot["navigation"]["route_options"][1]["exposure_band"],
-            "moderate",
-        )
+        routes = {route["id"]: route for route in snapshot["navigation"]["route_options"]}
+        self.assertEqual(routes["argos-12"]["exposure_band"], "moderate")
         self.assertIn("exposure_band        low", encoded)
         self.assertIn("exposure band low", encoded)
         self.assertNotIn("dark_exposure", encoded)
@@ -92,7 +91,8 @@ class UiSnapshotTests(unittest.TestCase):
 
         self.assertEqual(by_id["delegate-coolant"]["command"], "delegate coolant")
         self.assertEqual(by_id["manual-balance"]["command"], "balance")
-        self.assertEqual(by_id["plot-argos-12"]["command"], "plot medium")
+        self.assertEqual(by_id["plot-khepri-4-medium"]["command"], "plot khepri-4 medium")
+        self.assertNotIn("plot-argos-12", by_id)
         self.assertFalse(by_id["execute-jump"]["enabled"])
         self.assertEqual(by_id["execute-jump"]["reason"], "no route plotted")
         self.assertFalse(by_id["seal-bridge"]["enabled"])
@@ -251,7 +251,12 @@ class UiSnapshotTests(unittest.TestCase):
 
         for state in (
             ShipState(),
-            ShipState(navigation=NavigationState(plotted_route_id="argos-12")),
+            ShipState(
+                navigation=NavigationState(
+                    current_fix_id="khepri-4",
+                    plotted_route_id="argos-12",
+                )
+            ),
             # A standing delegation flips assign specs to release specs, so this
             # state exercises the "release coolant" command path too.
             ShipState(behaviour=BehaviourLedger(standing_delegations=("coolant",))),
@@ -375,19 +380,31 @@ class UiSnapshotTests(unittest.TestCase):
             self.assertNotIn("arka", action["command"])
 
     def test_route_options_project_distinct_qualitative_bands(self) -> None:
-        # Short, medium, and deep routes must read differently: the route display
-        # leads with ascending exposure / instability bands, not a flat table.
+        # The route display separates destination stars from depth. Deeper
+        # variants on the same star must read as riskier, not as duplicate cards.
         nav = project_ui_snapshot(ShipState()).to_dict()["navigation"]
         options = nav["route_options"]
 
-        self.assertEqual([o["jump_class"] for o in options], ["short", "medium", "deep"])
+        self.assertEqual(len(options), 9)
         self.assertEqual(
-            [o["exposure_band"] for o in options], ["low", "moderate", "high"]
+            sorted({o["label"] for o in options}),
+            ["ARGOS-12", "CARINA-EDGE", "KHEPRI-4"],
         )
-        instabilities = [o["instability_pct"] for o in options]
-        self.assertEqual(instabilities, sorted(instabilities))
-        self.assertLess(instabilities[0], instabilities[-1])
+        for label in {"KHEPRI-4", "ARGOS-12", "CARINA-EDGE"}:
+            variants = [o for o in options if o["label"] == label]
+            self.assertEqual(
+                [o["jump_class"] for o in variants], ["shallow", "medium", "deep"]
+            )
+            instabilities = [o["instability_pct"] for o in variants]
+            self.assertEqual(instabilities, sorted(instabilities))
+            self.assertLess(instabilities[0], instabilities[-1])
         self.assertTrue(nav["current_fix_label"])
+        self.assertEqual(nav["next_fix_label"], "KHEPRI-4")
+        self.assertEqual(
+            [o["is_active"] for o in options if o["label"] == "KHEPRI-4"],
+            [True, True, True],
+        )
+        self.assertTrue(all(o["is_locked"] for o in options if o["label"] != "KHEPRI-4"))
 
     def test_corruption_keeps_a_textual_equivalent_for_every_sector(self) -> None:
         # Visual corruption is allowed to degrade a sector's appearance, but never

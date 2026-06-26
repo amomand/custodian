@@ -511,13 +511,16 @@ The player can perform manual actions from here without typing.
 
 #### Route planning display
 
-Show the current fix and route options as a graph.
+Show the current fix and staged route options as a graph.
 
-Route options should include:
+Route options should separate the open route leg from jump depth:
 
-- short route: more time, lower immediate exposure,
-- medium route: balanced,
-- deep route: fast, high exposure.
+- shallow depth: more time, lower immediate exposure,
+- medium depth: balanced,
+- deep depth: fast, high exposure.
+
+Fixes provide topology and progress through the route graph; depth provides the
+risk/speed lever for each open leg.
 
 Do not present route choice as a simple expected-value table. Use bands, confidence, and incomplete data. Raw nav can expose more detail, but not a perfect answer.
 
@@ -1791,7 +1794,7 @@ Implement Phase 4.3 from docs/production/codex-direction-phase4.md.
 
 Goal: add graphical ship schematic and route display.
 
-Use existing SpatialState and NavigationState. Render qualitative sector symptoms and route options. Add controls for seal/reroute/abandon and plot/execute route where already supported by the engine. Do not expose a Dark percentage. Make sure arka cannot be spatially contained.
+Use existing SpatialState and NavigationState. Render qualitative sector symptoms and staged route options. Add controls for seal/reroute/abandon and plot/execute route where already supported by the engine. Do not expose a Dark percentage. Make sure arka cannot be spatially contained.
 
 Add tests for snapshot projection, containment actions, and route display data.
 ```
