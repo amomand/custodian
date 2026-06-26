@@ -1,6 +1,6 @@
 import unittest
 
-from custodian.models import ShipState
+from custodian.models import BehaviourLedger, ShipState, StoryState
 from custodian.narrative import boot_lines, closing_lines, opening_lines
 
 
@@ -48,6 +48,53 @@ class NarrativeTests(unittest.TestCase):
         self.assertIn("make arka work for your trust", debrief)
         self.assertNotIn("manual_familiarity", debrief)
         self.assertNotIn("delegated_controls", debrief)
+
+    def test_wrong_drift_close_keeps_sting_for_heavy_reliance(self) -> None:
+        state = ShipState(
+            turn=13,
+            delegated_controls=8,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka: We should write the same report. It will save time.", debrief)
+
+    def test_manual_arrival_verification_gets_separate_report_close(self) -> None:
+        state = ShipState(
+            turn=13,
+            raw_inspections=3,
+            outcome="The ship reaches its destination fix.",
+            behaviour=BehaviourLedger(contradictions_caught=1),
+            story=StoryState(arrival_verification="manual"),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arrival: you confirmed the arrival fix with your own hands.", debrief)
+        self.assertIn("vigilance: you caught arka out once", debrief)
+        self.assertIn("arka: Keep your report close. It may be useful later.", debrief)
+        self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
+
+    def test_wrong_drift_without_reliance_uses_normal_survival_close(self) -> None:
+        state = ShipState(
+            turn=13,
+            manual_familiarity=6,
+            cryo_familiarity=3,
+            delegated_controls=1,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka: There. Warm ship, cold sleepers, tolerable morning.", debrief)
+        self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
 
     def test_catastrophic_failure_has_no_arrival_debrief(self) -> None:
         state = ShipState(outcome="Reactor temperature exceeds containment.")
