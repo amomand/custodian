@@ -116,6 +116,21 @@ class ArkaTests(unittest.TestCase):
         self.assertIn("not asking loudly yet", summary)
         self.assertNotIn("under strain", summary)
 
+    def test_interpretive_cryo_summary_marks_moderate_distress(self) -> None:
+        state = ShipState(
+            turn=5,
+            cryostasis=CryostasisSystem(
+                bank_temperature_c=-169,
+                neural_stability_pct=75,
+            ),
+        )
+
+        summary = summarize_cryostasis(state)
+
+        self.assertIn("banks are complaining", summary)
+        self.assertNotIn("not asking loudly yet", summary)
+        self.assertNotIn("under strain", summary)
+
     def test_interpretive_cryo_summary_escalates_for_severe_distress(self) -> None:
         state = ShipState(
             turn=5,
