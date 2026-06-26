@@ -502,6 +502,29 @@ class EngineTests(unittest.TestCase):
         self.assertIsNotNone(novice.crisis)
         self.assertIsNone(practised.crisis)
 
+    def test_thermal_runaway_event_does_not_overclaim_alarm_count(self) -> None:
+        state = ShipState(
+            turn=9,
+            reactor=ReactorCoolantSystem(
+                temperature_c=608,
+                pressure_kpa=232,
+                flow_lps=93,
+                impurity_pct=12,
+                valve_skew_pct=12,
+                coolant_reserve_pct=70,
+            ),
+            manual_familiarity=5,
+        )
+
+        result = self.engine.handle(state, "cycle pods")
+        output = "\n".join(result.messages)
+
+        self.assertIn("Coolant alarms cascade across the board", output)
+        self.assertNotIn("Every coolant alarm", output)
+        self.assertIn("PRESS     253 kPa       OK", output)
+        self.assertIn("FLOW      81 L/s        OK", output)
+        self.assertIn("RESERVE   70%           OK", output)
+
     def test_playable_practised_route_can_complete_window(self) -> None:
         state = self.engine.initial_state()
         route = [

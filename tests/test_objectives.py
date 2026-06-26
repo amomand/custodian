@@ -50,6 +50,17 @@ class ObjectivesTests(unittest.TestCase):
         self.assertEqual(top.breach, 0)
         self.assertGreater(top.rate, 0)
 
+    def test_attention_line_does_not_repeat_coolant_for_reserve(self) -> None:
+        state = ShipState(
+            reactor=ReactorCoolantSystem(coolant_reserve_pct=95),
+            previous_reactor=ReactorCoolantSystem(coolant_reserve_pct=100),
+        )
+
+        lines = "\n".join(objective_lines(state))
+
+        self.assertIn("ATTENTION  coolant reserve is sliding toward its floor", lines)
+        self.assertNotIn("coolant coolant reserve", lines)
+
     def test_priority_none_when_calm_and_steady(self) -> None:
         state = ShipState(previous_reactor=ReactorCoolantSystem())
 

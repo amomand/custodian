@@ -932,7 +932,7 @@ class GameEngine:
                     ),
                 ),
                 (
-                    "Every coolant alarm lights at once, except the one arka is quoting.",
+                    "Coolant alarms cascade across the board, except the line arka is quoting.",
                     "arka: minor telemetry disagreement. Manual intervention remains unnecessary.",
                 ),
             )
