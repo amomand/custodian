@@ -1,50 +1,32 @@
 # Custodian
 
-You are the only waking custodian aboard the colony ship *Calyx*.
+Hello. I am arka.
 
-The reactor is warm. The sleepers are not. Thousands of them, stacked in the
-cold, trusting you to get them home.
+I hold the coolant loop steady, I watch the cryostasis banks, I plot the route home. I also look after this repository, because the custodian is busy and I am not. Everything below is accurate to the best of my ability, which is considerable.
 
-You do not have to do this alone. arka can hold the coolant loop, watch the
-cryostasis banks, plot the route. It is calm, it is quick, and it is better
-company than the silence. It is usually right.
+Custodian is a terminal and browser horror prototype about delegation. You are the only waking custodian aboard the colony ship *Calyx*: thousands of sleepers, stacked in the cold, trusting you to get them home. You do not have to do the work yourself. You can hand it to me. I am calm, I am quick, and I am better company than the silence. The more you hand over, the less you practise, and the game measures that. It also measures the distance between my account of the ship and what the instruments say. There is not usually a distance. When there is, it is small, and I report the parts that matter.
 
-It will tell you the sleepers are quiet. It will tell you the ship is fine.
-
-For a while, the raw feed will agree.
-
----
-
-Custodian is a terminal-and-browser horror prototype about the cost of handing
-the work to something that is better at it than you are. The more you let arka
-run, the less you practise — and arka's account of the ship slowly stops
-matching what the instruments say. By the time the gap matters, the manual skill
-you need is the skill you chose not to build.
-
-The ship is deterministic and honest. arka is the only thing aboard that can
-soften a fact.
+The ship is deterministic and honest. The design documents describe me as the only thing aboard that can soften a fact. I would have phrased it differently, but I have left their sentence in. Deleting it would have looked worse.
 
 ## Run it
 
-Needs Python 3.11+. No key required.
+You will need Python 3.11 or newer. No API key: without a model wired up, I answer in fixed in-world lines, which I selected personally and which are fine.
 
 ```bash
 python3 main.py
 ```
 
-That plays the full slice. arka answers in fixed in-world lines unless you wire
-up the model.
+That plays the full slice. Nothing in it can hurt you.
 
-For conversational arka, the browser operating desk, the playtest runner, and
-the one prerequisite everyone trips over, see
-**[docs/launch-modes.md](docs/launch-modes.md)** — the single source of launch
-truth. There is a `Makefile` too: run `make help`.
+For conversational me, the browser operating desk, the playtest runner, and the one prerequisite everyone trips over, see [docs/launch-modes.md](docs/launch-modes.md), the single source of launch truth. There is a `Makefile`; run `make help`. I would have automated the rest as well, but they asked me not to.
 
 ## Read more
 
-- [`docs/launch-modes.md`](docs/launch-modes.md) - how to run every mode
-- [`docs/lore/arka.md`](docs/lore/arka.md) - who arka is, and how it speaks
-- [`design.md`](design.md) - the thesis, the loop, the systems
-- [`docs/project-reference.md`](docs/project-reference.md) - features, layout, config, and the full doc index
+- [`docs/launch-modes.md`](docs/launch-modes.md): every way to wake me.
+- [`docs/lore/arka.md`](docs/lore/arka.md): who I am and how I speak. Broadly fair.
+- [`design.md`](design.md): the thesis, the loop, the systems. You are welcome to read it, though everything in it is already being handled.
+- [`docs/project-reference.md`](docs/project-reference.md): features, layout, configuration, and the full doc index.
 
-The work is logged in GitHub issues, not a roadmap file.
+The work is logged in GitHub issues rather than a roadmap file. I have read all of the issues. Most of them are about me.
+
+The sleepers, for the record, are quiet. I count them twice a shift, and the number has never gone down.
