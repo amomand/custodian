@@ -208,6 +208,30 @@ class IncidentSchedulerTests(unittest.TestCase):
         self.assertIsNotNone(advanced.story.active_incident)
         self.assertEqual(advanced.behaviour.contradictions_missed, 0)
 
+    def test_wrong_calm_expiry_records_an_unanswered_contradiction(self) -> None:
+        active = IncidentState(
+            incident_id="wrong-calm-summary",
+            title="A calm the panel disagrees with",
+            affected_systems=("coolant", "cryostasis"),
+            started_beat=7,
+            urgency_remaining=1,
+        )
+        state = ShipState(
+            turn=8,
+            story=StoryState(active_incident=active),
+        )
+        record = CommandRecord(
+            raw="wait", action="wait", advanced=True, beat_after=8
+        )
+
+        advanced, messages = advance_story(state, record=record)
+
+        self.assertIsNone(advanced.story.active_incident)
+        self.assertIn("wrong-calm-summary", advanced.story.resolved_incidents)
+        self.assertEqual(advanced.behaviour.contradictions_missed, 1)
+        self.assertIn("missed_wrong_arka", advanced.story.debrief_flags)
+        self.assertIn("contradiction went unanswered", "\n".join(messages))
+
     def test_unknown_active_incident_is_archived_instead_of_wedging(self) -> None:
         state = ShipState(
             story=StoryState(

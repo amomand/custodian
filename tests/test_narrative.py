@@ -79,12 +79,16 @@ class NarrativeTests(unittest.TestCase):
         self.assertIn("arka: Keep your report close. It may be useful later.", debrief)
         self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
 
-    def test_wrong_drift_without_reliance_uses_normal_survival_close(self) -> None:
+    def test_wrong_drift_with_practised_manual_record_gets_independent_close(self) -> None:
         state = ShipState(
             turn=13,
             manual_familiarity=6,
             cryo_familiarity=3,
             delegated_controls=1,
+            behaviour=BehaviourLedger(
+                manual_by_system={"coolant": 6, "cryostasis": 5},
+                delegated_by_system={"coolant": 1},
+            ),
             outcome=(
                 "The reactor survives the maintenance window. "
                 "You are not sure arka agrees about how."
@@ -93,7 +97,7 @@ class NarrativeTests(unittest.TestCase):
 
         debrief = "\n".join(closing_lines(state))
 
-        self.assertIn("arka: There. Warm ship, cold sleepers, tolerable morning.", debrief)
+        self.assertIn("arka: Keep your report close. It may be useful later.", debrief)
         self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
 
     def test_catastrophic_failure_has_no_arrival_debrief(self) -> None:

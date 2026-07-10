@@ -191,6 +191,7 @@ def _player_kept_independent_record(state: ShipState) -> bool:
         or behaviour.arka_advice_overridden > 0
         or state.raw_inspections >= 3
         or behaviour.total_raw_inspections >= 3
+        or behaviour.total_manual_actions >= 4
     )
 
 
