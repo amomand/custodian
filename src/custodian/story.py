@@ -354,6 +354,18 @@ def _resolve_wrong_calm(
     return IncidentResolution()
 
 
+def _expire_wrong_calm(
+    state: ShipState, incident: IncidentState
+) -> IncidentResolution:
+    return IncidentResolution(
+        resolved=True,
+        debrief_flags=("missed_wrong_arka",),
+        outcome_tags=("missed",),
+        contradiction_missed=True,
+        messages=("The calm stood. The contradiction went unanswered.",),
+    )
+
+
 def _trigger_arrival_disagreement(state: ShipState) -> bool:
     return (
         state.mission.distance_remaining_tenths_ly <= 24
@@ -544,6 +556,7 @@ INCIDENTS: tuple[IncidentDef, ...] = (
             "RAW: the panel plainly contradicts arka's calm; confidence degraded but not erased.",
         ),
         resolve=_resolve_wrong_calm,
+        expiry=_expire_wrong_calm,
     ),
     IncidentDef(
         id="arrival-disagreement",

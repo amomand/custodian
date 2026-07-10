@@ -806,6 +806,10 @@ class GameEngine:
         if crisis is None:
             return state, ()
         if crisis.is_resolved:
+            if drift_stage(state) == DriftStage.WRONG:
+                return replace(state, crisis=None), (
+                    f"arka: {crisis.label.lower()} contained.",
+                )
             return replace(state, crisis=None), (
                 f"arka: {crisis.label.lower()} contained. I had several excellent suggestions.",
             )

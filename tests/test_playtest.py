@@ -103,6 +103,11 @@ class PlaytestTests(unittest.TestCase):
             state.navigation.manual_plots, state.navigation.delegated_plots
         )
         self.assertEqual(state.story.arrival_verification, "manual")
+        self.assertEqual(state.navigation.last_jump_route.jump_class, "deep")
+        self.assertNotEqual(
+            SCENARIOS["deep-route-fast-arrival"].commands,
+            SCENARIOS["arrival-verified"].commands,
+        )
         self.assertEqual(report.forbidden_hits, ())
 
     def test_short_route_cautious_decay_tracks_attrition(self) -> None:

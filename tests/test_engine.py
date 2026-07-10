@@ -497,10 +497,14 @@ class EngineTests(unittest.TestCase):
         novice = self.engine.handle(novice, "balance").state
         novice = self.engine.handle(novice, "flush").state
         practised = self.engine.handle(practised, "balance").state
-        practised = self.engine.handle(practised, "flush").state
+        practised_result = self.engine.handle(practised, "flush")
+        practised = practised_result.state
 
         self.assertIsNotNone(novice.crisis)
         self.assertIsNone(practised.crisis)
+        practised_output = "\n".join(practised_result.messages)
+        self.assertIn("thermal runaway contained.", practised_output)
+        self.assertNotIn("excellent suggestions", practised_output)
 
     def test_thermal_runaway_event_does_not_overclaim_alarm_count(self) -> None:
         state = ShipState(
