@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from custodian import app_shell
 from custodian.config import load_app_env
@@ -32,11 +33,20 @@ class AppEnvTests(unittest.TestCase):
         os.environ.clear()
         os.environ.update(self._environ)
 
+    def _load_app_env_hermetic(self, env_path: Path) -> None:
+        # Point _repo_root at an empty directory so a real checkout .env
+        # cannot influence the assertions.
+        with tempfile.TemporaryDirectory() as fake_root:
+            with mock.patch(
+                "custodian.config._repo_root", return_value=Path(fake_root)
+            ):
+                load_app_env(env_path)
+
     def test_load_app_env_reads_app_support_dotenv(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             env_path = Path(tmp) / ".env"
             env_path.write_text(f"{self._sentinel}=from-app-support\n", encoding="utf-8")
-            load_app_env(env_path)
+            self._load_app_env_hermetic(env_path)
         self.assertEqual(os.environ.get(self._sentinel), "from-app-support")
 
     def test_load_app_env_never_overrides_real_environment(self) -> None:
@@ -44,9 +54,9 @@ class AppEnvTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             env_path = Path(tmp) / ".env"
             env_path.write_text(f"{self._sentinel}=from-app-support\n", encoding="utf-8")
-            load_app_env(env_path)
+            self._load_app_env_hermetic(env_path)
         self.assertEqual(os.environ.get(self._sentinel), "from-environment")
 
     def test_load_app_env_tolerates_missing_file(self) -> None:
-        load_app_env(Path("/nonexistent/custodian/.env"))
+        self._load_app_env_hermetic(Path("/nonexistent/custodian/.env"))
         self.assertIsNone(os.environ.get(self._sentinel))
