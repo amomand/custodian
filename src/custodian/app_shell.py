@@ -33,16 +33,21 @@ class MissingWebAssets(RuntimeError):
     pass
 
 
-def find_web_assets() -> Path:
-    """Return the operating desk asset directory, or raise if it is missing.
+REQUIRED_WEB_ASSETS = ("index.html", "app.js", "styles.css")
 
-    Kept as a separate step so a frozen/bundled build that mislays
-    web_static fails loudly at launch instead of serving 404s.
+
+def find_web_assets() -> Path:
+    """Return the operating desk asset directory, or raise if incomplete.
+
+    Kept as a separate step so a frozen/bundled build that mislays any of
+    web_static fails loudly at launch instead of serving a broken desk.
     """
-    index = STATIC_ROOT / "index.html"
-    if not index.is_file():
+    missing = [
+        name for name in REQUIRED_WEB_ASSETS if not (STATIC_ROOT / name).is_file()
+    ]
+    if missing:
         raise MissingWebAssets(
-            f"operating desk assets not found: expected {index}"
+            f"operating desk assets missing from {STATIC_ROOT}: {', '.join(missing)}"
         )
     return STATIC_ROOT
 
