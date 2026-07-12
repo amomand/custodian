@@ -30,6 +30,29 @@ def load_config(env_path: Path | None = None) -> Config:
     )
 
 
+def app_support_dir() -> Path:
+    """Custodian's config home for desktop-app launches. macOS-specific."""
+    return Path.home() / "Library" / "Application Support" / "Custodian"
+
+
+def load_app_env(app_env_path: Path | None = None) -> None:
+    """Load .env for desktop-app launches, where no repo checkout may exist.
+
+    Real environment variables always win, and a repo-root .env (when running
+    from source) wins over the app-support copy, because _load_dotenv never
+    overrides a key that is already set.
+    """
+    # _repo_root() only means "repo root" when running from a source
+    # checkout; installed or frozen builds land somewhere arbitrary, so
+    # only read .env there when it is recognisably this repo.
+    repo_root = _repo_root()
+    if (repo_root / "pyproject.toml").exists():
+        _load_dotenv(repo_root / ".env")
+    if app_env_path is None:
+        app_env_path = app_support_dir() / ".env"
+    _load_dotenv(app_env_path)
+
+
 def _load_dotenv(path: Path) -> None:
     if not path.exists():
         return
