@@ -42,7 +42,12 @@ def load_app_env(app_env_path: Path | None = None) -> None:
     from source) wins over the app-support copy, because _load_dotenv never
     overrides a key that is already set.
     """
-    _load_dotenv(_repo_root() / ".env")
+    # _repo_root() only means "repo root" when running from a source
+    # checkout; installed or frozen builds land somewhere arbitrary, so
+    # only read .env there when it is recognisably this repo.
+    repo_root = _repo_root()
+    if (repo_root / "pyproject.toml").exists():
+        _load_dotenv(repo_root / ".env")
     if app_env_path is None:
         app_env_path = app_support_dir() / ".env"
     _load_dotenv(app_env_path)

@@ -22,11 +22,15 @@ class AppShellAssetTests(unittest.TestCase):
 
 class AppEnvTests(unittest.TestCase):
     def setUp(self) -> None:
+        # load_app_env can pull arbitrary keys from a real repo .env, so
+        # snapshot the whole environment to keep the suite hermetic.
+        self._environ = os.environ.copy()
         self._sentinel = "CUSTODIAN_TEST_APP_ENV"
         os.environ.pop(self._sentinel, None)
 
     def tearDown(self) -> None:
-        os.environ.pop(self._sentinel, None)
+        os.environ.clear()
+        os.environ.update(self._environ)
 
     def test_load_app_env_reads_app_support_dotenv(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
