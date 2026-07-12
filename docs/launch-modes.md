@@ -82,8 +82,8 @@ source, and also `~/Library/Application Support/Custodian/.env` so a future
 packaged build works without a repo checkout. Real environment variables
 always win, then the repo `.env`, then the app-support copy.
 
-Packaging this into a double-clickable `.app` is a follow-up
-(issue #40); this mode is the source-run foundation for it.
+To build the double-clickable `dist/Custodian.app` version of this mode,
+see [packaging-macos.md](packaging-macos.md).
 
 ### Playtest runner
 
