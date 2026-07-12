@@ -61,6 +61,30 @@ PYTHONPATH=src python3 -m custodian.web_server --no-ai
 
 `--no-ai` forces deterministic arka for that server process.
 
+### Desktop app window (macOS)
+
+```bash
+python3 -m pip install pywebview   # one-off, or: pip install -e '.[app]'
+PYTHONPATH=src python3 -m custodian.app_shell
+```
+
+Opens the web operating desk in a native window, no browser and no manual
+server start. The shell starts the same loopback HTTP server as
+`custodian-web` on an OS-assigned port, so it never clashes with a manually
+launched web desk. Pass `--no-ai` for a deterministic run, same as the other
+modes.
+
+The window is only a wrapper: play, saves, and arka behaviour are identical
+to the browser desk. Saves still round-trip through the save buffer panel.
+
+For model-backed arka, the app reads a repo-root `.env` when running from
+source, and also `~/Library/Application Support/Custodian/.env` so a future
+packaged build works without a repo checkout. Real environment variables
+always win, then the repo `.env`, then the app-support copy.
+
+Packaging this into a double-clickable `.app` is a follow-up
+(issue #40); this mode is the source-run foundation for it.
+
 ### Playtest runner
 
 ```bash
@@ -90,6 +114,8 @@ make play        # terminal, model on
 make play-det    # terminal, deterministic
 make web         # web operating desk, model on
 make web-det     # web operating desk, deterministic
+make app         # desktop app window, model on (needs pywebview)
+make app-det     # desktop app window, deterministic
 make playtest    # playtest runner, all scenarios
 make test        # unit tests
 make check       # tests + compile + smoke checks (mirrors CI)

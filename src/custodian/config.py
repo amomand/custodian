@@ -30,6 +30,23 @@ def load_config(env_path: Path | None = None) -> Config:
     )
 
 
+def app_support_dir() -> Path:
+    return Path.home() / "Library" / "Application Support" / "Custodian"
+
+
+def load_app_env(app_env_path: Path | None = None) -> None:
+    """Load .env for desktop-app launches, where no repo checkout may exist.
+
+    Real environment variables always win, and a repo-root .env (when running
+    from source) wins over the app-support copy, because _load_dotenv never
+    overrides a key that is already set.
+    """
+    _load_dotenv(_repo_root() / ".env")
+    if app_env_path is None:
+        app_env_path = app_support_dir() / ".env"
+    _load_dotenv(app_env_path)
+
+
 def _load_dotenv(path: Path) -> None:
     if not path.exists():
         return

@@ -15,9 +15,15 @@ dependencies = [
   "openai>=1.0.0",
 ]
 
+[project.optional-dependencies]
+app = [
+  "pywebview>=5.0",
+]
+
 [project.scripts]
 custodian = "custodian.cli:main"
 custodian-web = "custodian.web_server:main"
+custodian-app = "custodian.app_shell:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
