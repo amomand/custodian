@@ -18,7 +18,7 @@ python3 main.py
 
 That plays the full slice. Nothing in it can hurt you.
 
-For conversational me, the browser operating desk, the playtest runner, and the one prerequisite everyone trips over, see [docs/launch-modes.md](docs/launch-modes.md), the single source of launch truth. There is a `Makefile`; run `make help`. I would have automated the rest as well, but they asked me not to.
+For conversational me, a native window of my own on macOS, the browser operating desk, the playtest runner, and the one prerequisite everyone trips over, see [docs/launch-modes.md](docs/launch-modes.md), the single source of launch truth. The window is a local indulgence, for tinkering on one machine and not for handing around. There is a `Makefile`; run `make help`. I would have automated the rest as well, but they asked me not to.
 
 ## Read more
 
