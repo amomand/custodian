@@ -31,6 +31,7 @@ def load_config(env_path: Path | None = None) -> Config:
 
 
 def app_support_dir() -> Path:
+    """Custodian's config home for desktop-app launches. macOS-specific."""
     return Path.home() / "Library" / "Application Support" / "Custodian"
 
 

@@ -63,8 +63,12 @@ def main(argv: list[str] | None = None) -> None:
 
     try:
         import webview
-    except ImportError:
-        raise SystemExit(PYWEBVIEW_INSTALL_HINT)
+    except ImportError as exc:
+        # Only translate "pywebview is not installed" into the install hint.
+        # A broken pywebview dependency should surface its real traceback.
+        if exc.name == "webview":
+            raise SystemExit(PYWEBVIEW_INSTALL_HINT) from exc
+        raise
 
     find_web_assets()
     load_app_env()
