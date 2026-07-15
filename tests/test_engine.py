@@ -514,7 +514,7 @@ class EngineTests(unittest.TestCase):
             practised_output,
         )
 
-    def test_crisis_contained_line_confirms_below_wrong_drift(self) -> None:
+    def test_crisis_contained_line_confirms_at_accurate_drift(self) -> None:
         crisis = CrisisState(
             kind="thermal_runaway",
             label="Thermal runaway",
