@@ -809,9 +809,10 @@ class GameEngine:
             label = crisis.label.lower()
             if drift_stage(state) == DriftStage.WRONG:
                 # WRONG arka called the loop stable and will not now confirm the
-                # player's manual save; that would let the player use arka as a
-                # reliable success oracle. It stays in its earlier register,
-                # treating the resolution as the non-event it always claimed.
+                # resolution (however the crisis cleared); confirming it would let
+                # the player use arka as a reliable success oracle. It stays in its
+                # earlier register, treating the resolution as the non-event it
+                # always claimed.
                 return replace(state, crisis=None), (
                     f"arka: {label} was never going to be the thing that undid us.",
                 )
