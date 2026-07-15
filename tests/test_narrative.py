@@ -1,5 +1,6 @@
 import unittest
 
+from custodian.engine_constants import REACTOR_MELTDOWN_OUTCOME
 from custodian.models import BehaviourLedger, ShipState, StoryState
 from custodian.narrative import boot_lines, closing_lines, opening_lines
 
@@ -144,10 +145,7 @@ class NarrativeTests(unittest.TestCase):
         state = ShipState(
             turn=13,
             sleepers_lost=147,
-            outcome=(
-                "The coolant loop flashes dry. "
-                "The reactor becomes a small, patient sun."
-            ),
+            outcome=REACTOR_MELTDOWN_OUTCOME,
         )
 
         debrief = "\n".join(closing_lines(state))
