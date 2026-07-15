@@ -34,6 +34,8 @@ jobs:
           python -m pip install -r requirements.txt
       - name: JS syntax check
         run: node --check src/custodian/web_static/app.js
+      - name: Agentic review controller tests
+        run: node --test tests/test_agentic_review_state.cjs
       - name: Run tests
         run: PYTHONPATH=src python -m unittest discover -s tests
       - name: Compile sources

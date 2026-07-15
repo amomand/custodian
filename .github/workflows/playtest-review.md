@@ -14,7 +14,7 @@ permissions:
   contents: read
   issues: read             # required by the github 'issues' toolset (used to de-dupe against open issues)
 
-engine: copilot            # GitHub-native engine, same as the now-weekly rollup. Needs a COPILOT_GITHUB_TOKEN secret on this repo.
+engine: copilot            # Keep the existing playtester model policy; the downstream implementer and specialist reviewers are pinned separately.
 
 network:
   allowed: [defaults, github]   # the runner is fully offline; github is only for issue de-dup + the copilot engine
@@ -60,7 +60,7 @@ steps:
         src/custodian/arka_interpreter.py \
         design.md \
         docs/architecture/ai-interpreter.md \
-        .codex/skills/custodian-simulation-truth-review/SKILL.md ; do
+        .agents/skills/custodian-simulation-truth-review/SKILL.md ; do
         if [ -f "$f" ]; then
           dest="reports/playtests/_context/$f"
           mkdir -p "$(dirname "$dest")"
