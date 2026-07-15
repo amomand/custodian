@@ -74,6 +74,78 @@ test("counts Copilot review cycles by unique reviewed head", () => {
   );
 });
 
+test("allows a cap-pending final head to omit a fourth Copilot review", () => {
+  const first = "b".repeat(40);
+  const second = "c".repeat(40);
+  const third = "d".repeat(40);
+  const reviews = [
+    copilotReview(first),
+    copilotReview(second),
+    copilotReview(third),
+    localReview("diegesis"),
+    localReview("simulation-truth"),
+  ];
+  const comments = [
+    { body: state.capPendingMarker(HEAD, third) },
+  ];
+
+  assert.deepEqual(
+    state.missingRequiredReviewers(reviews, comments, HEAD),
+    [],
+  );
+  assert.equal(state.isTerminal(comments), false);
+});
+
+test("does not waive Copilot before the cap or local exact-head reviews", () => {
+  const first = "b".repeat(40);
+  const second = "c".repeat(40);
+  const comments = [{ body: state.capPendingMarker(HEAD, second) }];
+
+  assert.deepEqual(
+    state.missingRequiredReviewers(
+      [copilotReview(first), copilotReview(second), localReview("diegesis")],
+      comments,
+      HEAD,
+    ),
+    ["simulation-truth", "copilot"],
+  );
+});
+
+test("uses the latest CI workflow run and waits for completion", () => {
+  const older = {
+    id: 10,
+    name: "CI",
+    head_sha: HEAD,
+    status: "completed",
+    conclusion: "success",
+  };
+  const latest = {
+    id: 11,
+    name: "CI",
+    head_sha: HEAD,
+    status: "in_progress",
+    conclusion: null,
+  };
+  const unrelated = {
+    id: 12,
+    name: "Docs",
+    head_sha: HEAD,
+    status: "completed",
+    conclusion: "success",
+  };
+
+  assert.deepEqual(state.workflowRunState([older, latest, unrelated]), {
+    status: "pending",
+    conclusion: null,
+    run: latest,
+  });
+  assert.deepEqual(state.workflowRunState([{ ...latest, status: "completed", conclusion: "failure" }]), {
+    status: "completed",
+    conclusion: "failure",
+    run: { ...latest, status: "completed", conclusion: "failure" },
+  });
+});
+
 test("recognises scoped PRs and terminal markers", () => {
   const pullRequest = {
     state: "open",

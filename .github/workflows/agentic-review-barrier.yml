@@ -5,6 +5,7 @@ on:
     types: [submitted]
   workflow_run:
     workflows:
+      - CI
       - Custodian diegesis review
       - Custodian simulation-truth review
     types: [completed]
@@ -14,7 +15,7 @@ permissions:
   actions: write
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 concurrency:
   # Global and deliberately short-lived: the two local workflow_run events and
@@ -27,6 +28,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request_review' ||
+      github.event.workflow_run.name == 'CI' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -85,17 +87,37 @@ jobs:
                 per_page: 100,
               });
               const head = pull.head.sha;
-              const missing = state.missingReviewers(reviews, head);
+              const workflowRuns = await github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                {
+                  owner,
+                  repo,
+                  head_sha: head,
+                  event: "pull_request",
+                  per_page: 100,
+                },
+              );
+              const ci = state.workflowRunState(workflowRuns);
+              const missing = state.missingRequiredReviewers(
+                reviews,
+                comments,
+                head,
+              );
               const marker = state.barrierMarker(head);
-              if (missing.length || state.isTerminal(comments)) continue;
+              if (
+                missing.length ||
+                ci.status !== "completed" ||
+                state.isTerminal(comments)
+              ) continue;
               if (state.hasCommentMarker(comments, marker)) continue;
 
               const cycle = state.copilotReviewedHeads(reviews).length;
+              const finalVerification = state.hasCapPendingForHead(comments, head);
               const { data: lock } = await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number: number,
-                body: `${marker}\nAll three reviews are in for \`${head}\`. Dispatching adjudication cycle ${cycle} of 3.`,
+                body: `${marker}\nRequired reviews are in for \`${head}\` and CI completed with **${ci.conclusion}**. Dispatching adjudication cycle ${cycle} of 3${finalVerification ? " for final cap verification" : ""}.`,
               });
               try {
                 await github.rest.actions.createWorkflowDispatch({
@@ -107,6 +129,9 @@ jobs:
                     pull_request_number: String(number),
                     head_sha: head,
                     cycle: String(cycle),
+                    ci_conclusion: String(ci.conclusion),
+                    ci_run_id: String(ci.run.id),
+                    final_verification: String(finalVerification),
                   },
                 });
               } catch (error) {

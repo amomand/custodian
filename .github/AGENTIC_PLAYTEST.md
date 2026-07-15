@@ -16,27 +16,44 @@ flowchart LR
   D --> B["Exact-head barrier"]
   S --> B
   C --> B
+  PR --> T["Exact-head CI"]
+  T --> B
   B --> A["Opus adjudicator"]
   A -->|"substantive fix, cycles 1-2"| PR
-  A -->|"clean, human choice, or cycle 3"| H["Human hand-off"]
+  A -->|"cycle 3 fix"| V["Cap-pending final verification"]
+  V --> T
+  V --> D
+  V --> S
+  A -->|"validated clean"| X["Deterministic clean marker"]
+  A -->|"human choice"| H["Human hand-off"]
 ```
 
 ## What counts as all reviews being in
 
 The join is ordinary Actions code, not an agent judgement. Diegesis and
 simulation-truth reviews must each include their receipt and the full current
-head SHA. Copilot's review must also belong to that SHA. Old reviews do not
+head SHA. Copilot's review must also belong to that SHA, and CI must have
+completed on it. A failed CI run still dispatches the adjudicator so it can be
+diagnosed and fixed; it can never produce a clean marker. Old reviews do not
 carry over after a push, and a forged specialist receipt is ignored unless it
 was submitted by the repository workflow actor.
 
 Copilot cycles are counted by unique reviewed head SHAs. Duplicate reviews on
 one commit still count as one cycle. After a third Copilot-reviewed head, the
-adjudicator may make one final fix but must stop without asking for a fourth
-review. The PR comment says plainly when that leaves the final head unreviewed.
+adjudicator may make one final fix but must not ask for a fourth Copilot review.
+That pushed head enters a non-terminal `cap-pending` state: CI and both Opus
+reviewers run again, then one final adjudication either records a validated
+clean result or hands a remaining change to a human.
+
+Terminal state is a safe-output operation backed by deterministic checks. It
+verifies the current SHA, green CI, required review receipts and zero unresolved
+threads before writing the exact clean marker. The model supplies the decision
+ledger, but does not format or authorise its own terminal state.
 
 The watchdog checks every ten minutes. After twenty minutes it names missing
-reviewers on the PR; silence never becomes a pass. It also recovers a completed
-join if the immediate barrier missed its dispatch.
+reviewers or pending CI on the PR; silence never becomes a pass. It recovers a
+completed join if the immediate barrier missed its dispatch and retries stale
+dispatch locks when an adjudicator run or its safe outputs failed.
 
 ## Agent authority
 
@@ -55,18 +72,23 @@ voice, or crosses the deterministic simulation boundary.
 
 ## Token setup
 
-The existing `COPILOT_GITHUB_TOKEN` fine-grained PAT is reused. Give it access
-only to this repository, with:
+The existing `COPILOT_GITHUB_TOKEN` fine-grained PAT is reused for all gh-aw
+safe outputs. Give it access only to this repository, with:
 
 - account permission `Copilot Requests: Read`;
 - repository permission `Contents: Read and write`;
 - repository permission `Pull requests: Read and write`.
 
-The account permission pays for Copilot inference. Contents write lets gh-aw
-push the extra empty commit that wakes normal CI and PR events after an agent
-push. Pull requests write lets the adjudicator resolve bot-authored review
-threads reliably. Issue and PR creation, comments, review submission and the
-join dispatch continue to use GitHub's short-lived workflow token.
+The account permission permits Copilot review requests. Using the PAT for PR
+creation and subsequent pushes gives those events one consistent user actor,
+so ordinary CI and reviewer workflows wake without approval-only recursion or
+extra empty commits. Pull requests write lets the adjudicator reply to and
+resolve review threads reliably. The deterministic barrier and watchdog retain
+GitHub's short-lived workflow token for their own comments and dispatches.
+
+The Opus reviewer triggers also explicitly allow `github-actions[bot]` as a
+fallback. The normal path remains the PAT-authored PR and pushes; the bot
+allowlist prevents a missing PAT from silently stranding a bot-authored PR.
 
 ## Editing the loop
 
