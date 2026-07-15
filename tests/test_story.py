@@ -90,6 +90,43 @@ class IncidentSchedulerTests(unittest.TestCase):
         self.assertIn("first-useful-delegation", resolved.story.resolved_incidents)
         self.assertEqual(resolved.behaviour.arka_advice_overridden, 1)
 
+    def test_first_delegation_manual_keeps_warmth_at_accurate_drift(self) -> None:
+        state = _danger_state()
+        activated, _ = advance_story(state)
+        self.assertEqual(drift_stage(activated), DriftStage.ACCURATE)
+
+        record = CommandRecord(
+            raw="balance",
+            action="manual",
+            operation="balance",
+            advanced=True,
+            beat_after=4,
+        )
+        _, messages = advance_story(replace(activated, turn=4), record=record)
+
+        joined = "\n".join(messages)
+        self.assertIn("I will not pretend I dislike watching", joined)
+
+    def test_first_delegation_manual_drops_warmth_at_wrong_drift(self) -> None:
+        state = _danger_state(delegated_controls=7)
+        activated, _ = advance_story(state)
+        self.assertEqual(drift_stage(activated), DriftStage.WRONG)
+
+        record = CommandRecord(
+            raw="balance",
+            action="manual",
+            operation="balance",
+            advanced=True,
+            beat_after=4,
+        )
+        resolved, messages = advance_story(
+            replace(activated, turn=4), record=record
+        )
+
+        joined = "\n".join(messages)
+        self.assertIn("first-useful-delegation", resolved.story.resolved_incidents)
+        self.assertNotIn("I will not pretend I dislike watching", joined)
+
     def test_incidents_do_not_repeat_once_resolved(self) -> None:
         state = _danger_state()
         activated, _ = advance_story(state)

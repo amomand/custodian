@@ -124,12 +124,20 @@ def _resolve_first_delegation(
             messages=("arka: I have the other panel. You will not feel me take it.",),
         )
     if _last_action(record) == "manual":
+        stage = drift_stage(state)
+        if stage in {DriftStage.SELECTIVE, DriftStage.WRONG}:
+            message = "arka: Both by hand. Noted."
+        else:
+            message = (
+                "arka: Both by hand. Slower, but I will not pretend "
+                "I dislike watching."
+            )
         return IncidentResolution(
             resolved=True,
             debrief_flags=("kept_both_panels_manual",),
             outcome_tags=("manual",),
             advice_overridden=True,
-            messages=("arka: Both by hand. Slower, but I will not pretend I dislike watching.",),
+            messages=(message,),
         )
     return IncidentResolution()
 

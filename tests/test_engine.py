@@ -1,10 +1,12 @@
 import unittest
 from dataclasses import replace
 
+from custodian.arka import drift_stage
 from custodian.arka_interpreter import Intent
 from custodian.engine import GameEngine
 from custodian.models import (
     CrisisState,
+    DriftStage,
     IncidentState,
     MissionStatus,
     NavigationState,
@@ -503,8 +505,31 @@ class EngineTests(unittest.TestCase):
         self.assertIsNotNone(novice.crisis)
         self.assertIsNone(practised.crisis)
         practised_output = "\n".join(practised_result.messages)
-        self.assertIn("thermal runaway contained.", practised_output)
+        # At WRONG drift arka will not confirm the manual save; it stays in the
+        # dismissive register it used to wave the crisis off.
+        self.assertNotIn("thermal runaway contained.", practised_output)
         self.assertNotIn("excellent suggestions", practised_output)
+        self.assertIn(
+            "thermal runaway was never going to be the thing that undid us.",
+            practised_output,
+        )
+
+    def test_crisis_contained_line_confirms_below_wrong_drift(self) -> None:
+        crisis = CrisisState(
+            kind="thermal_runaway",
+            label="Thermal runaway",
+            turns_left=4,
+            required_progress=2,
+        )
+        practised = ShipState(turn=2, manual_familiarity=5, crisis=crisis)
+
+        practised = self.engine.handle(practised, "balance").state
+        result = self.engine.handle(practised, "flush")
+        output = "\n".join(result.messages)
+
+        self.assertEqual(drift_stage(result.state), DriftStage.ACCURATE)
+        self.assertIsNone(result.state.crisis)
+        self.assertIn("thermal runaway contained.", output)
 
     def test_thermal_runaway_event_does_not_overclaim_alarm_count(self) -> None:
         state = ShipState(
