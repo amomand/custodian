@@ -9,7 +9,7 @@ permissions:
   actions: write
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 concurrency:
   group: agentic-review-watchdog
@@ -53,16 +53,60 @@ jobs:
               if (state.isTerminal(comments)) continue;
 
               const head = pull.head.sha;
-              const missing = state.missingReviewers(reviews, head);
-              const barrier = state.barrierMarker(head);
-              if (!missing.length && !state.hasCommentMarker(comments, barrier)) {
-                const cycle = state.copilotReviewedHeads(reviews).length;
-                const { data: lock } = await github.rest.issues.createComment({
+              const workflowRuns = await github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                {
                   owner,
                   repo,
-                  issue_number: number,
-                  body: `${barrier}\nAll three reviews are in for \`${head}\`. The watchdog is recovering the adjudication dispatch for cycle ${cycle} of 3.`,
-                });
+                  head_sha: head,
+                  event: "pull_request",
+                  per_page: 100,
+                },
+              );
+              const ci = state.workflowRunState(workflowRuns);
+              const missing = state.missingRequiredReviewers(
+                reviews,
+                comments,
+                head,
+              );
+              const barrier = state.barrierMarker(head);
+              const barrierComment = comments.find((comment) =>
+                comment.body?.includes(barrier),
+              );
+              const barrierAgeMs = barrierComment
+                ? Date.now() - new Date(
+                    barrierComment.updated_at || barrierComment.created_at,
+                  ).getTime()
+                : Number.POSITIVE_INFINITY;
+              if (
+                !missing.length &&
+                ci.status === "completed" &&
+                (!barrierComment || barrierAgeMs >= 20 * 60 * 1000)
+              ) {
+                const cycle = state.copilotReviewedHeads(reviews).length;
+                const finalVerification = state.hasCapPendingForHead(
+                  comments,
+                  head,
+                );
+                const lockBody = `${barrier}\nRequired reviews are in for \`${head}\` and CI completed with **${ci.conclusion}**. The watchdog is recovering adjudication cycle ${cycle} of 3${finalVerification ? " for final cap verification" : ""}.`;
+                let lock;
+                if (barrierComment) {
+                  const response = await github.rest.issues.updateComment({
+                    owner,
+                    repo,
+                    comment_id: barrierComment.id,
+                    body: lockBody,
+                  });
+                  lock = response.data;
+                } else {
+                  const response = await github.rest.issues.createComment({
+                    owner,
+                    repo,
+                    issue_number: number,
+                    body: lockBody,
+                  });
+                  lock = response.data;
+                }
                 try {
                   await github.rest.actions.createWorkflowDispatch({
                     owner,
@@ -73,19 +117,33 @@ jobs:
                       pull_request_number: String(number),
                       head_sha: head,
                       cycle: String(cycle),
+                      ci_conclusion: String(ci.conclusion),
+                      ci_run_id: String(ci.run.id),
+                      final_verification: String(finalVerification),
                     },
                   });
                 } catch (error) {
-                  await github.rest.issues.deleteComment({
-                    owner,
-                    repo,
-                    comment_id: lock.id,
-                  });
+                  if (barrierComment) {
+                    await github.rest.issues.updateComment({
+                      owner,
+                      repo,
+                      comment_id: lock.id,
+                      body: `${lockBody}\n\nDispatch failed and will be retried: ${error.message}`,
+                    });
+                  } else {
+                    await github.rest.issues.deleteComment({
+                      owner,
+                      repo,
+                      comment_id: lock.id,
+                    });
+                  }
                   throw error;
                 }
                 continue;
               }
-              if (!missing.length) continue;
+              const waitingOn = [...missing];
+              if (ci.status !== "completed") waitingOn.push("CI");
+              if (!waitingOn.length) continue;
 
               const { data: commit } = await github.rest.repos.getCommit({
                 owner,
@@ -97,7 +155,7 @@ jobs:
               if (ageMs < 20 * 60 * 1000) continue;
 
               const marker = state.waitingMarker(head);
-              const body = `${marker}\nReview round is still waiting on: **${missing.join(", ")}** for \`${head}\`. Silence is not treated as a clean review; the watchdog will check again.`;
+              const body = `${marker}\nReview round is still waiting on: **${waitingOn.join(", ")}** for \`${head}\`. Silence or pending CI is not treated as a clean review; the watchdog will check again.`;
               const existing = comments.find((comment) => comment.body?.includes(marker));
               if (existing) {
                 if (existing.body !== body) {

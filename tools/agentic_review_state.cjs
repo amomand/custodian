@@ -3,6 +3,7 @@
 const REVIEWERS = Object.freeze(["diegesis", "simulation-truth", "copilot"]);
 const TITLE_PREFIX = "[agentic playtest] ";
 const LABEL = "playtest";
+const CI_WORKFLOW = "CI";
 
 function bodyOf(item) {
   return typeof item?.body === "string" ? item.body : "";
@@ -60,6 +61,24 @@ function missingReviewers(reviews, head) {
   return REVIEWERS.filter((reviewer) => !receipts[reviewer]);
 }
 
+function capPendingMarker(head, reviewedHead) {
+  return `<!-- agentic-review-cap-pending:${head}:from:${reviewedHead} -->`;
+}
+
+function hasCapPendingForHead(comments, head) {
+  const prefix = `<!-- agentic-review-cap-pending:${head}:from:`;
+  return (comments || []).some((comment) => bodyOf(comment).includes(prefix));
+}
+
+function missingRequiredReviewers(reviews, comments, head) {
+  const missing = missingReviewers(reviews, head);
+  const capReached = copilotReviewedHeads(reviews).length >= 3;
+  if (capReached && hasCapPendingForHead(comments, head)) {
+    return missing.filter((reviewer) => reviewer !== "copilot");
+  }
+  return missing;
+}
+
 function copilotReviewedHeads(reviews) {
   const heads = new Set();
   for (const review of reviews || []) {
@@ -87,6 +106,21 @@ function waitingMarker(head) {
   return `<!-- agentic-review-waiting:${head} -->`;
 }
 
+function latestWorkflowRun(runs, workflowName = CI_WORKFLOW) {
+  return [...(runs || [])]
+    .filter((run) => run?.name === workflowName && run?.head_sha)
+    .sort((left, right) => Number(right.id || 0) - Number(left.id || 0))[0];
+}
+
+function workflowRunState(runs, workflowName = CI_WORKFLOW) {
+  const run = latestWorkflowRun(runs, workflowName);
+  if (!run) return { status: "missing", conclusion: null, run: null };
+  if (run.status !== "completed") {
+    return { status: "pending", conclusion: null, run };
+  }
+  return { status: "completed", conclusion: run.conclusion || null, run };
+}
+
 function isTerminal(comments) {
   return (
     hasCommentMarker(comments, "<!-- agentic-review-cap-reached -->") ||
@@ -110,15 +144,21 @@ function isAgenticPlaytestPullRequest(pullRequest, repository) {
 }
 
 module.exports = {
+  CI_WORKFLOW,
   LABEL,
   REVIEWERS,
   TITLE_PREFIX,
   barrierMarker,
+  capPendingMarker,
   copilotReviewedHeads,
   hasCommentMarker,
+  hasCapPendingForHead,
   isAgenticPlaytestPullRequest,
   isTerminal,
+  latestWorkflowRun,
+  missingRequiredReviewers,
   missingReviewers,
   reviewReceipts,
   waitingMarker,
+  workflowRunState,
 };

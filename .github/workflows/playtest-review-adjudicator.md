@@ -17,8 +17,21 @@ on:
         description: Number of unique Copilot-reviewed heads so far
         required: true
         type: string
+      ci_conclusion:
+        description: CI conclusion for the reviewed head
+        required: true
+        type: string
+      ci_run_id:
+        description: CI workflow run for the reviewed head
+        required: true
+        type: string
+      final_verification:
+        description: Whether this head follows the third Copilot-reviewed head
+        required: true
+        type: string
 
 permissions:
+  actions: read
   contents: read
   issues: read
   pull-requests: read
@@ -35,24 +48,46 @@ checkout:
   fetch: ["*"]
   fetch-depth: 0
 
+env:
+  PYTHONPATH: src
+
+pre-agent-steps:
+  - name: Prepare a writable adjudication branch
+    env:
+      PR_NUMBER: ${{ github.event.inputs.pull_request_number }}
+    run: |
+      [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]
+      git switch -c "agentic-review-${PR_NUMBER}-${GITHUB_RUN_ID}"
+      git config user.name "github-actions[bot]"
+      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
 network:
   allowed: [defaults, github]
 
 tools:
+  edit:
+  agentic-workflows:
   github:
     toolsets: [pull_requests, repos]
   bash:
-    - "rg"
-    - "sed -n"
-    - "git diff"
-    - "git status"
-    - "PYTHONPATH=src python -m unittest"
+    - "env"
+    - "git"
+    - "python"
+    - "python3"
+    - "node"
+    - "python -m unittest"
+    - "python3 -m unittest"
     - "python -m compileall"
+    - "python3 -m compileall"
     - "python tools/playtest_runner.py"
+    - "python3 tools/playtest_runner.py"
     - "node --check"
     - "node --test"
+    - "rg"
+    - "sed -n"
 
 safe-outputs:
+  github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
   push-to-pull-request-branch:
     target: ${{ github.event.inputs.pull_request_number }}
     max: 1
@@ -61,7 +96,6 @@ safe-outputs:
     check-branch-protection: false
     required-labels: [playtest]
     required-title-prefix: "[agentic playtest] "
-    github-token-for-extra-empty-commit: ${{ secrets.COPILOT_GITHUB_TOKEN }}
     allowed-files:
       - "src/**"
       - "tests/**"
@@ -81,18 +115,56 @@ safe-outputs:
     max: 30
     required-labels: [playtest]
     required-title-prefix: "[agentic playtest] "
-    github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
   add-reviewer:
     target: ${{ github.event.inputs.pull_request_number }}
     max: 1
     allowed-reviewers: [copilot]
     required-labels: [playtest]
     required-title-prefix: "[agentic playtest] "
-  add-comment:
-    target: ${{ github.event.inputs.pull_request_number }}
-    max: 1
-    required-labels: [playtest]
-    required-title-prefix: "[agentic playtest] "
+  jobs:
+    complete-review-round:
+      description: Validate and record the terminal or cap-pending review state
+      runs-on: ubuntu-latest
+      needs: safe_outputs
+      permissions:
+        actions: read
+        contents: read
+        issues: write
+        pull-requests: write
+      env:
+        EXPECTED_PR: ${{ github.event.inputs.pull_request_number }}
+        EXPECTED_HEAD: ${{ github.event.inputs.head_sha }}
+        EXPECTED_CYCLE: ${{ github.event.inputs.cycle }}
+        PUSH_COMMIT_SHA: ${{ needs.safe_outputs.outputs.push_commit_sha }}
+      inputs:
+        pull_request_number:
+          description: Pull request number from this workflow dispatch
+          required: true
+          type: string
+        reviewed_head:
+          description: Exact head adjudicated in this workflow run
+          required: true
+          type: string
+        outcome:
+          description: Validated state to record
+          required: true
+          type: choice
+          options: [clean, cap-pending, needs-human]
+        summary:
+          description: Concise decision ledger and any human decision required
+          required: true
+          type: string
+      steps:
+        - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+          with:
+            persist-credentials: false
+        - name: Validate and record review state
+          uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+          with:
+            github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+            script: |
+              const finalize = require("./tools/finalize_agentic_review.cjs");
+              await finalize({ github, context, core });
 ---
 
 # Adjudicate a complete review round
@@ -102,15 +174,21 @@ The barrier dispatched:
 - pull request: `#${{ github.event.inputs.pull_request_number }}`
 - reviewed head: `${{ github.event.inputs.head_sha }}`
 - Copilot cycle: `${{ github.event.inputs.cycle }}` of 3
+- CI: `${{ github.event.inputs.ci_conclusion }}` in run `${{ github.event.inputs.ci_run_id }}`
+- final cap verification: `${{ github.event.inputs.final_verification }}`
 
 Before doing anything, read the pull request and confirm it is open, same-repo,
 labelled `playtest`, titled with `[agentic playtest] `, and still at the exact
 reviewed head above. If any check fails, make no outputs.
 
-Read every review and every review-comment thread, including resolved state and
-outdated comments. The barrier has already established that Copilot, diegesis,
-and simulation-truth reviews exist for this head. Adjudicate all feedback using
-the imported agent's classifications. A Copilot suggestion may be overridden
+Read the supplied CI run and treat any failure as blocking review feedback to
+diagnose and fix. Read every review and every review-comment thread, including
+resolved state and outdated comments. The barrier has established exact-head
+diegesis and simulation-truth reviews. It has also established an exact-head
+Copilot review unless `final cap verification` is `true`; in that case the
+three-review cap was reached on the parent and this is its single post-Copilot
+correction head. Adjudicate all feedback using the imported agent's
+classifications. A Copilot suggestion may be overridden
 when it is factually wrong, worsens arka's voice, crosses the simulation-truth
 boundary, duplicates a stronger fix, or is disproportionate to the finding.
 
@@ -132,23 +210,31 @@ node --test tests/test_agentic_review_state.cjs
 python tools/playtest_runner.py --all --summary-only
 ```
 
+Use the edit tool for file changes. Before requesting a push, inspect the diff,
+stage only allowed files, and commit the change on the prepared writable branch.
+Never declare a failed or pending CI head clean.
+
 Then follow exactly one terminal path:
 
-- **No code changes and no human choice:** reply/resolve as needed, do not push
-  and do not request another review. Add one PR comment containing
-  `<!-- agentic-review-clean:${{ github.event.inputs.head_sha }} -->`
-  and a short decision ledger.
+- **No code changes, CI successful, and no human choice:** reply/resolve as
+  needed, do not push and do not request another review. Call
+  `complete-review-round` exactly once with outcome `clean` and a short decision
+  ledger. Deterministic code will verify CI, review receipts, threads and head
+  SHA before writing the terminal marker.
 - **Code changes, cycle 1 or 2:** push once to this PR, reply/resolve all handled
-  threads, and request `copilot` once. Do not add a terminal marker. The
-  PAT-authored empty commit will wake both local reviewers for the new head.
-- **Code changes, cycle 3:** push once but do not request Copilot again. Add one
-  PR comment containing `<!-- agentic-review-cap-reached -->`, the decision
-  ledger, validation, and the explicit warning that the final head has not had
-  another Copilot review.
-- **Needs human:** do not request another Copilot review. Add one PR comment
-  containing `<!-- agentic-review-needs-human -->`, name the decision, and give
-  the smallest useful options. Only push mechanical fixes if they do not choose
-  a side in that decision.
+  threads, and request `copilot` once. Do not call `complete-review-round`. The
+  shared PAT used for the push wakes CI and both local reviewers directly.
+- **Code changes, cycle 3, not final cap verification:** push once, do not
+  request Copilot again, and call `complete-review-round` exactly once with
+  outcome `cap-pending`. CI and both Opus reviewers then verify the pushed head
+  before one last adjudication.
+- **Final cap verification needs another code change:** do not create an
+  unreviewed fourth head. Call `complete-review-round` with outcome
+  `needs-human` and name the remaining change.
+- **Needs human or an unfixable CI failure:** do not request another Copilot
+  review. Call `complete-review-round` with outcome `needs-human`, name the
+  decision or blocker, and give the smallest useful options. Only push
+  mechanical fixes if they do not choose a side in that decision.
 
 Every safe-output call must include pull request number
 `${{ github.event.inputs.pull_request_number }}`. Never merge.

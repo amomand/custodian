@@ -5,6 +5,7 @@ description: Give automated playtest fixes an independent, non-blocking simulati
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  bots: [github-actions]
 
 if: ${{ github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'playtest') && startsWith(github.event.pull_request.title, '[agentic playtest] ') }}
 

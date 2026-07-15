@@ -27,20 +27,28 @@ network:
   allowed: [defaults, github]
 
 tools:
+  edit:
   github:
     toolsets: [issues, pull_requests, repos]
   bash:
-    - "rg"
-    - "sed -n"
-    - "git diff"
-    - "git status"
-    - "python tools/playtest_runner.py"
+    - "env"
+    - "git"
+    - "python"
+    - "python3"
+    - "node"
     - "python -m unittest"
+    - "python3 -m unittest"
     - "python -m compileall"
+    - "python3 -m compileall"
+    - "python tools/playtest_runner.py"
+    - "python3 tools/playtest_runner.py"
     - "node --check"
     - "node --test"
+    - "rg"
+    - "sed -n"
 
 safe-outputs:
+  github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
   create-pull-request:
     title-prefix: "[agentic playtest] "
     labels: [playtest]
@@ -52,7 +60,6 @@ safe-outputs:
     fallback-as-issue: false
     auto-close-issue: false
     normalize-closing-keywords: true
-    github-token-for-extra-empty-commit: ${{ secrets.COPILOT_GITHUB_TOKEN }}
     allowed-files:
       - "src/**"
       - "tests/**"

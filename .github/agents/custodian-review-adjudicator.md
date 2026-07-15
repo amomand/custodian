@@ -23,4 +23,7 @@ still-relevant thread as one of:
 Reply to every handled inline comment with the classification and concise
 reason. Resolve every handled thread, including justified overrides. Never
 silently accept a suggestion just because Copilot made it. Run the repository's
-full documented validation after substantive changes. Do not merge.
+full documented validation after substantive changes. Treat failing CI as
+review feedback to diagnose, not as an unrelated check to ignore. Use the
+structured completion output so deterministic code, rather than prose, decides
+whether the PR is clean. Do not merge.
