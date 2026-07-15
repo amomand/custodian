@@ -1,5 +1,6 @@
 import unittest
 
+from custodian.engine import ARRIVAL_OUTCOME
 from custodian.engine_constants import REACTOR_MELTDOWN_OUTCOME
 from custodian.models import BehaviourLedger, ShipState, StoryState
 from custodian.narrative import boot_lines, closing_lines, opening_lines
@@ -115,7 +116,7 @@ class NarrativeTests(unittest.TestCase):
             turn=13,
             raw_inspections=3,
             sleepers_lost=0,
-            outcome="The ship reaches its destination fix.",
+            outcome=ARRIVAL_OUTCOME,
             story=StoryState(ending_candidate="clean_arrival"),
         )
 
@@ -130,7 +131,7 @@ class NarrativeTests(unittest.TestCase):
         state = ShipState(
             turn=13,
             sleepers_lost=57,
-            outcome="The ship reaches its destination fix.",
+            outcome=ARRIVAL_OUTCOME,
             story=StoryState(ending_candidate="clean_arrival"),
         )
 
