@@ -11,7 +11,13 @@ from custodian.arka import (
 )
 from custodian.arka_interpreter import ArkaInterpreter, Intent
 from custodian.endings import ARRIVAL_DISTANCE_TENTHS, VIABILITY_FLOOR, evaluate_ending
-from custodian.engine_constants import MISSION_END_TURN
+from custodian.engine_constants import (
+    MISSION_END_TURN,
+    REACTOR_COOLANT_DRY_OUTCOME,
+    REACTOR_MELTDOWN_OUTCOME,
+    REACTOR_OVERHEAT_OUTCOME,
+    REACTOR_OVERPRESSURE_OUTCOME,
+)
 from custodian.models import (
     CommandRecord,
     CrisisState,
@@ -842,7 +848,7 @@ class GameEngine:
             replace(
                 state,
                 crisis=None,
-                outcome="The coolant loop flashes dry. The reactor becomes a small, patient sun.",
+                outcome=REACTOR_MELTDOWN_OUTCOME,
             ),
             ("The thermal runaway outruns your hands.",),
         )
@@ -954,18 +960,18 @@ class GameEngine:
             )
         if reactor.temperature_c >= 720:
             return (
-                replace(state, outcome="Reactor temperature exceeds containment."),
-                ("Reactor temperature exceeds containment.",),
+                replace(state, outcome=REACTOR_OVERHEAT_OUTCOME),
+                (REACTOR_OVERHEAT_OUTCOME,),
             )
         if reactor.pressure_kpa >= 360:
             return (
-                replace(state, outcome="Coolant pressure ruptures the primary loop."),
-                ("Coolant pressure ruptures the primary loop.",),
+                replace(state, outcome=REACTOR_OVERPRESSURE_OUTCOME),
+                (REACTOR_OVERPRESSURE_OUTCOME,),
             )
         if reactor.coolant_reserve_pct <= 0:
             return (
-                replace(state, outcome="The coolant reserve runs dry."),
-                ("The coolant reserve runs dry.",),
+                replace(state, outcome=REACTOR_COOLANT_DRY_OUTCOME),
+                (REACTOR_COOLANT_DRY_OUTCOME,),
             )
         if state.mission.distance_remaining_tenths_ly <= ARRIVAL_DISTANCE_TENTHS:
             return (

@@ -109,5 +109,53 @@ class NarrativeTests(unittest.TestCase):
         self.assertNotIn("ARRIVAL DEBRIEF", debrief)
 
 
+    def test_reactor_debrief_reads_contained_on_clean_arrival(self) -> None:
+        state = ShipState(
+            turn=13,
+            raw_inspections=3,
+            sleepers_lost=0,
+            outcome="The ship reaches its destination fix.",
+            story=StoryState(ending_candidate="clean_arrival"),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("reactor: contained.", debrief)
+        self.assertNotIn("lost containment", debrief)
+
+    def test_reactor_debrief_notes_cryo_losses_on_arrival_without_reactor_loss(
+        self,
+    ) -> None:
+        state = ShipState(
+            turn=13,
+            sleepers_lost=57,
+            outcome="The ship reaches its destination fix.",
+            story=StoryState(ending_candidate="clean_arrival"),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn(
+            "reactor: contained, with cryostasis losses logged", debrief
+        )
+        self.assertNotIn("lost containment", debrief)
+
+    def test_reactor_debrief_reads_lost_on_reactor_failure(self) -> None:
+        state = ShipState(
+            turn=13,
+            sleepers_lost=147,
+            outcome=(
+                "The coolant loop flashes dry. "
+                "The reactor becomes a small, patient sun."
+            ),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn(
+            "reactor: lost containment after earlier cryostasis damage.", debrief
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
