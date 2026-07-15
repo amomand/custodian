@@ -13,6 +13,26 @@ This is not a gate. It exists because Custodian's central risk is subtle: if the
 model starts inventing ship truth, the game stops being about delegation and
 becomes ordinary chatbot unreliability.
 
+Do not post this review to GitHub automatically unless the dedicated Custodian
+simulation-truth reviewer workflow invoked the skill. In that one bounded
+context, submit a non-blocking `COMMENT` review for the exact PR head so the
+orchestration barrier can distinguish a completed review from silence.
+
+## Scope
+
+Review the branch diff against the mainline:
+
+```bash
+git diff --name-only origin/main...HEAD
+git diff --stat origin/main...HEAD
+```
+
+If `origin/main...HEAD` is not available, use the best local base and state what
+you used.
+
+Inspect only changed files, plus the minimum nearby authoritative files needed
+to verify a concrete model/simulation boundary concern.
+
 ## Current Lens
 
 Look for changes that might accidentally make any of these true:
@@ -41,11 +61,14 @@ Look for changes that might accidentally make any of these true:
 
 ## Review Procedure
 
-1. Inspect changed files first.
-2. Trace input through intent parsing into engine state if needed.
-3. Read nearby docs only to confirm a concrete mismatch.
-4. Ignore docs that are merely incomplete or exploratory.
-5. Prefer "this may be crossing the boundary" over hard failure language unless
+1. Inspect the changed-file list first.
+2. If the change does not touch simulation state, AI interpretation, telemetry,
+   route/system mechanics, tests, configuration, or docs/code contracts, return
+   `PASS`.
+3. Trace input through intent parsing into engine state if needed.
+4. Read nearby docs only to confirm a concrete mismatch.
+5. Ignore docs that are merely incomplete or exploratory.
+6. Prefer "this may be crossing the boundary" over hard failure language unless
    the model truly owns ship truth.
 
 ## Output
@@ -70,3 +93,6 @@ Notes:
 
 Use `PASS` when nothing actionable appears. Use `QUESTIONS` for uncertain design
 boundary issues. Use `CONCERNS` for concrete model/simulation boundary drift.
+
+For findings, include the path, line when available, why it matters, and the
+smallest useful fix.

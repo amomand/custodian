@@ -1,0 +1,119 @@
+name: Agentic review watchdog
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: agentic-review-watchdog
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const state = require("./tools/agentic_review_state.cjs");
+            const { owner, repo } = context.repo;
+            const repository = `${owner}/${repo}`;
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            for (const pull of pulls) {
+              if (!state.isAgenticPlaytestPullRequest(pull, repository)) continue;
+              const number = pull.number;
+              const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                owner,
+                repo,
+                pull_number: number,
+                per_page: 100,
+              });
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: number,
+                per_page: 100,
+              });
+              if (state.isTerminal(comments)) continue;
+
+              const head = pull.head.sha;
+              const missing = state.missingReviewers(reviews, head);
+              const barrier = state.barrierMarker(head);
+              if (!missing.length && !state.hasCommentMarker(comments, barrier)) {
+                const cycle = state.copilotReviewedHeads(reviews).length;
+                const { data: lock } = await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: number,
+                  body: `${barrier}\nAll three reviews are in for \`${head}\`. The watchdog is recovering the adjudication dispatch for cycle ${cycle} of 3.`,
+                });
+                try {
+                  await github.rest.actions.createWorkflowDispatch({
+                    owner,
+                    repo,
+                    workflow_id: "playtest-review-adjudicator.lock.yml",
+                    ref: context.payload.repository.default_branch,
+                    inputs: {
+                      pull_request_number: String(number),
+                      head_sha: head,
+                      cycle: String(cycle),
+                    },
+                  });
+                } catch (error) {
+                  await github.rest.issues.deleteComment({
+                    owner,
+                    repo,
+                    comment_id: lock.id,
+                  });
+                  throw error;
+                }
+                continue;
+              }
+              if (!missing.length) continue;
+
+              const { data: commit } = await github.rest.repos.getCommit({
+                owner,
+                repo,
+                ref: head,
+              });
+              const committedAt = commit.commit.committer?.date || commit.commit.author?.date;
+              const ageMs = Date.now() - new Date(committedAt).getTime();
+              if (ageMs < 20 * 60 * 1000) continue;
+
+              const marker = state.waitingMarker(head);
+              const body = `${marker}\nReview round is still waiting on: **${missing.join(", ")}** for \`${head}\`. Silence is not treated as a clean review; the watchdog will check again.`;
+              const existing = comments.find((comment) => comment.body?.includes(marker));
+              if (existing) {
+                if (existing.body !== body) {
+                  await github.rest.issues.updateComment({
+                    owner,
+                    repo,
+                    comment_id: existing.id,
+                    body,
+                  });
+                }
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: number,
+                  body,
+                });
+              }
+            }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Custodian Simulation Truth Review"
+  short_description: "Check model and simulation boundaries"
+  default_prompt: "Use $custodian-simulation-truth-review to review this Custodian branch for model/simulation boundary drift."

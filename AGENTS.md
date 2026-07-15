@@ -21,6 +21,7 @@ shape of the idea and the current playtest feel over rigid process.
 - `docs/lore/the-dark.md` - how the Dark functions through effects, never explained.
 - `docs/architecture/ai-interpreter.md` - current AI/simulation boundary.
 - `docs/architecture/project-operating-system.md` - notes on borrowed process.
+- `.github/AGENTIC_PLAYTEST.md` - the issue-to-fix reviewer loop and its token boundary.
 
 If the Obsidian and repo copies disagree, treat Obsidian as the sketchpad and
 ask or update both when the change is intentional.
@@ -70,10 +71,10 @@ Everything else is allowed to move.
 
 ## Optional Review Lenses
 
-The repo has two local skills:
+The repo has two portable agent skills:
 
-- `.codex/skills/custodian-diegesis-review/SKILL.md`
-- `.codex/skills/custodian-simulation-truth-review/SKILL.md`
+- `.agents/skills/custodian-diegesis-review/SKILL.md`
+- `.agents/skills/custodian-simulation-truth-review/SKILL.md`
 
 They are useful before larger PRs or when a change touches arka, player-facing
 text, telemetry, or model boundaries. Early in the project, their job is to

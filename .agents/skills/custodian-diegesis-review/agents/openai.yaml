@@ -1,0 +1,4 @@
+interface:
+  display_name: "Custodian Diegesis Review"
+  short_description: "Check Custodian prose stays in-world"
+  default_prompt: "Use $custodian-diegesis-review to review this Custodian branch for player-facing diegesis issues."
