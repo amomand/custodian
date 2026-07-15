@@ -1,5 +1,7 @@
 import unittest
 
+from custodian.engine import ARRIVAL_OUTCOME
+from custodian.engine_constants import REACTOR_MELTDOWN_OUTCOME
 from custodian.models import BehaviourLedger, ShipState, StoryState
 from custodian.narrative import boot_lines, closing_lines, opening_lines
 
@@ -107,6 +109,51 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("MAINTENANCE WINDOW CLOSED", debrief)
         self.assertNotIn("ARRIVAL DEBRIEF", debrief)
+
+
+    def test_reactor_debrief_reads_contained_on_clean_arrival(self) -> None:
+        state = ShipState(
+            turn=13,
+            raw_inspections=3,
+            sleepers_lost=0,
+            outcome=ARRIVAL_OUTCOME,
+            story=StoryState(ending_candidate="clean_arrival"),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("reactor: contained.", debrief)
+        self.assertNotIn("lost containment", debrief)
+
+    def test_reactor_debrief_notes_cryo_losses_on_arrival_without_reactor_loss(
+        self,
+    ) -> None:
+        state = ShipState(
+            turn=13,
+            sleepers_lost=57,
+            outcome=ARRIVAL_OUTCOME,
+            story=StoryState(ending_candidate="clean_arrival"),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn(
+            "reactor: contained, with cryostasis losses logged", debrief
+        )
+        self.assertNotIn("lost containment", debrief)
+
+    def test_reactor_debrief_reads_lost_on_reactor_failure(self) -> None:
+        state = ShipState(
+            turn=13,
+            sleepers_lost=147,
+            outcome=REACTOR_MELTDOWN_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn(
+            "reactor: lost containment after earlier cryostasis damage.", debrief
+        )
 
 
 if __name__ == "__main__":

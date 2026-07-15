@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from custodian.arka import drift_stage
 from custodian.endings import ENDING_TITLES, ending_lines
+from custodian.engine_constants import REACTOR_FAILURE_OUTCOMES
 from custodian.models import DriftStage, ShipState
 
 
@@ -92,16 +93,16 @@ def _is_quit_outcome(outcome: str) -> bool:
 
 
 def _reactor_debrief(state: ShipState) -> str:
-    if "survives the maintenance window" in (state.outcome or ""):
+    if (state.outcome or "") in REACTOR_FAILURE_OUTCOMES:
         if state.sleepers_lost:
-            return (
-                "contained, with cryostasis losses logged in the cold part "
-                "of the ship."
-            )
-        return "contained. The sleepers never felt the heat move."
+            return "lost containment after earlier cryostasis damage."
+        return "lost containment."
     if state.sleepers_lost:
-        return "lost containment after earlier cryostasis damage."
-    return "lost containment."
+        return (
+            "contained, with cryostasis losses logged in the cold part "
+            "of the ship."
+        )
+    return "contained. The sleepers never felt the heat move."
 
 
 def _manual_debrief(state: ShipState) -> str:
