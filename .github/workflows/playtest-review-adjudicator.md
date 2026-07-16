@@ -107,7 +107,9 @@ safe-outputs:
     if-no-changes: ignore
     fallback-as-pull-request: false
     check-branch-protection: false
-    github-token-for-extra-empty-commit: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+    # Push with the event credential so CI and the reviewers wake on the
+    # pushed head directly; a GITHUB_TOKEN push creates no events.
+    github-token: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
     required-labels: [playtest]
     required-title-prefix: "[agentic playtest] "
     allowed-files:
@@ -138,6 +140,9 @@ safe-outputs:
     allowed-reviewers: [copilot]
     required-labels: [playtest]
     required-title-prefix: "[agentic playtest] "
+    # Copilot only honours seat-attributed review requests; the watchdog's
+    # re-request with this same token remains the backstop.
+    github-token: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
   jobs:
     complete-review-round:
       description: Validate and record the terminal or cap-pending review state
@@ -240,8 +245,8 @@ Then follow exactly one terminal path:
   SHA before writing the terminal marker.
 - **Code changes, cycle 1 or 2:** push once to this PR, reply/resolve all handled
   threads, and request `copilot` once. Do not call `complete-review-round`. The
-  dedicated CI-trigger token adds an empty commit after the code push, waking
-  CI and both local reviewers on that exact event head.
+  push is made with the dedicated event credential, so CI and both local
+  reviewers wake on that exact event head.
 - **Code changes, cycle 3, not final cap verification:** push once, do not
   request Copilot again, and call `complete-review-round` exactly once with
   outcome `cap-pending`. CI and both Opus reviewers then verify the pushed head
