@@ -4,6 +4,8 @@ const REVIEWERS = Object.freeze(["diegesis", "simulation-truth", "copilot"]);
 const TITLE_PREFIX = "[agentic playtest] ";
 const LABEL = "playtest";
 const CI_WORKFLOW = "CI";
+const NEEDS_HUMAN_MARKER = "<!-- agentic-review-needs-human -->";
+const WAITING_ESCALATION_MS = 6 * 60 * 60 * 1000;
 
 function bodyOf(item) {
   return typeof item?.body === "string" ? item.body : "";
@@ -102,6 +104,34 @@ function barrierMarker(head) {
   return `<!-- agentic-review-barrier:${head} -->`;
 }
 
+function copilotRequestMarker(head) {
+  return `<!-- agentic-copilot-requested:${head} -->`;
+}
+
+function copilotRequestFailedMarker(head) {
+  return `<!-- agentic-copilot-request-failed:${head} -->`;
+}
+
+function hasPendingCopilotRequest(pullRequest) {
+  return (pullRequest?.requested_reviewers || []).some((reviewer) =>
+    String(reviewer?.login || "")
+      .toLowerCase()
+      .startsWith("copilot"),
+  );
+}
+
+// Copilot silently drops review requests made by actors without a Copilot
+// seat, so the watchdog re-requests once per head with the CI trigger token.
+function needsCopilotRequest(pullRequest, reviews, comments, head) {
+  if (!missingRequiredReviewers(reviews, comments, head).includes("copilot")) {
+    return false;
+  }
+  if (hasPendingCopilotRequest(pullRequest)) return false;
+  if (hasCommentMarker(comments, copilotRequestMarker(head))) return false;
+  if (hasCommentMarker(comments, copilotRequestFailedMarker(head))) return false;
+  return true;
+}
+
 function waitingMarker(head) {
   return `<!-- agentic-review-waiting:${head} -->`;
 }
@@ -124,7 +154,7 @@ function workflowRunState(runs, workflowName = CI_WORKFLOW) {
 function isTerminal(comments) {
   return (
     hasCommentMarker(comments, "<!-- agentic-review-cap-reached -->") ||
-    hasCommentMarker(comments, "<!-- agentic-review-needs-human -->") ||
+    hasCommentMarker(comments, NEEDS_HUMAN_MARKER) ||
     hasCommentMarker(comments, "<!-- agentic-review-clean:")
   );
 }
@@ -146,18 +176,24 @@ function isAgenticPlaytestPullRequest(pullRequest, repository) {
 module.exports = {
   CI_WORKFLOW,
   LABEL,
+  NEEDS_HUMAN_MARKER,
   REVIEWERS,
   TITLE_PREFIX,
+  WAITING_ESCALATION_MS,
   barrierMarker,
   capPendingMarker,
+  copilotRequestFailedMarker,
+  copilotRequestMarker,
   copilotReviewedHeads,
   hasCommentMarker,
   hasCapPendingForHead,
+  hasPendingCopilotRequest,
   isAgenticPlaytestPullRequest,
   isTerminal,
   latestWorkflowRun,
   missingRequiredReviewers,
   missingReviewers,
+  needsCopilotRequest,
   reviewReceipts,
   waitingMarker,
   workflowRunState,

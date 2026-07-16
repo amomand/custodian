@@ -34,6 +34,14 @@ imports:
   - .github/agents/custodian-playtest-implementer.md
 
 pre-agent-steps:
+  - name: Require the CI trigger token
+    env:
+      CI_TRIGGER_TOKEN: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+    run: |
+      if [ -z "$CI_TRIGGER_TOKEN" ]; then
+        echo "::error::GH_AW_CI_TRIGGER_TOKEN is not configured. Without it, bot-created PRs never wake CI or the reviewers and the loop stalls silently. Failing loudly instead."
+        exit 1
+      fi
   - name: Validate manual retry scope
     if: github.event_name == 'workflow_dispatch'
     env:
@@ -83,7 +91,10 @@ safe-outputs:
     allowed-files:
       - "src/**"
       - "tests/**"
-      - "tools/**"
+      # Deliberately not tools/**: the review-loop state machine
+      # (agentic_review_state.cjs, finalize_agentic_review.cjs) lives there
+      # and the loop must not be able to rewrite its own control plane.
+      - "tools/playtest_runner.py"
       - "docs/**"
       - "main.py"
       - "design.md"

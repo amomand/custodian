@@ -52,6 +52,14 @@ env:
   PYTHONPATH: src
 
 pre-agent-steps:
+  - name: Require the CI trigger token
+    env:
+      CI_TRIGGER_TOKEN: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+    run: |
+      if [ -z "$CI_TRIGGER_TOKEN" ]; then
+        echo "::error::GH_AW_CI_TRIGGER_TOKEN is not configured. Without it, adjudicator pushes never wake CI or the reviewers and the loop stalls silently. Failing loudly instead."
+        exit 1
+      fi
   - name: Prepare a writable adjudication branch
     env:
       PR_NUMBER: ${{ github.event.inputs.pull_request_number }}
@@ -99,7 +107,10 @@ safe-outputs:
     allowed-files:
       - "src/**"
       - "tests/**"
-      - "tools/**"
+      # Deliberately not tools/**: the review-loop state machine
+      # (agentic_review_state.cjs, finalize_agentic_review.cjs) lives there
+      # and the loop must not be able to rewrite its own control plane.
+      - "tools/playtest_runner.py"
       - "docs/**"
       - "main.py"
       - "design.md"
