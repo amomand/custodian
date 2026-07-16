@@ -87,13 +87,13 @@ tools:
     - "sed -n"
 
 safe-outputs:
-  github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
   push-to-pull-request-branch:
     target: ${{ github.event.inputs.pull_request_number }}
     max: 1
     if-no-changes: ignore
     fallback-as-pull-request: false
     check-branch-protection: false
+    github-token-for-extra-empty-commit: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
     required-labels: [playtest]
     required-title-prefix: "[agentic playtest] "
     allowed-files:
@@ -161,7 +161,7 @@ safe-outputs:
         - name: Validate and record review state
           uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
           with:
-            github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+            github-token: ${{ github.token }}
             script: |
               const finalize = require("./tools/finalize_agentic_review.cjs");
               await finalize({ github, context, core });
@@ -223,7 +223,8 @@ Then follow exactly one terminal path:
   SHA before writing the terminal marker.
 - **Code changes, cycle 1 or 2:** push once to this PR, reply/resolve all handled
   threads, and request `copilot` once. Do not call `complete-review-round`. The
-  shared PAT used for the push wakes CI and both local reviewers directly.
+  dedicated CI-trigger token adds an empty commit after the code push, waking
+  CI and both local reviewers on that exact event head.
 - **Code changes, cycle 3, not final cap verification:** push once, do not
   request Copilot again, and call `complete-review-round` exactly once with
   outcome `cap-pending`. CI and both Opus reviewers then verify the pushed head

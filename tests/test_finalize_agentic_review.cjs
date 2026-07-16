@@ -46,6 +46,8 @@ async function runFinalizer({
     copilotReview(),
   ],
   unresolved = 0,
+  triggerCommitParent = null,
+  triggerCommitFiles = [],
 }) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agentic-finalize-"));
   const outputPath = path.join(directory, "agent-output.json");
@@ -102,6 +104,16 @@ async function runFinalizer({
       },
       actions: {
         listWorkflowRunsForRepo: endpoints.runs,
+      },
+      repos: {
+        getCommit: async () => ({
+          data: {
+            parents: triggerCommitParent
+              ? [{ sha: triggerCommitParent }]
+              : [],
+            files: triggerCommitFiles,
+          },
+        }),
       },
     },
     paginate: async (endpoint) => {
@@ -182,6 +194,39 @@ test("records the pushed cycle-three head as cap-pending", async () => {
     result.created[0].body,
     new RegExp("agentic-review-cap-pending:" + HEAD + ":from:" + PARENT),
   );
+});
+
+test("accepts the empty CI-trigger commit above a cycle-three push", async () => {
+  const result = await runFinalizer({
+    outcome: "cap-pending",
+    currentHead: HEAD,
+    reviewedHead: "c".repeat(40),
+    pushHead: PARENT,
+    cycle: "3",
+    triggerCommitParent: PARENT,
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.created.length, 1);
+  assert.match(
+    result.created[0].body,
+    new RegExp("agentic-review-cap-pending:" + HEAD + ":from:" + "c".repeat(40)),
+  );
+});
+
+test("rejects a changed commit above the recorded cycle-three push", async () => {
+  const result = await runFinalizer({
+    outcome: "cap-pending",
+    currentHead: HEAD,
+    reviewedHead: "c".repeat(40),
+    pushHead: PARENT,
+    cycle: "3",
+    triggerCommitParent: PARENT,
+    triggerCommitFiles: [{ filename: "src/custodian/engine.py" }],
+  });
+
+  assert.equal(result.created.length, 0);
+  assert.match(result.errors[0], /empty CI-trigger child/);
 });
 
 test("refuses clean when a review thread remains unresolved", async () => {
