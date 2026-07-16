@@ -9,6 +9,7 @@ damaged, protective, or simply misaligned.
 from __future__ import annotations
 
 from custodian.arka import drift_stage
+from custodian.engine_constants import REACTOR_FAILURE_OUTCOMES
 from custodian.models import DriftStage, ShipState
 
 
@@ -19,6 +20,7 @@ EFFICIENT_ARRIVAL_WITH_CONTAMINATION = "efficient_arrival_with_contamination"
 FALSE_ARRIVAL = "false_arrival"
 ENDLESS_CUSTODIAN = "endless_custodian"
 QUIET_EXTINCTION = "quiet_extinction"
+REACTOR_LOSS = "reactor_loss"
 
 # Thresholds. These are deliberately explicit so a scripted route can reach each
 # ending deterministically and so balancing has a single place to move them.
@@ -61,6 +63,11 @@ def evaluate_ending(state: ShipState) -> str:
     """
     stage = drift_stage(state)
     verification = state.story.arrival_verification
+
+    # Reactor loss is read first: once containment is gone, no arrival or
+    # endless-watch reading applies. The ship did not survive its own core.
+    if (state.outcome or "") in REACTOR_FAILURE_OUTCOMES:
+        return REACTOR_LOSS
 
     if _arrived(state):
         # False arrival: the player leaned on arka's navigation, never verified,
@@ -105,6 +112,7 @@ ENDING_TITLES: dict[str, str] = {
     FALSE_ARRIVAL: "False arrival",
     ENDLESS_CUSTODIAN: "Endless custodian",
     QUIET_EXTINCTION: "Quiet extinction",
+    REACTOR_LOSS: "Reactor lost",
 }
 
 
@@ -139,6 +147,15 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
             "external scan: blocked, circular, inconsistent",
             "arka: The mission succeeded. I am certain of it.",
             "Nothing confirms where the ship is.",
+        )
+    if candidate == REACTOR_LOSS:
+        return (
+            "ARRIVAL PROTOCOL: unmet",
+            "reactor: containment lost during the maintenance window",
+            f"sleepers viable: {viability}%",
+            "ship integrity: not recoverable",
+            "arka: I was still composing a safer sequence.",
+            "The core outran every hand on the board. The watch ends here.",
         )
     if candidate == QUIET_EXTINCTION:
         return (

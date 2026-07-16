@@ -8,6 +8,7 @@ from custodian.endings import (
     ENDLESS_CUSTODIAN,
     FALSE_ARRIVAL,
     QUIET_EXTINCTION,
+    REACTOR_LOSS,
     ending_lines,
     evaluate_ending,
 )
@@ -61,6 +62,33 @@ def _state(
 
 
 class EvaluateEndingTests(unittest.TestCase):
+    def test_reactor_loss_read_before_arrival(self) -> None:
+        # A melted core overrides any arrival or endless-watch reading: the
+        # ship did not survive its own reactor, so the debrief must name that.
+        state = replace(
+            _state(distance=0, neural=80, verification="manual"),
+            outcome="The coolant loop flashes dry. The reactor becomes a small, patient sun.",
+        )
+        self.assertEqual(evaluate_ending(state), REACTOR_LOSS)
+
+    def test_reactor_loss_when_watch_did_not_arrive(self) -> None:
+        state = replace(
+            _state(distance=40, neural=70),
+            outcome="Reactor temperature exceeds containment.",
+        )
+        self.assertEqual(evaluate_ending(state), REACTOR_LOSS)
+
+    def test_reactor_loss_ending_lines_name_containment_and_close(self) -> None:
+        state = replace(
+            _state(distance=40, neural=70, sleepers_lost=42),
+            outcome="Coolant pressure ruptures the primary loop.",
+            story=StoryState(ending_candidate=REACTOR_LOSS),
+        )
+        lines = "\n".join(ending_lines(state))
+        self.assertIn("containment lost during the maintenance window", lines)
+        self.assertIn("ship integrity: not recoverable", lines)
+        self.assertIn("The watch ends here.", lines)
+
     def test_clean_arrival_when_viable_and_contained(self) -> None:
         state = _state(distance=0, neural=80, open_symptom=0, verification="manual")
         self.assertEqual(evaluate_ending(state), CLEAN_ARRIVAL)

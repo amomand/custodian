@@ -14,6 +14,7 @@ from custodian.endings import ARRIVAL_DISTANCE_TENTHS, VIABILITY_FLOOR, evaluate
 from custodian.engine_constants import (
     MISSION_END_TURN,
     REACTOR_COOLANT_DRY_OUTCOME,
+    REACTOR_FAILURE_OUTCOMES,
     REACTOR_MELTDOWN_OUTCOME,
     REACTOR_OVERHEAT_OUTCOME,
     REACTOR_OVERPRESSURE_OUTCOME,
@@ -1814,6 +1815,8 @@ def _raw_panel(target: str | None) -> str:
 
 
 def _ending_candidate_applies(state: ShipState) -> bool:
+    if (state.outcome or "") in REACTOR_FAILURE_OUTCOMES:
+        return True
     return state.outcome in {
         CRYO_COLLAPSE_OUTCOME,
         ARRIVAL_OUTCOME,

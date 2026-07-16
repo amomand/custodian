@@ -102,13 +102,19 @@ class NarrativeTests(unittest.TestCase):
         self.assertIn("arka: Keep your report close. It may be useful later.", debrief)
         self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
 
-    def test_catastrophic_failure_has_no_arrival_debrief(self) -> None:
-        state = ShipState(outcome="Reactor temperature exceeds containment.")
+    def test_reactor_failure_gets_reactor_loss_arrival_debrief(self) -> None:
+        state = ShipState(
+            outcome="Reactor temperature exceeds containment.",
+            story=StoryState(ending_candidate="reactor_loss"),
+        )
 
         debrief = "\n".join(closing_lines(state))
 
         self.assertIn("MAINTENANCE WINDOW CLOSED", debrief)
-        self.assertNotIn("ARRIVAL DEBRIEF", debrief)
+        self.assertIn("ARRIVAL DEBRIEF", debrief)
+        self.assertIn("reading: Reactor lost", debrief)
+        self.assertIn("containment lost during the maintenance window", debrief)
+        self.assertIn("ship integrity: not recoverable", debrief)
 
 
     def test_reactor_debrief_reads_contained_on_clean_arrival(self) -> None:
