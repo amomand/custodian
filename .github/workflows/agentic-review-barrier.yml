@@ -51,11 +51,21 @@ jobs:
               if (context.eventName === "workflow_run") {
                 const embedded = context.payload.workflow_run.pull_requests || [];
                 if (embedded.length) return embedded.map((pr) => pr.number);
-                const response = await github.request(
-                  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/pull_requests",
-                  { owner, repo, run_id: context.payload.workflow_run.id },
-                );
-                return response.data.map((pr) => pr.number);
+                // Push-triggered runs (e.g. CI on a merge to main) have no PR
+                // association and their pull_requests endpoint can 404.
+                if (context.payload.workflow_run.event !== "pull_request") {
+                  return [];
+                }
+                try {
+                  const response = await github.request(
+                    "GET /repos/{owner}/{repo}/actions/runs/{run_id}/pull_requests",
+                    { owner, repo, run_id: context.payload.workflow_run.id },
+                  );
+                  return response.data.map((pr) => pr.number);
+                } catch (error) {
+                  if (error.status === 404) return [];
+                  throw error;
+                }
               }
               const pulls = await github.paginate(github.rest.pulls.list, {
                 owner,
