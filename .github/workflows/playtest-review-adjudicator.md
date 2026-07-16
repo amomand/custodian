@@ -36,6 +36,12 @@ permissions:
   issues: read
   pull-requests: read
 
+# The default gh-aw group falls back to github.ref on workflow_dispatch, so
+# concurrent dispatches for different PRs cancel each other. Key on the PR.
+concurrency:
+  group: "gh-aw-${{ github.workflow }}-${{ github.event.inputs.pull_request_number }}"
+  cancel-in-progress: true
+
 engine:
   id: copilot
   model: claude-opus-4.8
