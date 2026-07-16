@@ -200,6 +200,35 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertNotIn("arka's account:", debrief)
 
+    def test_selective_drift_with_raw_reads_names_honesty_link(self) -> None:
+        state = ShipState(
+            turn=11,
+            raw_inspections=2,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka's account: reading raw kept it close to honest", debrief)
+        self.assertNotIn("raw_inspections", debrief)
+
+    def test_no_honesty_line_when_undrifted_and_raw_unread(self) -> None:
+        state = ShipState(
+            turn=2,
+            raw_inspections=0,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertNotIn("arka's account:", debrief)
+
 
 if __name__ == "__main__":
     unittest.main()

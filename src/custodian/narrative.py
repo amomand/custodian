@@ -196,10 +196,8 @@ def _honesty_debrief(state: ShipState) -> str | None:
             "your raw reads held it honest longer than the clock wanted, then it "
             "slid anyway."
         )
-    if inspections <= 0:
-        return "you took its word for the whole watch and never opened the raw panels against it."
-    if stage == DriftStage.SELECTIVE:
-        return "reading raw kept it close to honest; a little more might have kept it there."
+    if stage == DriftStage.SELECTIVE and inspections > 0:
+        return "reading raw kept it close to honest; it leaned on you the rest of the way."
     return None
 
 
