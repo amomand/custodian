@@ -4,6 +4,9 @@ The weekly playtester still stops at issues. A second workflow picks up only the
 issues carrying that run's hidden gh-aw provenance marker, checks them against
 the current game, and opens one draft PR per coherent root cause. It may open
 three PRs in a run, but it may not alter the control plane or merge its work.
+The implementer can also be dispatched directly with a provenance run ID and an
+optional comma-separated issue scope; that retry path does not rerun the
+playtester or create more findings.
 
 ```mermaid
 flowchart LR
@@ -72,23 +75,25 @@ voice, or crosses the deterministic simulation boundary.
 
 ## Token setup
 
-The existing `COPILOT_GITHUB_TOKEN` fine-grained PAT is reused for all gh-aw
-safe outputs. Give it access only to this repository, with:
+The workflow deliberately separates inference from repository mutation:
 
-- account permission `Copilot Requests: Read`;
-- repository permission `Contents: Read and write`;
-- repository permission `Pull requests: Read and write`.
+- `COPILOT_GITHUB_TOKEN` is the inference credential. Its fine-grained PAT only
+  needs account permission `Copilot Requests: Read`.
+- `GH_AW_CI_TRIGGER_TOKEN` is the event credential. Scope it only to this
+  repository with `Contents: Read and write`.
+- GitHub's short-lived per-run `GITHUB_TOKEN` creates PRs, requests Copilot,
+  pushes adjudicator fixes, replies, resolves threads and writes terminal
+  markers under the permissions compiled for each safe-output job.
 
-The account permission permits Copilot review requests. Using the PAT for PR
-creation and subsequent pushes gives those events one consistent user actor,
-so ordinary CI and reviewer workflows wake without approval-only recursion or
-extra empty commits. Pull requests write lets the adjudicator reply to and
-resolve review threads reliably. The deterministic barrier and watchdog retain
-GitHub's short-lived workflow token for their own comments and dispatches.
+PR and code operations use the short-lived workflow token. After each code
+write, gh-aw uses `GH_AW_CI_TRIGGER_TOKEN` for one empty commit, because events
+created solely by `GITHUB_TOKEN` do not launch downstream workflows. That
+event-waking commit starts ordinary CI and both Opus reviewers without giving
+the Copilot inference PAT repository-write authority.
 
 The Opus reviewer triggers also explicitly allow `github-actions[bot]` as a
-fallback. The normal path remains the PAT-authored PR and pushes; the bot
-allowlist prevents a missing PAT from silently stranding a bot-authored PR.
+fallback. The normal PR is bot-authored, while its event-waking commit is made
+with the narrowly scoped CI-trigger token.
 
 ## Editing the loop
 

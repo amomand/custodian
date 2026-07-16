@@ -3,6 +3,28 @@
 const fs = require("fs");
 const state = require("./agentic_review_state.cjs");
 
+async function currentHeadContainsPush({
+  github,
+  owner,
+  repo,
+  currentHead,
+  pushHead,
+}) {
+  if (currentHead === pushHead) return true;
+
+  const { data: commit } = await github.rest.repos.getCommit({
+    owner,
+    repo,
+    ref: currentHead,
+  });
+  return Boolean(
+    commit.parents?.length === 1 &&
+      commit.parents[0].sha === pushHead &&
+      Array.isArray(commit.files) &&
+      commit.files.length === 0,
+  );
+}
+
 async function finalizeAgenticReview({ github, context, core }) {
   const output = JSON.parse(
     fs.readFileSync(process.env.GH_AW_AGENT_OUTPUT, "utf8"),
@@ -56,12 +78,22 @@ async function finalizeAgenticReview({ github, context, core }) {
   let heading;
 
   if (outcome === "cap-pending") {
+    const validPushedHead =
+      pushHead &&
+      (await currentHeadContainsPush({
+        github,
+        owner,
+        repo,
+        currentHead,
+        pushHead,
+      }));
     if (
       process.env.EXPECTED_CYCLE !== "3" ||
-      !pushHead ||
-      currentHead !== pushHead
+      !validPushedHead
     ) {
-      core.setFailed("cap-pending requires the cycle-three pushed head");
+      core.setFailed(
+        "cap-pending requires the cycle-three push or its empty CI-trigger child",
+      );
       return;
     }
     marker = state.capPendingMarker(currentHead, reviewedHead);
@@ -129,9 +161,18 @@ async function finalizeAgenticReview({ github, context, core }) {
     marker = "<!-- agentic-review-clean:" + currentHead + " -->";
     heading = "Review loop complete and clean";
   } else if (outcome === "needs-human") {
-    if (pushHead && currentHead !== pushHead) {
-      core.setFailed("needs-human push does not match the current head");
-      return;
+    if (pushHead) {
+      const validPushedHead = await currentHeadContainsPush({
+        github,
+        owner,
+        repo,
+        currentHead,
+        pushHead,
+      });
+      if (!validPushedHead) {
+        core.setFailed("needs-human push does not match the current head");
+        return;
+      }
     }
     marker = "<!-- agentic-review-needs-human -->";
     heading = "Review loop needs a human decision";
