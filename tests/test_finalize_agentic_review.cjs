@@ -78,6 +78,8 @@ async function runFinalizer({
   };
   const created = [];
   const errors = [];
+  const assigned = [];
+  const readied = [];
   const github = {
     rest: {
       pulls: {
@@ -87,6 +89,8 @@ async function runFinalizer({
             title: "[agentic playtest] fix the finding",
             labels: [{ name: "playtest" }],
             base: { ref: "main" },
+            draft: true,
+            node_id: "PR_node_77",
             head: {
               sha: currentHead,
               repo: { full_name: "alex/custodian" },
@@ -99,6 +103,10 @@ async function runFinalizer({
         listComments: endpoints.comments,
         createComment: async (payload) => {
           created.push(payload);
+          return { data: payload };
+        },
+        addAssignees: async (payload) => {
+          assigned.push(payload);
           return { data: payload };
         },
       },
@@ -132,17 +140,27 @@ async function runFinalizer({
       }
       throw new Error("Unexpected pagination endpoint");
     },
-    graphql: async () => ({
-      repository: {
-        pullRequest: {
-          reviewThreads: {
-            nodes: Array.from({ length: unresolved }, () => ({
-              isResolved: false,
-            })),
+    graphql: async (query, variables) => {
+      if (query.includes("markPullRequestReadyForReview")) {
+        readied.push(variables);
+        return {
+          markPullRequestReadyForReview: {
+            pullRequest: { isDraft: false },
+          },
+        };
+      }
+      return {
+        repository: {
+          pullRequest: {
+            reviewThreads: {
+              nodes: Array.from({ length: unresolved }, () => ({
+                isResolved: false,
+              })),
+            },
           },
         },
-      },
-    }),
+      };
+    },
   };
   const core = {
     setFailed: (message) => errors.push(message),
@@ -155,7 +173,7 @@ async function runFinalizer({
     core,
   });
   fs.rmSync(directory, { recursive: true, force: true });
-  return { created, errors };
+  return { created, errors, assigned, readied };
 }
 
 test("writes a clean marker only after deterministic validation", async () => {
@@ -167,6 +185,30 @@ test("writes a clean marker only after deterministic validation", async () => {
     result.created[0].body,
     new RegExp("agentic-review-clean:" + HEAD),
   );
+});
+
+test("rings the doorbell on clean: ready for review, assigned to the owner", async () => {
+  const result = await runFinalizer({ outcome: "clean" });
+
+  assert.deepEqual(result.readied, [{ id: "PR_node_77" }]);
+  assert.equal(result.assigned.length, 1);
+  assert.deepEqual(result.assigned[0].assignees, ["alex"]);
+});
+
+test("leaves the draft alone on cap-pending and needs-human", async () => {
+  const capPending = await runFinalizer({
+    outcome: "cap-pending",
+    currentHead: HEAD,
+    reviewedHead: PARENT,
+    pushHead: HEAD,
+    cycle: "3",
+  });
+  const needsHuman = await runFinalizer({ outcome: "needs-human" });
+
+  assert.deepEqual(capPending.readied, []);
+  assert.deepEqual(capPending.assigned, []);
+  assert.deepEqual(needsHuman.readied, []);
+  assert.deepEqual(needsHuman.assigned, []);
 });
 
 test("refuses a clean marker while CI is failing", async () => {

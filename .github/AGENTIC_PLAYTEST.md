@@ -53,6 +53,12 @@ verifies the current SHA, green CI, required review receipts and zero unresolved
 threads before writing the exact clean marker. The model supplies the decision
 ledger, but does not format or authorise its own terminal state.
 
+A validated clean result also rings the doorbell: the deterministic finalize
+step flips the draft to ready-for-review and assigns the repository owner. That
+is the only path from draft to ready, so a ready PR always means the loop
+finished clean and it is a human's turn. Draft means the machine is still
+working; `needs-human` means it stopped and named a decision.
+
 The watchdog checks every ten minutes. After twenty minutes it names missing
 reviewers or pending CI on the PR; silence never becomes a pass. It recovers a
 completed join if the immediate barrier missed its dispatch and retries stale
@@ -87,29 +93,31 @@ The workflow deliberately separates inference from repository mutation:
 - `COPILOT_GITHUB_TOKEN` is the inference credential. Its fine-grained PAT only
   needs account permission `Copilot Requests: Read`.
 - `GH_AW_CI_TRIGGER_TOKEN` is the event credential. Scope it only to this
-  repository with `Contents: Read and write` (the empty wake-up commit) and
-  `Pull requests: Read and write` (the watchdog's Copilot review request).
-- GitHub's short-lived per-run `GITHUB_TOKEN` creates PRs, pushes adjudicator
-  fixes, replies, resolves threads and writes terminal markers under the
-  permissions compiled for each safe-output job.
+  repository with `Contents: Read and write` (branch pushes) and
+  `Pull requests: Read and write` (PR creation and Copilot review requests).
+- GitHub's short-lived per-run `GITHUB_TOKEN` replies, resolves threads and
+  writes terminal markers under the permissions compiled for each safe-output
+  job, keeping the adjudicator's thread-by-thread voice visibly the bot's.
 
-PR and code operations use the short-lived workflow token. After each code
-write, gh-aw uses `GH_AW_CI_TRIGGER_TOKEN` for one empty commit, because events
-created solely by `GITHUB_TOKEN` do not launch downstream workflows. That
-event-waking commit starts ordinary CI and both Opus reviewers without giving
-the Copilot inference PAT repository-write authority.
+The writes that must generate events use the event credential, not
+`GITHUB_TOKEN`: the implementer's branch push and PR creation, the
+adjudicator's push, and every Copilot review request. This is deliberate, and
+it is what keeps the loop human-free in the middle. Bot-authored PRs sit
+behind the contributor-approval gate on every single run, events created by
+`GITHUB_TOKEN` launch no workflows at all, and Copilot silently ignores
+review requests from `github-actions[bot]` because the bot holds no Copilot
+seat. A PR authored by the event credential's owner has none of those
+problems: CI, both Opus reviewers and Copilot all start unprompted on every
+head. The trade-off is provenance: loop PRs are authored by the token owner,
+and the `[agentic playtest] ` prefix plus `playtest` label carry the "a
+machine wrote this" signal instead of the author field.
 
-Copilot review requests need the same care: Copilot silently ignores requests
-made by `github-actions[bot]`, because the bot holds no Copilot seat. The
-safe-output request at PR creation is kept as a hint, but the request that
-actually lands is made by the watchdog with `GH_AW_CI_TRIGGER_TOKEN`, which is
-seat-attributed to its owner. The implementer and adjudicator both fail fast in
-a pre-step when that secret is missing, so a lapsed token is a red X rather
-than a silent stall.
-
-The Opus reviewer triggers also explicitly allow `github-actions[bot]` as a
-fallback. The normal PR is bot-authored, while its event-waking commit is made
-with the narrowly scoped CI-trigger token.
+The watchdog re-requests Copilot with the same credential, at most once per
+head, when a requested review never arrives, and reports the attempt as a
+marker comment. The implementer and adjudicator both fail fast in a pre-step
+when the secret is missing, so a lapsed token is a red X rather than a silent
+stall. The Opus reviewer triggers still allow `github-actions[bot]` as a
+fallback actor for any remaining bot-driven events.
 
 ## Editing the loop
 

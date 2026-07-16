@@ -202,6 +202,29 @@ async function finalizeAgenticReview({ github, context, core }) {
     issue_number: number,
     body,
   });
+
+  // The doorbell: a validated clean loop is the only path that turns a draft
+  // into a ready-for-review PR, so "ready" always means "your turn".
+  if (outcome === "clean") {
+    if (pull.draft && pull.node_id) {
+      await github.graphql(
+        [
+          "mutation($id: ID!) {",
+          "  markPullRequestReadyForReview(input: { pullRequestId: $id }) {",
+          "    pullRequest { isDraft }",
+          "  }",
+          "}",
+        ].join("\n"),
+        { id: pull.node_id },
+      );
+    }
+    await github.rest.issues.addAssignees({
+      owner,
+      repo,
+      issue_number: number,
+      assignees: [owner],
+    });
+  }
 }
 
 module.exports = finalizeAgenticReview;

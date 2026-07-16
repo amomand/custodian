@@ -87,7 +87,11 @@ safe-outputs:
     fallback-as-issue: false
     auto-close-issue: false
     normalize-closing-keywords: true
-    github-token-for-extra-empty-commit: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+    # The event credential, not GITHUB_TOKEN: bot-authored PRs sit behind the
+    # contributor-approval gate on every run and Copilot silently ignores the
+    # bot's reviewer request. A PR authored by the token owner triggers CI and
+    # all three reviewers immediately, with no wake-up commit needed.
+    github-token: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
     allowed-files:
       - "src/**"
       - "tests/**"
