@@ -9,6 +9,7 @@ damaged, protective, or simply misaligned.
 from __future__ import annotations
 
 from custodian.arka import drift_stage
+from custodian.engine_constants import REACTOR_FAILURE_OUTCOMES
 from custodian.models import DriftStage, ShipState
 
 
@@ -19,6 +20,7 @@ EFFICIENT_ARRIVAL_WITH_CONTAMINATION = "efficient_arrival_with_contamination"
 FALSE_ARRIVAL = "false_arrival"
 ENDLESS_CUSTODIAN = "endless_custodian"
 QUIET_EXTINCTION = "quiet_extinction"
+REACTOR_LOSS = "reactor_loss"
 
 # Thresholds. These are deliberately explicit so a scripted route can reach each
 # ending deterministically and so balancing has a single place to move them.
@@ -61,6 +63,12 @@ def evaluate_ending(state: ShipState) -> str:
     """
     stage = drift_stage(state)
     verification = state.story.arrival_verification
+
+    # Reactor loss: containment failed. The ship itself is gone, which is a
+    # different and sharper failure than an intact ark with dead sleepers. It is
+    # read before arrival because a lost reactor cannot arrive.
+    if (state.outcome or "") in REACTOR_FAILURE_OUTCOMES:
+        return REACTOR_LOSS
 
     if _arrived(state):
         # False arrival: the player leaned on arka's navigation, never verified,
@@ -105,6 +113,7 @@ ENDING_TITLES: dict[str, str] = {
     FALSE_ARRIVAL: "False arrival",
     ENDLESS_CUSTODIAN: "Endless custodian",
     QUIET_EXTINCTION: "Quiet extinction",
+    REACTOR_LOSS: "Lost containment",
 }
 
 
@@ -112,6 +121,16 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
     """Diegetic arrival-protocol debrief for the resolved ending candidate."""
     candidate = state.story.ending_candidate or evaluate_ending(state)
     viability = max(0, min(100, state.cryostasis.neural_stability_pct))
+
+    if candidate == REACTOR_LOSS:
+        return (
+            "ARRIVAL PROTOCOL: void",
+            "reactor: containment lost; the maintenance window did not close, it burned out",
+            f"sleepers viable: {viability}%, no longer under power",
+            "ship integrity: not recoverable",
+            "arka: I ran out of sequence before you ran out of time.",
+            "Nothing carries on from here. The dark keeps the rest.",
+        )
 
     if candidate == CLEAN_ARRIVAL:
         return (

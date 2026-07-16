@@ -14,6 +14,7 @@ from custodian.endings import ARRIVAL_DISTANCE_TENTHS, VIABILITY_FLOOR, evaluate
 from custodian.engine_constants import (
     MISSION_END_TURN,
     REACTOR_COOLANT_DRY_OUTCOME,
+    REACTOR_FAILURE_OUTCOMES,
     REACTOR_MELTDOWN_OUTCOME,
     REACTOR_OVERHEAT_OUTCOME,
     REACTOR_OVERPRESSURE_OUTCOME,
@@ -1818,7 +1819,7 @@ def _ending_candidate_applies(state: ShipState) -> bool:
         CRYO_COLLAPSE_OUTCOME,
         ARRIVAL_OUTCOME,
         MAINTENANCE_WINDOW_OUTCOME,
-    }
+    } or (state.outcome or "") in REACTOR_FAILURE_OUTCOMES
 
 
 def _arrival_disagreement_active(state: ShipState) -> bool:
