@@ -1,7 +1,10 @@
 import unittest
 
 from custodian.engine import ARRIVAL_OUTCOME
-from custodian.engine_constants import REACTOR_MELTDOWN_OUTCOME
+from custodian.engine_constants import (
+    REACTOR_MELTDOWN_OUTCOME,
+    REACTOR_OVERHEAT_OUTCOME,
+)
 from custodian.models import BehaviourLedger, ShipState, StoryState
 from custodian.narrative import boot_lines, closing_lines, opening_lines
 
@@ -105,7 +108,7 @@ class NarrativeTests(unittest.TestCase):
     def test_reactor_loss_gets_a_debrief_reading(self) -> None:
         state = ShipState(
             turn=13,
-            outcome="Reactor temperature exceeds containment.",
+            outcome=REACTOR_OVERHEAT_OUTCOME,
             story=StoryState(ending_candidate="reactor_loss"),
         )
 
