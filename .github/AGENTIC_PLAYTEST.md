@@ -58,6 +58,13 @@ reviewers or pending CI on the PR; silence never becomes a pass. It recovers a
 completed join if the immediate barrier missed its dispatch and retries stale
 dispatch locks when an adjudicator run or its safe outputs failed.
 
+Copilot drops review requests made by `github-actions[bot]` without a trace, so
+the watchdog also re-requests Copilot with the CI trigger token, at most once
+per head, and reports the attempt (or its failure) as a marker comment on the
+PR. If a review round is still waiting on anything six hours after the waiting
+notice first appeared, the watchdog posts the `needs-human` terminal marker and
+pauses the loop for that PR; deleting that comment resumes it.
+
 ## Agent authority
 
 All automated PRs must target `main`, carry the `playtest` label, use the
@@ -80,16 +87,25 @@ The workflow deliberately separates inference from repository mutation:
 - `COPILOT_GITHUB_TOKEN` is the inference credential. Its fine-grained PAT only
   needs account permission `Copilot Requests: Read`.
 - `GH_AW_CI_TRIGGER_TOKEN` is the event credential. Scope it only to this
-  repository with `Contents: Read and write`.
-- GitHub's short-lived per-run `GITHUB_TOKEN` creates PRs, requests Copilot,
-  pushes adjudicator fixes, replies, resolves threads and writes terminal
-  markers under the permissions compiled for each safe-output job.
+  repository with `Contents: Read and write` (the empty wake-up commit) and
+  `Pull requests: Read and write` (the watchdog's Copilot review request).
+- GitHub's short-lived per-run `GITHUB_TOKEN` creates PRs, pushes adjudicator
+  fixes, replies, resolves threads and writes terminal markers under the
+  permissions compiled for each safe-output job.
 
 PR and code operations use the short-lived workflow token. After each code
 write, gh-aw uses `GH_AW_CI_TRIGGER_TOKEN` for one empty commit, because events
 created solely by `GITHUB_TOKEN` do not launch downstream workflows. That
 event-waking commit starts ordinary CI and both Opus reviewers without giving
 the Copilot inference PAT repository-write authority.
+
+Copilot review requests need the same care: Copilot silently ignores requests
+made by `github-actions[bot]`, because the bot holds no Copilot seat. The
+safe-output request at PR creation is kept as a hint, but the request that
+actually lands is made by the watchdog with `GH_AW_CI_TRIGGER_TOKEN`, which is
+seat-attributed to its owner. The implementer and adjudicator both fail fast in
+a pre-step when that secret is missing, so a lapsed token is a red X rather
+than a silent stall.
 
 The Opus reviewer triggers also explicitly allow `github-actions[bot]` as a
 fallback. The normal PR is bot-authored, while its event-waking commit is made

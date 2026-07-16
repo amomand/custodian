@@ -146,6 +146,59 @@ test("uses the latest CI workflow run and waits for completion", () => {
   });
 });
 
+test("requests Copilot once per head and only when genuinely missing", () => {
+  const pull = { requested_reviewers: [] };
+  const reviews = [localReview("diegesis"), localReview("simulation-truth")];
+
+  assert.equal(state.needsCopilotRequest(pull, reviews, [], HEAD), true);
+  assert.equal(
+    state.needsCopilotRequest(pull, [...reviews, copilotReview()], [], HEAD),
+    false,
+  );
+  assert.equal(
+    state.needsCopilotRequest(
+      { requested_reviewers: [{ login: "copilot-pull-request-reviewer[bot]" }] },
+      reviews,
+      [],
+      HEAD,
+    ),
+    false,
+  );
+  assert.equal(
+    state.needsCopilotRequest(
+      pull,
+      reviews,
+      [{ body: state.copilotRequestMarker(HEAD) }],
+      HEAD,
+    ),
+    false,
+  );
+  assert.equal(
+    state.needsCopilotRequest(
+      pull,
+      reviews,
+      [{ body: state.copilotRequestFailedMarker(HEAD) }],
+      HEAD,
+    ),
+    false,
+  );
+});
+
+test("does not request Copilot when the cap waives it for a final head", () => {
+  const heads = ["b", "c", "d"].map((letter) => letter.repeat(40));
+  const reviews = [
+    ...heads.map((head) => copilotReview(head)),
+    localReview("diegesis"),
+    localReview("simulation-truth"),
+  ];
+  const comments = [{ body: state.capPendingMarker(HEAD, heads[2]) }];
+
+  assert.equal(
+    state.needsCopilotRequest({ requested_reviewers: [] }, reviews, comments, HEAD),
+    false,
+  );
+});
+
 test("recognises scoped PRs and terminal markers", () => {
   const pullRequest = {
     state: "open",

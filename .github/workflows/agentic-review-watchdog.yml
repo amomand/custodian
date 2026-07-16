@@ -23,11 +23,13 @@ jobs:
         with:
           persist-credentials: false
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        id: inspect
         with:
           script: |
             const state = require("./tools/agentic_review_state.cjs");
             const { owner, repo } = context.repo;
             const repository = `${owner}/${repo}`;
+            const copilotRequests = [];
             const pulls = await github.paginate(github.rest.pulls.list, {
               owner,
               repo,
@@ -69,6 +71,9 @@ jobs:
                 comments,
                 head,
               );
+              if (state.needsCopilotRequest(pull, reviews, comments, head)) {
+                copilotRequests.push({ number, head });
+              }
               const barrier = state.barrierMarker(head);
               const barrierComment = comments.find((comment) =>
                 comment.body?.includes(barrier),
@@ -158,6 +163,17 @@ jobs:
               const body = `${marker}\nReview round is still waiting on: **${waitingOn.join(", ")}** for \`${head}\`. Silence or pending CI is not treated as a clean review; the watchdog will check again.`;
               const existing = comments.find((comment) => comment.body?.includes(marker));
               if (existing) {
+                const waitingAgeMs =
+                  Date.now() - new Date(existing.created_at).getTime();
+                if (waitingAgeMs >= state.WAITING_ESCALATION_MS) {
+                  await github.rest.issues.createComment({
+                    owner,
+                    repo,
+                    issue_number: number,
+                    body: `${state.NEEDS_HUMAN_MARKER}\nThis review round has waited more than six hours on **${waitingOn.join(", ")}** for \`${head}\`. The loop is paused for a human decision instead of waiting silently. Delete this comment to let the watchdog resume.`,
+                  });
+                  continue;
+                }
                 if (existing.body !== body) {
                   await github.rest.issues.updateComment({
                     owner,
@@ -175,3 +191,37 @@ jobs:
                 });
               }
             }
+            core.setOutput("copilot_requests", JSON.stringify(copilotRequests));
+      - name: Request Copilot review with the CI trigger token
+        if: steps.inspect.outputs.copilot_requests != '' && steps.inspect.outputs.copilot_requests != '[]'
+        env:
+          REQUESTS: ${{ steps.inspect.outputs.copilot_requests }}
+          CI_TRIGGER_TOKEN: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+          DEFAULT_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Copilot ignores review requests from github-actions[bot], so the
+          # request must come from the seat-holding CI trigger token. Each head
+          # is requested at most once; failures are reported on the PR instead
+          # of degrading silently.
+          echo "$REQUESTS" | jq -c '.[]' | while read -r item; do
+            number=$(echo "$item" | jq -r '.number')
+            head=$(echo "$item" | jq -r '.head')
+            if [ -z "$CI_TRIGGER_TOKEN" ]; then
+              GH_TOKEN="$DEFAULT_TOKEN" gh api "repos/$REPO/issues/$number/comments" \
+                -f body="<!-- agentic-copilot-request-failed:$head -->
+          The watchdog cannot request a Copilot review for \`$head\`: the \`GH_AW_CI_TRIGGER_TOKEN\` secret is not configured. Add it with Contents and Pull requests read/write, then delete this comment, or request Copilot manually." >/dev/null
+              continue
+            fi
+            if GH_TOKEN="$CI_TRIGGER_TOKEN" gh api -X POST "repos/$REPO/pulls/$number/requested_reviewers" \
+                -f 'reviewers[]=copilot-pull-request-reviewer[bot]' >/dev/null; then
+              GH_TOKEN="$DEFAULT_TOKEN" gh api "repos/$REPO/issues/$number/comments" \
+                -f body="<!-- agentic-copilot-requested:$head -->
+          The watchdog requested a Copilot review for \`$head\` with the CI trigger token." >/dev/null
+            else
+              GH_TOKEN="$DEFAULT_TOKEN" gh api "repos/$REPO/issues/$number/comments" \
+                -f body="<!-- agentic-copilot-request-failed:$head -->
+          The watchdog failed to request a Copilot review for \`$head\`. Check the CI trigger token's Pull requests permission, then delete this comment, or request Copilot manually." >/dev/null
+            fi
+          done
