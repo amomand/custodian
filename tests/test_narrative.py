@@ -156,5 +156,50 @@ class NarrativeTests(unittest.TestCase):
         )
 
 
+    def test_wrong_drift_names_raw_honesty_link_when_raw_unread(self) -> None:
+        state = ShipState(
+            turn=13,
+            raw_inspections=0,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka's account:", debrief)
+        self.assertIn("would have kept it honest", debrief)
+        self.assertNotIn("raw_inspections", debrief)
+
+    def test_wrong_drift_credits_raw_reads_that_deferred_the_slide(self) -> None:
+        state = ShipState(
+            turn=15,
+            raw_inspections=4,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka's account: your raw reads held it honest longer", debrief)
+
+    def test_accurate_drift_with_raw_reads_omits_honesty_line(self) -> None:
+        state = ShipState(
+            turn=3,
+            raw_inspections=2,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertNotIn("arka's account:", debrief)
+
+
 if __name__ == "__main__":
     unittest.main()

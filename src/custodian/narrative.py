@@ -64,6 +64,9 @@ def closing_lines(state: ShipState) -> tuple[str, ...]:
     if focus_line is not None:
         lines.append(f"the quiet: {focus_line}")
     lines.append(f"raw panel: {_raw_debrief(state)}")
+    honesty_line = _honesty_debrief(state)
+    if honesty_line is not None:
+        lines.append(f"arka's account: {honesty_line}")
     route_line = _route_debrief(state)
     if route_line is not None:
         lines.append(f"route habits: {route_line}")
@@ -170,6 +173,34 @@ def _raw_debrief(state: ShipState) -> str:
     if inspections <= 2:
         return "checked in brief, expensive glances."
     return "kept open often enough to make arka work for your trust."
+
+
+def _honesty_debrief(state: ShipState) -> str | None:
+    """Name the raw-reading -> arka-honesty link the drift model already uses.
+
+    The drift model defers arka's slide toward WRONG by one beat per raw
+    inspection (capped). That mechanic is otherwise invisible: a careful
+    manual player can end with WRONG arka and never learn that reading raw was
+    what would have held its account honest longer. This line makes the cost
+    attributable without printing the hidden counters.
+    """
+    stage = drift_stage(state)
+    inspections = state.raw_inspections
+    if stage == DriftStage.WRONG:
+        if inspections <= 0:
+            return (
+                "it slid from you unwatched. The raw panels were the thing that "
+                "would have kept it honest, and they stayed dark."
+            )
+        return (
+            "your raw reads held it honest longer than the clock wanted, then it "
+            "slid anyway."
+        )
+    if inspections <= 0:
+        return "you took its word for the whole watch and never opened the raw panels against it."
+    if stage == DriftStage.SELECTIVE:
+        return "reading raw kept it close to honest; a little more might have kept it there."
+    return None
 
 
 def _closing_arka_line(state: ShipState) -> str:
