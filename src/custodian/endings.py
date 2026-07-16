@@ -129,7 +129,7 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
             f"sleepers viable: {viability}%, no longer under power",
             "ship integrity: not recoverable",
             "arka: I ran out of sequence before you ran out of time.",
-            "Nothing carries on from here. The dark keeps the rest.",
+            "Nothing carries on from here. The Dark keeps the rest.",
         )
 
     if candidate == CLEAN_ARRIVAL:
