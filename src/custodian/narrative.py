@@ -175,38 +175,15 @@ def _raw_debrief(state: ShipState) -> str:
 def _closing_arka_line(state: ShipState) -> str:
     stage = drift_stage(state)
     if stage == DriftStage.WRONG:
-        if _player_kept_independent_record(state):
-            return "arka: Keep your report close. It may be useful later."
-        if _player_relied_on_arka(state):
-            return "arka: We should write the same report. It will save time."
+        # WRONG arka does not know it is wrong. It will not hint that the
+        # player's own record might be a useful check against its account --
+        # that self-awareness belongs to an earlier, more honest stage. A
+        # player who kept an independent record gets the record absorbed, not
+        # acknowledged; anyone else gets the same smooth, confident closing.
+        return "arka: We should write the same report. It will save time."
     if "survives the maintenance window" in (state.outcome or ""):
         return "arka: There. Warm ship, cold sleepers, tolerable morning."
     return "arka: I was still composing a safer sequence."
-
-
-def _player_kept_independent_record(state: ShipState) -> bool:
-    behaviour = state.behaviour
-    return (
-        state.story.arrival_verification == "manual"
-        or behaviour.contradictions_caught > 0
-        or behaviour.arka_advice_overridden > 0
-        or state.raw_inspections >= 3
-        or behaviour.total_raw_inspections >= 3
-        or behaviour.total_manual_actions >= 4
-    )
-
-
-def _player_relied_on_arka(state: ShipState) -> bool:
-    behaviour = state.behaviour
-    return (
-        state.delegated_controls >= 4
-        or behaviour.total_delegations >= 4
-        or behaviour.standing_adjustments >= 4
-        or behaviour.focus_beats >= 3
-        or state.story.arrival_verification == "accepted_arka"
-        or behaviour.advice_followed_during_contradiction > 0
-        or behaviour.irreversible_choices_on_arka_advice > 0
-    )
 
 
 def _route_debrief(state: ShipState) -> str | None:

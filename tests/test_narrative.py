@@ -65,7 +65,7 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("arka: We should write the same report. It will save time.", debrief)
 
-    def test_manual_arrival_verification_gets_separate_report_close(self) -> None:
+    def test_manual_arrival_verification_still_records_the_hands_on_check(self) -> None:
         state = ShipState(
             turn=13,
             raw_inspections=3,
@@ -78,10 +78,11 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("arrival: you confirmed the arrival fix with your own hands.", debrief)
         self.assertIn("vigilance: you caught arka out once", debrief)
-        self.assertIn("arka: Keep your report close. It may be useful later.", debrief)
-        self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
+        # WRONG arka does not wink at the player's independent record.
+        self.assertNotIn("arka: Keep your report close. It may be useful later.", debrief)
+        self.assertIn("arka: We should write the same report. It will save time.", debrief)
 
-    def test_wrong_drift_with_practised_manual_record_gets_independent_close(self) -> None:
+    def test_wrong_drift_absorbs_practised_manual_record_without_acknowledging_it(self) -> None:
         state = ShipState(
             turn=13,
             manual_familiarity=6,
@@ -99,8 +100,10 @@ class NarrativeTests(unittest.TestCase):
 
         debrief = "\n".join(closing_lines(state))
 
-        self.assertIn("arka: Keep your report close. It may be useful later.", debrief)
-        self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
+        # WRONG arka absorbs the record ("write the same report"); it must not
+        # acknowledge the player's record as a useful independent check.
+        self.assertIn("arka: We should write the same report. It will save time.", debrief)
+        self.assertNotIn("arka: Keep your report close. It may be useful later.", debrief)
 
     def test_catastrophic_failure_has_no_arrival_debrief(self) -> None:
         state = ShipState(outcome="Reactor temperature exceeds containment.")
