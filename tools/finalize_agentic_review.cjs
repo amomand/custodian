@@ -183,47 +183,64 @@ async function finalizeAgenticReview({ github, context, core }) {
 
   if (state.hasCommentMarker(comments, marker)) {
     core.info("Marker already present: " + marker);
-    return;
-  }
-
-  const body = [
-    marker,
-    "## " + heading,
-    "",
-    summary,
-    "",
-    "Reviewed head: `" + reviewedHead + "`" +
-      (pushHead ? "\nCurrent head: `" + currentHead + "`" : "") +
-      ".",
-  ].join("\n");
-  await github.rest.issues.createComment({
-    owner,
-    repo,
-    issue_number: number,
-    body,
-  });
-
-  // The doorbell: a validated clean loop is the only path that turns a draft
-  // into a ready-for-review PR, so "ready" always means "your turn".
-  if (outcome === "clean") {
-    if (pull.draft && pull.node_id) {
-      await github.graphql(
-        [
-          "mutation($id: ID!) {",
-          "  markPullRequestReadyForReview(input: { pullRequestId: $id }) {",
-          "    pullRequest { isDraft }",
-          "  }",
-          "}",
-        ].join("\n"),
-        { id: pull.node_id },
-      );
-    }
-    await github.rest.issues.addAssignees({
+  } else {
+    const body = [
+      marker,
+      "## " + heading,
+      "",
+      summary,
+      "",
+      "Reviewed head: `" + reviewedHead + "`" +
+        (pushHead ? "\nCurrent head: `" + currentHead + "`" : "") +
+        ".",
+    ].join("\n");
+    await github.rest.issues.createComment({
       owner,
       repo,
       issue_number: number,
-      assignees: [owner],
+      body,
     });
+  }
+
+  // The doorbell: a validated clean loop is the only path that turns a draft
+  // into a ready-for-review PR, so "ready" always means "your turn". It runs
+  // even when the marker already exists, so a rerun can recover a failed ring.
+  if (outcome === "clean") {
+    try {
+      if (pull.draft && pull.node_id) {
+        // GITHUB_TOKEN cannot un-draft a PR ("Resource not accessible by
+        // integration"); the mutation must carry the user event credential.
+        const doorbellToken = process.env.GH_AW_CI_TRIGGER_TOKEN || "";
+        if (!doorbellToken) {
+          throw new Error("GH_AW_CI_TRIGGER_TOKEN is not configured");
+        }
+        await github.graphql(
+          [
+            "mutation($id: ID!) {",
+            "  markPullRequestReadyForReview(input: { pullRequestId: $id }) {",
+            "    pullRequest { isDraft }",
+            "  }",
+            "}",
+          ].join("\n"),
+          {
+            id: pull.node_id,
+            headers: { authorization: "bearer " + doorbellToken },
+          },
+        );
+      }
+      await github.rest.issues.addAssignees({
+        owner,
+        repo,
+        issue_number: number,
+        assignees: [owner],
+      });
+    } catch (error) {
+      core.setFailed(
+        "Clean marker recorded, but the ready-for-review doorbell failed: " +
+          error.message +
+          ". Re-run this job or mark the PR ready by hand.",
+      );
+    }
   }
 }
 
