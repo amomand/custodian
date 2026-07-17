@@ -4,6 +4,7 @@ from dataclasses import replace
 from custodian.arka import drift_stage
 from custodian.arka_interpreter import Intent
 from custodian.engine import GameEngine
+from custodian.engine_constants import REACTOR_OVERHEAT_OUTCOME
 from custodian.models import (
     CrisisState,
     DriftStage,
@@ -309,13 +310,13 @@ class EngineTests(unittest.TestCase):
         )
         self.assertIn("SCHEMATIC:", "\n".join(result.messages))
 
-    def test_catastrophic_reactor_failure_does_not_set_ending_candidate(self) -> None:
+    def test_catastrophic_reactor_failure_sets_reactor_loss_ending_candidate(self) -> None:
         state = ShipState(reactor=ReactorCoolantSystem(temperature_c=720))
 
         result = self.engine.handle(state, "wait")
 
-        self.assertEqual(result.state.outcome, "Reactor temperature exceeds containment.")
-        self.assertIsNone(result.state.story.ending_candidate)
+        self.assertEqual(result.state.outcome, REACTOR_OVERHEAT_OUTCOME)
+        self.assertEqual(result.state.story.ending_candidate, "reactor_loss")
 
     def test_seal_arka_is_impossible_and_does_not_advance(self) -> None:
         state = self.engine.initial_state()

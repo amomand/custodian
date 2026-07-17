@@ -8,8 +8,15 @@ from custodian.endings import (
     ENDLESS_CUSTODIAN,
     FALSE_ARRIVAL,
     QUIET_EXTINCTION,
+    REACTOR_LOSS,
     ending_lines,
     evaluate_ending,
+)
+from custodian.engine_constants import (
+    REACTOR_COOLANT_DRY_OUTCOME,
+    REACTOR_MELTDOWN_OUTCOME,
+    REACTOR_OVERHEAT_OUTCOME,
+    REACTOR_OVERPRESSURE_OUTCOME,
 )
 from custodian.models import (
     BehaviourLedger,
@@ -128,6 +135,25 @@ class EvaluateEndingTests(unittest.TestCase):
             evaluate_ending(state), EFFICIENT_ARRIVAL_WITH_CONTAMINATION
         )
 
+    def test_reactor_failure_reads_as_reactor_loss(self) -> None:
+        for outcome in (
+            REACTOR_MELTDOWN_OUTCOME,
+            REACTOR_OVERHEAT_OUTCOME,
+            REACTOR_OVERPRESSURE_OUTCOME,
+            REACTOR_COOLANT_DRY_OUTCOME,
+        ):
+            state = replace(_state(distance=0, neural=80), outcome=outcome)
+            self.assertEqual(evaluate_ending(state), REACTOR_LOSS)
+
+    def test_reactor_loss_outranks_arrival_and_extinction(self) -> None:
+        # Even an arrival distance and collapsed viability cannot outrank a lost
+        # reactor: the ship is gone.
+        state = replace(
+            _state(distance=0, neural=10, sleepers_lost=200),
+            outcome=REACTOR_MELTDOWN_OUTCOME,
+        )
+        self.assertEqual(evaluate_ending(state), REACTOR_LOSS)
+
 
 class EndingLinesTests(unittest.TestCase):
     def test_every_candidate_has_a_title(self) -> None:
@@ -137,8 +163,21 @@ class EndingLinesTests(unittest.TestCase):
             FALSE_ARRIVAL,
             ENDLESS_CUSTODIAN,
             QUIET_EXTINCTION,
+            REACTOR_LOSS,
         ):
             self.assertIn(candidate, ENDING_TITLES)
+
+    def test_reactor_loss_lines_do_not_promise_a_later(self) -> None:
+        state = replace(
+            _state(distance=0, neural=40),
+            outcome=REACTOR_MELTDOWN_OUTCOME,
+        )
+        resolved = replace(
+            state, story=replace(state.story, ending_candidate=REACTOR_LOSS)
+        )
+        text = "\n".join(ending_lines(resolved))
+        self.assertIn("not recoverable", text)
+        self.assertNotIn("useful later", text)
 
     def test_lines_render_for_resolved_candidate(self) -> None:
         state = _state(distance=0, neural=80, verification="manual")

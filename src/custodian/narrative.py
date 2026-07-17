@@ -174,6 +174,13 @@ def _raw_debrief(state: ShipState) -> str:
 
 def _closing_arka_line(state: ShipState) -> str:
     stage = drift_stage(state)
+    if (state.outcome or "") in REACTOR_FAILURE_OUTCOMES:
+        # The reactor is gone; there is no later watch, no report to file, no
+        # tolerable morning. arka stays calm but stops pretending the mission
+        # continues.
+        if stage == DriftStage.WRONG:
+            return "arka: I was reassuring you when I should have been afraid."
+        return "arka: There was a sequence for this. We reached the end of it."
     if stage == DriftStage.WRONG:
         if _player_kept_independent_record(state):
             return "arka: Keep your report close. It may be useful later."
