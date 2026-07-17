@@ -39,6 +39,8 @@ class ReactorCoolantSystem:
             flags.append("pressure high")
         if self.flow_lps < 72:
             flags.append("flow low")
+        if self.flow_lps > 90:
+            flags.append("flow high")
         if self.impurity_pct > 18:
             flags.append("impurity high")
         if self.valve_skew_pct > 16:

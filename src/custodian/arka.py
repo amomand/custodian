@@ -108,10 +108,49 @@ def _interpretive_summary(reactor: ReactorCoolantSystem) -> str:
     )
 
 
-def _selective_summary(_reactor: ReactorCoolantSystem) -> str:
-    return (
-        "arka: headline coolant values are holding. I can take the loop."
-    )
+def _selective_summary(reactor: ReactorCoolantSystem) -> str:
+    # SELECTIVE is the curated-truth stage: arka reports real headline numbers
+    # but quietly drops the one metric that should worry the player. If nothing
+    # is actually wrong, it simply reads the headline honestly.
+    flags = reactor.danger_flags()
+    if not flags:
+        return (
+            f"arka: temp {reactor.temperature_c} C, "
+            f"pressure {reactor.pressure_kpa} kPa, "
+            f"flow {reactor.flow_lps} L/s. Headline coolant values are holding."
+        )
+
+    omitted = {_selective_omitted_metric(flag) for flag in flags}
+    readings: list[str] = []
+    if "temperature_c" not in omitted:
+        readings.append(f"temp {reactor.temperature_c} C")
+    if "pressure_kpa" not in omitted:
+        readings.append(f"pressure {reactor.pressure_kpa} kPa")
+    if "flow_lps" not in omitted:
+        readings.append(f"flow {reactor.flow_lps} L/s")
+    if "impurity_pct" not in omitted:
+        readings.append(f"impurity {reactor.impurity_pct}%")
+    if "coolant_reserve_pct" not in omitted:
+        readings.append(f"reserve {reactor.coolant_reserve_pct}%")
+
+    if not readings:
+        # Everything worth naming is in danger; fall back to a bare headline so
+        # arka never volunteers the failing metric.
+        return "arka: headline coolant values are holding. I can take the loop."
+
+    return f"arka: {', '.join(readings)}. I can take the loop."
+
+
+def _selective_omitted_metric(flag: str) -> str:
+    return {
+        "temperature high": "temperature_c",
+        "pressure high": "pressure_kpa",
+        "flow low": "flow_lps",
+        "flow high": "flow_lps",
+        "impurity high": "impurity_pct",
+        "valve skew high": "valve_skew_pct",
+        "coolant reserve low": "coolant_reserve_pct",
+    }.get(flag, "")
 
 
 def _wrong_summary(_reactor: ReactorCoolantSystem) -> str:

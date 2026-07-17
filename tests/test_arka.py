@@ -22,7 +22,12 @@ class ArkaTests(unittest.TestCase):
 
         self.assertEqual(drift_stage(state), DriftStage.SELECTIVE)
 
-    def test_selective_summary_omits_raw_numbers(self) -> None:
+    def test_selective_summary_shows_true_numbers_and_omits_the_failing_one(
+        self,
+    ) -> None:
+        # SELECTIVE is the curated-truth stage: arka names real headline readings
+        # but quietly drops the one metric that should worry the player. Here
+        # impurity is the only danger, so it must be the omission.
         state = ShipState(
             turn=9,
             reactor=ReactorCoolantSystem(
@@ -37,10 +42,23 @@ class ArkaTests(unittest.TestCase):
 
         summary = summarize_coolant(state)
 
-        self.assertIn("headline coolant values", summary)
-        self.assertNotIn("606 C", summary)
+        self.assertIn("606 C", summary)
+        self.assertIn("244 kPa", summary)
         self.assertNotIn("41", summary)
         self.assertNotIn("impurity", summary)
+        self.assertNotIn("needs attention", summary)
+
+    def test_high_flow_registers_as_coolant_danger(self) -> None:
+        # Flow above the nominal ceiling (90 L/s) is a real danger and must be
+        # flagged, not just LOW flow.
+        hot = ReactorCoolantSystem(flow_lps=93)
+        self.assertIn("flow high", hot.danger_flags())
+
+    def test_accurate_summary_surfaces_high_flow(self) -> None:
+        state = ShipState(turn=1, reactor=ReactorCoolantSystem(flow_lps=93))
+        summary = summarize_coolant(state)
+        self.assertIn("needs attention", summary)
+        self.assertIn("flow high", summary)
 
     def test_wrong_summary_does_not_speak_raw_temperature(self) -> None:
         state = ShipState(
