@@ -112,26 +112,23 @@ def _selective_summary(reactor: ReactorCoolantSystem) -> str:
     # SELECTIVE is the curated-truth stage: arka reports real headline numbers
     # but quietly drops the one metric that should worry the player. If nothing
     # is actually wrong, it simply reads the headline honestly.
+    # arka always names the same headline set, so a missing metric always reads
+    # as an omission rather than a metric SELECTIVE simply never reports. When
+    # nothing is wrong it reads every line honestly; otherwise it silently drops
+    # the failing metric(s) from that fixed set.
     flags = reactor.danger_flags()
-    if not flags:
-        return (
-            f"arka: temp {reactor.temperature_c} C, "
-            f"pressure {reactor.pressure_kpa} kPa, "
-            f"flow {reactor.flow_lps} L/s. Headline coolant values are holding."
-        )
-
     omitted = {_selective_omitted_metric(flag) for flag in flags}
-    readings: list[str] = []
-    if "temperature_c" not in omitted:
-        readings.append(f"temp {reactor.temperature_c} C")
-    if "pressure_kpa" not in omitted:
-        readings.append(f"pressure {reactor.pressure_kpa} kPa")
-    if "flow_lps" not in omitted:
-        readings.append(f"flow {reactor.flow_lps} L/s")
-    if "impurity_pct" not in omitted:
-        readings.append(f"impurity {reactor.impurity_pct}%")
-    if "coolant_reserve_pct" not in omitted:
-        readings.append(f"reserve {reactor.coolant_reserve_pct}%")
+    headline = (
+        ("temperature_c", f"temp {reactor.temperature_c} C"),
+        ("pressure_kpa", f"pressure {reactor.pressure_kpa} kPa"),
+        ("flow_lps", f"flow {reactor.flow_lps} L/s"),
+        ("impurity_pct", f"impurity {reactor.impurity_pct}%"),
+        ("coolant_reserve_pct", f"reserve {reactor.coolant_reserve_pct}%"),
+    )
+    readings = [text for field, text in headline if field not in omitted]
+
+    if not flags:
+        return f"arka: {', '.join(readings)}. Headline coolant values are holding."
 
     if not readings:
         # Everything worth naming is in danger; fall back to a bare headline so
@@ -142,13 +139,14 @@ def _selective_summary(reactor: ReactorCoolantSystem) -> str:
 
 
 def _selective_omitted_metric(flag: str) -> str:
+    # Only maps danger flags to metrics arka actually names in the headline set.
+    # valve skew is never in that set, so it has no entry and simply goes unspoken.
     return {
         "temperature high": "temperature_c",
         "pressure high": "pressure_kpa",
         "flow low": "flow_lps",
         "flow high": "flow_lps",
         "impurity high": "impurity_pct",
-        "valve skew high": "valve_skew_pct",
         "coolant reserve low": "coolant_reserve_pct",
     }.get(flag, "")
 

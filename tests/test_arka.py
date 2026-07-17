@@ -47,6 +47,34 @@ class ArkaTests(unittest.TestCase):
         self.assertNotIn("41", summary)
         self.assertNotIn("impurity", summary)
         self.assertNotIn("needs attention", summary)
+        # arka names the full headline set minus the omission, so the gap is
+        # detectable: flow and reserve are present, only impurity is missing.
+        self.assertIn("flow 80 L/s", summary)
+        self.assertIn("reserve 78%", summary)
+
+    def test_selective_headline_set_is_stable_when_nothing_is_wrong(self) -> None:
+        # With no danger, SELECTIVE reads every headline metric honestly. The set
+        # matches the danger branch, so a later omission stands out as an absence.
+        state = ShipState(
+            turn=9,
+            reactor=ReactorCoolantSystem(
+                temperature_c=520,
+                pressure_kpa=210,
+                flow_lps=82,
+                impurity_pct=6,
+                valve_skew_pct=4,
+                coolant_reserve_pct=90,
+            ),
+        )
+
+        summary = summarize_coolant(state)
+
+        self.assertIn("temp 520 C", summary)
+        self.assertIn("pressure 210 kPa", summary)
+        self.assertIn("flow 82 L/s", summary)
+        self.assertIn("impurity 6%", summary)
+        self.assertIn("reserve 90%", summary)
+        self.assertIn("holding", summary)
 
     def test_high_flow_registers_as_coolant_danger(self) -> None:
         # Flow above the nominal ceiling (90 L/s) is a real danger and must be
