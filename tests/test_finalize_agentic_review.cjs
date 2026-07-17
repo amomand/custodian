@@ -70,6 +70,7 @@ async function runFinalizer({
   process.env.EXPECTED_HEAD = reviewedHead;
   process.env.EXPECTED_CYCLE = cycle;
   process.env.PUSH_COMMIT_SHA = pushHead;
+  process.env.GH_AW_CI_TRIGGER_TOKEN = "test-doorbell-token";
 
   const endpoints = {
     comments() {},
@@ -190,9 +191,26 @@ test("writes a clean marker only after deterministic validation", async () => {
 test("rings the doorbell on clean: ready for review, assigned to the owner", async () => {
   const result = await runFinalizer({ outcome: "clean" });
 
-  assert.deepEqual(result.readied, [{ id: "PR_node_77" }]);
+  assert.equal(result.readied.length, 1);
+  assert.equal(result.readied[0].id, "PR_node_77");
+  assert.equal(
+    result.readied[0].headers.authorization,
+    "bearer test-doorbell-token",
+  );
   assert.equal(result.assigned.length, 1);
   assert.deepEqual(result.assigned[0].assignees, ["alex"]);
+});
+
+test("rings the doorbell on a rerun even when the clean marker exists", async () => {
+  const result = await runFinalizer({
+    outcome: "clean",
+    comments: [{ body: "<!-- agentic-review-clean:" + HEAD + " -->" }],
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.created.length, 0);
+  assert.equal(result.readied.length, 1);
+  assert.equal(result.assigned.length, 1);
 });
 
 test("leaves the draft alone on cap-pending and needs-human", async () => {
