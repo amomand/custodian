@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from custodian.arka import drift_stage
+from custodian.arka import drift_stage, raw_kept_arka_honest
 from custodian.endings import ENDING_TITLES, ending_lines
 from custodian.engine_constants import REACTOR_FAILURE_OUTCOMES
 from custodian.models import DriftStage, ShipState
@@ -169,6 +169,8 @@ def _raw_debrief(state: ShipState) -> str:
         return "unread."
     if inspections <= 2:
         return "checked in brief, expensive glances."
+    if not raw_kept_arka_honest(state):
+        return "kept open, but not often enough to hold arka's account honest to the end."
     return "kept open often enough to make arka work for your trust."
 
 

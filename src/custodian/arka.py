@@ -2,6 +2,22 @@ from __future__ import annotations
 
 from custodian.models import CryostasisSystem, DriftStage, ReactorCoolantSystem, ShipState
 
+# The beat at which the time-driven backstop reaches WRONG once vigilance is
+# spent. Owned here because arka is the truth owner for drift.
+_WRONG_CLOCK_TURN = 10
+
+
+def raw_kept_arka_honest(state: ShipState) -> bool:
+    """Whether the player's raw reads held the time-driven drift short of WRONG.
+
+    This reports only the vigilance lever the raw panel gives the player: heavy
+    delegation can still rot arka's account independently. Used so player-facing
+    debriefs can praise raw reads only when they actually did their job.
+    """
+    vigilance = min(state.raw_inspections, 4)
+    effective_turn = state.turn - vigilance
+    return effective_turn < _WRONG_CLOCK_TURN
+
 
 def drift_stage(state: ShipState) -> DriftStage:
     # Delegation is the primary driver: handing arka the panels is what lets its
@@ -15,7 +31,7 @@ def drift_stage(state: ShipState) -> DriftStage:
     effective_turn = state.turn - vigilance
     delegated = state.delegated_controls
 
-    if effective_turn >= 10 or delegated >= 7:
+    if effective_turn >= _WRONG_CLOCK_TURN or delegated >= 7:
         return DriftStage.WRONG
     if effective_turn >= 9 or delegated >= 5:
         return DriftStage.SELECTIVE
