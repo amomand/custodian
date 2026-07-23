@@ -48,6 +48,8 @@ async function runFinalizer({
   unresolved = 0,
   triggerCommitParent = null,
   triggerCommitFiles = [],
+  failAssign = false,
+  failLabel = false,
 }) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agentic-finalize-"));
   const outputPath = path.join(directory, "agent-output.json");
@@ -70,7 +72,6 @@ async function runFinalizer({
   process.env.EXPECTED_HEAD = reviewedHead;
   process.env.EXPECTED_CYCLE = cycle;
   process.env.PUSH_COMMIT_SHA = pushHead;
-  process.env.GH_AW_CI_TRIGGER_TOKEN = "test-doorbell-token";
 
   const endpoints = {
     comments() {},
@@ -80,7 +81,7 @@ async function runFinalizer({
   const created = [];
   const errors = [];
   const assigned = [];
-  const readied = [];
+  const labeled = [];
   const github = {
     rest: {
       pulls: {
@@ -91,7 +92,6 @@ async function runFinalizer({
             labels: [{ name: "playtest" }],
             base: { ref: "main" },
             draft: true,
-            node_id: "PR_node_77",
             head: {
               sha: currentHead,
               repo: { full_name: "alex/custodian" },
@@ -107,7 +107,13 @@ async function runFinalizer({
           return { data: payload };
         },
         addAssignees: async (payload) => {
+          if (failAssign) throw new Error("assignment refused");
           assigned.push(payload);
+          return { data: payload };
+        },
+        addLabels: async (payload) => {
+          if (failLabel) throw new Error("label refused");
+          labeled.push(payload);
           return { data: payload };
         },
       },
@@ -141,15 +147,7 @@ async function runFinalizer({
       }
       throw new Error("Unexpected pagination endpoint");
     },
-    graphql: async (query, variables) => {
-      if (query.includes("markPullRequestReadyForReview")) {
-        readied.push(variables);
-        return {
-          markPullRequestReadyForReview: {
-            pullRequest: { isDraft: false },
-          },
-        };
-      }
+    graphql: async () => {
       return {
         repository: {
           pullRequest: {
@@ -174,7 +172,7 @@ async function runFinalizer({
     core,
   });
   fs.rmSync(directory, { recursive: true, force: true });
-  return { created, errors, assigned, readied };
+  return { created, errors, assigned, labeled };
 }
 
 test("writes a clean marker only after deterministic validation", async () => {
@@ -188,17 +186,14 @@ test("writes a clean marker only after deterministic validation", async () => {
   );
 });
 
-test("rings the doorbell on clean: ready for review, assigned to the owner", async () => {
+test("rings the doorbell on clean: owner assigned, validated-clean label", async () => {
   const result = await runFinalizer({ outcome: "clean" });
 
-  assert.equal(result.readied.length, 1);
-  assert.equal(result.readied[0].id, "PR_node_77");
-  assert.equal(
-    result.readied[0].headers.authorization,
-    "bearer test-doorbell-token",
-  );
+  assert.deepEqual(result.errors, []);
   assert.equal(result.assigned.length, 1);
   assert.deepEqual(result.assigned[0].assignees, ["alex"]);
+  assert.equal(result.labeled.length, 1);
+  assert.deepEqual(result.labeled[0].labels, ["validated-clean"]);
 });
 
 test("rings the doorbell on a rerun even when the clean marker exists", async () => {
@@ -209,11 +204,11 @@ test("rings the doorbell on a rerun even when the clean marker exists", async ()
 
   assert.deepEqual(result.errors, []);
   assert.equal(result.created.length, 0);
-  assert.equal(result.readied.length, 1);
   assert.equal(result.assigned.length, 1);
+  assert.equal(result.labeled.length, 1);
 });
 
-test("leaves the draft alone on cap-pending and needs-human", async () => {
+test("labels needs-human without assigning, and skips cap-pending", async () => {
   const capPending = await runFinalizer({
     outcome: "cap-pending",
     currentHead: HEAD,
@@ -223,10 +218,28 @@ test("leaves the draft alone on cap-pending and needs-human", async () => {
   });
   const needsHuman = await runFinalizer({ outcome: "needs-human" });
 
-  assert.deepEqual(capPending.readied, []);
   assert.deepEqual(capPending.assigned, []);
-  assert.deepEqual(needsHuman.readied, []);
+  assert.deepEqual(capPending.labeled, []);
   assert.deepEqual(needsHuman.assigned, []);
+  assert.equal(needsHuman.labeled.length, 1);
+  assert.deepEqual(needsHuman.labeled[0].labels, ["needs-human"]);
+});
+
+test("still assigns when labelling fails, and reports the failure", async () => {
+  const result = await runFinalizer({ outcome: "clean", failLabel: true });
+
+  assert.equal(result.assigned.length, 1);
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /validated-clean label \(label refused\)/);
+});
+
+test("still labels when assignment fails, and reports the failure", async () => {
+  const result = await runFinalizer({ outcome: "clean", failAssign: true });
+
+  assert.equal(result.labeled.length, 1);
+  assert.deepEqual(result.labeled[0].labels, ["validated-clean"]);
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /assign @alex \(assignment refused\)/);
 });
 
 test("refuses a clean marker while CI is failing", async () => {

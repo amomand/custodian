@@ -202,45 +202,63 @@ async function finalizeAgenticReview({ github, context, core }) {
     });
   }
 
-  // The doorbell: a validated clean loop is the only path that turns a draft
-  // into a ready-for-review PR, so "ready" always means "your turn". It runs
-  // even when the marker already exists, so a rerun can recover a failed ring.
+  // The doorbell: a validated terminal state is surfaced on the PR itself so
+  // the PR list shows whose turn it is. The PR deliberately stays a draft:
+  // GitHub's draft/ready mutations reject scoped tokens (GITHUB_TOKEN and
+  // fine-grained PATs alike), and nothing in the loop needs the ready state,
+  // so marking ready is a purely human act at merge time. Each ring is
+  // independent so one failure cannot skip the others, and rings run even
+  // when the marker already exists, so a rerun can recover a failed ring.
+  const rings = [];
   if (outcome === "clean") {
+    rings.push(
+      [
+        "assign @" + owner,
+        () =>
+          github.rest.issues.addAssignees({
+            owner,
+            repo,
+            issue_number: number,
+            assignees: [owner],
+          }),
+      ],
+      [
+        "apply the validated-clean label",
+        () =>
+          github.rest.issues.addLabels({
+            owner,
+            repo,
+            issue_number: number,
+            labels: ["validated-clean"],
+          }),
+      ],
+    );
+  } else if (outcome === "needs-human") {
+    rings.push([
+      "apply the needs-human label",
+      () =>
+        github.rest.issues.addLabels({
+          owner,
+          repo,
+          issue_number: number,
+          labels: ["needs-human"],
+        }),
+    ]);
+  }
+  const failed = [];
+  for (const [description, ring] of rings) {
     try {
-      if (pull.draft && pull.node_id) {
-        // GITHUB_TOKEN cannot un-draft a PR ("Resource not accessible by
-        // integration"); the mutation must carry the user event credential.
-        const doorbellToken = process.env.GH_AW_CI_TRIGGER_TOKEN || "";
-        if (!doorbellToken) {
-          throw new Error("GH_AW_CI_TRIGGER_TOKEN is not configured");
-        }
-        await github.graphql(
-          [
-            "mutation($id: ID!) {",
-            "  markPullRequestReadyForReview(input: { pullRequestId: $id }) {",
-            "    pullRequest { isDraft }",
-            "  }",
-            "}",
-          ].join("\n"),
-          {
-            id: pull.node_id,
-            headers: { authorization: "bearer " + doorbellToken },
-          },
-        );
-      }
-      await github.rest.issues.addAssignees({
-        owner,
-        repo,
-        issue_number: number,
-        assignees: [owner],
-      });
+      await ring();
     } catch (error) {
-      core.setFailed(
-        "Clean marker recorded, but the ready-for-review doorbell failed: " +
-          error.message +
-          ". Re-run this job or mark the PR ready by hand.",
-      );
+      failed.push(description + " (" + error.message + ")");
     }
+  }
+  if (failed.length) {
+    core.setFailed(
+      "Terminal marker recorded, but the doorbell could not " +
+        failed.join(" or ") +
+        ". Re-run this job or update the PR by hand.",
+    );
   }
 }
 
