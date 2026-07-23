@@ -178,6 +178,10 @@ class EndingLinesTests(unittest.TestCase):
         text = "\n".join(ending_lines(resolved))
         self.assertIn("not recoverable", text)
         self.assertNotIn("useful later", text)
+        # The final arka line must stay in-world, not read like a program
+        # noting it exhausted its event table (see the retired "ran out of
+        # sequence" phrasing). "sequence" is not part of arka's vocabulary.
+        self.assertNotIn("sequence", text)
 
     def test_lines_render_for_resolved_candidate(self) -> None:
         state = _state(distance=0, neural=80, verification="manual")

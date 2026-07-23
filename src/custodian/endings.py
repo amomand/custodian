@@ -128,7 +128,7 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
             "reactor: containment lost; the maintenance window did not close, it burned out",
             f"sleepers viable: {viability}%, no longer under power",
             "ship integrity: not recoverable",
-            "arka: I ran out of sequence before you ran out of time.",
+            "arka: I ran out of watch before you ran out of time.",
             "Nothing carries on from here. The Dark keeps the rest.",
         )
 
