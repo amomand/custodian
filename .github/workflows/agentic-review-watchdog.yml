@@ -55,13 +55,20 @@ jobs:
               if (state.isTerminal(comments)) continue;
               // A deleted needs-human comment resumes the loop; clear the
               // matching label so the PR list stops reporting a stale pause.
+              // A failed removal must not abort the sweep for the other PRs.
               if (pull.labels?.some((label) => label.name === "needs-human")) {
-                await github.rest.issues.removeLabel({
-                  owner,
-                  repo,
-                  issue_number: number,
-                  name: "needs-human",
-                });
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: number,
+                    name: "needs-human",
+                  });
+                } catch (error) {
+                  core.warning(
+                    `Could not clear the needs-human label on #${number}: ${error?.message ?? String(error)}`,
+                  );
+                }
               }
 
               const head = pull.head.sha;
@@ -193,7 +200,7 @@ jobs:
                     });
                   } catch (error) {
                     core.warning(
-                      `Could not apply the needs-human label to #${number}: ${error.message}`,
+                      `Could not apply the needs-human label to #${number}: ${error?.message ?? String(error)}`,
                     );
                   }
                   continue;

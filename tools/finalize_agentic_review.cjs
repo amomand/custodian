@@ -250,7 +250,7 @@ async function finalizeAgenticReview({ github, context, core }) {
     try {
       await ring();
     } catch (error) {
-      failed.push(description + " (" + error.message + ")");
+      failed.push(description + " (" + (error?.message ?? String(error)) + ")");
     }
   }
   if (failed.length) {
