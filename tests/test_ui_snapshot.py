@@ -78,8 +78,12 @@ class UiSnapshotTests(unittest.TestCase):
         self.assertIn("666", coolant_raw)
         self.assertIn("neural_stability_pct", cryo_raw)
         self.assertIn("49", cryo_raw)
-        self.assertIn("coolant loop stable", advisory)
-        self.assertIn("cryostasis banks stable", advisory)
+        # WRONG arka reassures without conceding the crisis and never speaks a
+        # raw number. It no longer repeats a single fixed line, so assert the
+        # arka-advisory shape rather than one exact phrase.
+        self.assertIn("arka:", advisory)
+        self.assertNotIn("666", advisory)
+        self.assertNotIn("49", advisory)
         self.assertNotIn("arka:", coolant_raw)
         self.assertNotIn("arka:", cryo_raw)
 
