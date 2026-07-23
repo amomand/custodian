@@ -50,9 +50,42 @@ class NarrativeTests(unittest.TestCase):
         self.assertIn("your hands knew where to go", debrief)
         self.assertIn("held cold enough", debrief)
         self.assertIn("held the loop for most of the window", debrief)
-        self.assertIn("make arka work for your trust", debrief)
+        self.assertIn(
+            "kept open, but not often enough to hold arka's account honest", debrief
+        )
         self.assertNotIn("manual_familiarity", debrief)
         self.assertNotIn("delegated_controls", debrief)
+
+    def test_raw_debrief_praise_requires_holding_arka_short_of_wrong(self) -> None:
+        # At the final beat, three raw reads leave effective_turn at the WRONG
+        # threshold, so the debrief must not praise the player for keeping arka
+        # honest when arka in fact drifted to WRONG.
+        three_reads = ShipState(
+            turn=13,
+            raw_inspections=3,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+        four_reads = ShipState(
+            turn=13,
+            raw_inspections=4,
+            outcome=(
+                "The reactor survives the maintenance window. "
+                "You are not sure arka agrees about how."
+            ),
+        )
+
+        three_debrief = "\n".join(closing_lines(three_reads))
+        four_debrief = "\n".join(closing_lines(four_reads))
+
+        self.assertIn(
+            "kept open, but not often enough to hold arka's account honest",
+            three_debrief,
+        )
+        self.assertNotIn("make arka work for your trust", three_debrief)
+        self.assertIn("make arka work for your trust", four_debrief)
 
     def test_wrong_drift_close_keeps_sting_for_heavy_reliance(self) -> None:
         state = ShipState(
