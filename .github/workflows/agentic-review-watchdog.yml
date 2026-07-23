@@ -52,6 +52,29 @@ jobs:
                 issue_number: number,
                 per_page: 100,
               });
+              // The needs-human label mirrors the needs-human marker comment.
+              // Clearing runs before the terminal skip and keys on the
+              // marker's absence, so a PR that reaches a clean terminal state
+              // right after a human deletes the pause comment still sheds the
+              // label. A failed removal must not abort the sweep for the
+              // other PRs.
+              if (
+                !state.hasCommentMarker(comments, state.NEEDS_HUMAN_MARKER) &&
+                pull.labels?.some((label) => label.name === "needs-human")
+              ) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: number,
+                    name: "needs-human",
+                  });
+                } catch (error) {
+                  core.warning(
+                    `Could not clear the needs-human label on #${number}: ${error?.message ?? String(error)}`,
+                  );
+                }
+              }
               if (state.isTerminal(comments)) continue;
 
               const head = pull.head.sha;
@@ -172,6 +195,20 @@ jobs:
                     issue_number: number,
                     body: `${state.NEEDS_HUMAN_MARKER}\nThis review round has waited more than six hours on **${waitingOn.join(", ")}** for \`${head}\`. The loop is paused for a human decision instead of waiting silently. Delete this comment to let the watchdog resume.`,
                   });
+                  // Label failures must not mask the pause itself; the
+                  // marker comment above is the authoritative state.
+                  try {
+                    await github.rest.issues.addLabels({
+                      owner,
+                      repo,
+                      issue_number: number,
+                      labels: ["needs-human"],
+                    });
+                  } catch (error) {
+                    core.warning(
+                      `Could not apply the needs-human label to #${number}: ${error?.message ?? String(error)}`,
+                    );
+                  }
                   continue;
                 }
                 if (existing.body !== body) {

@@ -54,10 +54,14 @@ threads before writing the exact clean marker. The model supplies the decision
 ledger, but does not format or authorise its own terminal state.
 
 A validated clean result also rings the doorbell: the deterministic finalize
-step flips the draft to ready-for-review and assigns the repository owner. That
-is the only path from draft to ready, so a ready PR always means the loop
-finished clean and it is a human's turn. Draft means the machine is still
-working; `needs-human` means it stopped and named a decision.
+step assigns the repository owner and applies the `validated-clean` label. The
+PR stays a draft. Nothing in the loop needs the ready state; CI, both Opus
+reviewers and Copilot all run on draft PRs, so marking ready is a purely human
+act done at merge time. A `needs-human` stop applies its own label, so both
+terminal states are visible straight from the PR list: an assigned,
+`validated-clean` draft is finished and waiting for a human, a `needs-human`
+draft stopped and named a decision, and an unlabelled draft means the machine
+is still working.
 
 The watchdog checks every ten minutes. After twenty minutes it names missing
 reviewers or pending CI on the PR; silence never becomes a pass. It recovers a
@@ -68,8 +72,9 @@ Copilot drops review requests made by `github-actions[bot]` without a trace, so
 the watchdog also re-requests Copilot with the CI trigger token, at most once
 per head, and reports the attempt (or its failure) as a marker comment on the
 PR. If a review round is still waiting on anything six hours after the waiting
-notice first appeared, the watchdog posts the `needs-human` terminal marker and
-pauses the loop for that PR; deleting that comment resumes it.
+notice first appeared, the watchdog posts the `needs-human` terminal marker,
+applies the matching label and pauses the loop for that PR; deleting that
+comment resumes it, and the watchdog clears the label on its next pass.
 
 ## Agent authority
 
@@ -111,6 +116,12 @@ problems: CI, both Opus reviewers and Copilot all start unprompted on every
 head. The trade-off is provenance: loop PRs are authored by the token owner,
 and the `[agentic playtest] ` prefix plus `playtest` label carry the "a
 machine wrote this" signal instead of the author field.
+
+Neither credential can flip a draft PR to ready-for-review: GitHub's
+draft/ready GraphQL mutations reject scoped tokens, `GITHUB_TOKEN` and
+fine-grained PATs alike, with "Resource not accessible by integration". That
+is why the loop hands over a draft and signals completion with assignment and
+labels instead; marking ready stays a human act.
 
 The watchdog re-requests Copilot with the same credential, at most once per
 head, when a requested review never arrives, and reports the attempt as a

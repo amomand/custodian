@@ -158,9 +158,6 @@ safe-outputs:
         EXPECTED_HEAD: ${{ github.event.inputs.head_sha }}
         EXPECTED_CYCLE: ${{ github.event.inputs.cycle }}
         PUSH_COMMIT_SHA: ${{ needs.safe_outputs.outputs.push_commit_sha }}
-        # GITHUB_TOKEN cannot un-draft a PR; the doorbell needs the user
-        # event credential.
-        GH_AW_CI_TRIGGER_TOKEN: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
       inputs:
         pull_request_number:
           description: Pull request number from this workflow dispatch
