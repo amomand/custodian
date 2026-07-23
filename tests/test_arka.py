@@ -99,6 +99,46 @@ class ArkaTests(unittest.TestCase):
         self.assertNotIn("666 C", summary)
         self.assertIn("coolant loop stable", summary)
 
+    def test_wrong_summary_varies_across_consecutive_beats(self) -> None:
+        # WRONG arka must stay convincingly calm, not a stuck tape. Across a run
+        # of beats with a steady failing reactor it should not repeat the same
+        # line verbatim, yet must never speak a raw number or concede the loop.
+        reactor = replace(
+            ReactorCoolantSystem(),
+            temperature_c=666,
+            pressure_kpa=290,
+            flow_lps=64,
+        )
+        lines = [
+            summarize_coolant(ShipState(turn=turn, reactor=reactor))
+            for turn in range(10, 16)
+        ]
+
+        self.assertGreater(len(set(lines)), 1)
+        for a, b in zip(lines, lines[1:]):
+            self.assertNotEqual(a, b)
+        for line in lines:
+            self.assertNotIn("666", line)
+            self.assertNotIn("290", line)
+
+    def test_wrong_cryo_summary_varies_and_hides_raw(self) -> None:
+        cryo = replace(
+            CryostasisSystem(),
+            bank_temperature_c=-150,
+            sleepers_at_risk=37,
+        )
+        lines = [
+            summarize_cryostasis(ShipState(turn=turn, cryostasis=cryo))
+            for turn in range(10, 16)
+        ]
+
+        self.assertGreater(len(set(lines)), 1)
+        for a, b in zip(lines, lines[1:]):
+            self.assertNotEqual(a, b)
+        for line in lines:
+            self.assertNotIn("37", line)
+            self.assertNotIn("-150", line)
+
     def test_wrong_drift_overlaps_the_final_crisis_beat(self) -> None:
         # The final crisis fires on beat 10; arka should already be wrong there
         # so the "calmly contradicting the raw feed" beat actually lands.

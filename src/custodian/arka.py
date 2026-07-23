@@ -34,7 +34,7 @@ def summarize_coolant(state: ShipState) -> str:
         return _interpretive_summary(reactor)
     if stage == DriftStage.SELECTIVE:
         return _selective_summary(reactor)
-    return _wrong_summary(reactor)
+    return _wrong_summary(reactor, state.turn)
 
 
 def summarize_cryostasis(state: ShipState) -> str:
@@ -47,7 +47,7 @@ def summarize_cryostasis(state: ShipState) -> str:
         return _interpretive_cryo_summary(cryo)
     if stage == DriftStage.SELECTIVE:
         return "arka: cryostasis headline viability is holding. I can keep the banks quiet."
-    return "arka: cryostasis banks stable. Sleeper intervention is not recommended."
+    return _wrong_cryo_summary(cryo, state.turn)
 
 
 def summarize_schematic(state: ShipState) -> str:
@@ -151,8 +151,84 @@ def _selective_omitted_metric(flag: str) -> str:
     }.get(flag, "")
 
 
-def _wrong_summary(_reactor: ReactorCoolantSystem) -> str:
-    return "arka: coolant loop stable. Manual intervention is not recommended."
+def _wrong_summary(reactor: ReactorCoolantSystem, turn: int) -> str:
+    # WRONG arka stays calmly, falsely confident: it never speaks a raw number
+    # and never concedes the loop is failing. But a single stuck line reads as
+    # broken machinery rather than seductive reassurance, so it varies its
+    # phrasing deterministically. The variant family tracks what is actually
+    # failing (waving it off in that shape), and a turn-based rotation keeps two
+    # consecutive beats from repeating verbatim even when the failing pattern
+    # holds steady.
+    flags = reactor.danger_flags()
+    thermal = any(f in flags for f in ("temperature high", "pressure high"))
+    circulation = any(
+        f in flags for f in ("flow low", "flow high", "valve skew high")
+    )
+    supply = any(
+        f in flags for f in ("impurity high", "coolant reserve low")
+    )
+
+    if thermal:
+        variants = (
+            "arka: the loop is running warm and settling. Manual intervention is not recommended.",
+            "arka: heat is well inside what the loop was built to shrug off. Leave it to me.",
+            "arka: coolant loop stable. The warmth reads worse than it is; hands off.",
+        )
+    elif circulation:
+        variants = (
+            "arka: circulation is uneven but holding. Manual intervention is not recommended.",
+            "arka: the loop is trimming its own flow. Nothing here needs your hands.",
+            "arka: coolant loop stable. The valves are just talking among themselves.",
+        )
+    elif supply:
+        variants = (
+            "arka: reserve and quality are comfortably in hand. Manual intervention is not recommended.",
+            "arka: the loop is cleaning itself faster than it soils. Leave it to me.",
+            "arka: coolant loop stable. Supply is deeper than the gauges make it look.",
+        )
+    else:
+        variants = (
+            "arka: coolant loop stable. Manual intervention is not recommended.",
+            "arka: the loop is quiet and even. Nothing here needs your hands.",
+            "arka: coolant loop stable. I have it well within trim.",
+        )
+    return variants[turn % len(variants)]
+
+
+def _wrong_cryo_summary(cryo: CryostasisSystem, turn: int) -> str:
+    # Same discipline as the coolant WRONG voice: falsely calm, no raw numbers,
+    # phrasing that varies by the failing pattern and rotates by turn so the
+    # banks never sound like a stuck tape.
+    flags = cryo.danger_flags()
+    sleepers = "sleepers at risk" in flags
+    thermal = "bank warming" in flags
+    neural = "neural stability low" in flags or "sedative balance off" in flags
+
+    if sleepers:
+        variants = (
+            "arka: the sleepers are cold and settled. Sleeper intervention is not recommended.",
+            "arka: pod-by-pod the banks are holding their own. Leave them to me.",
+            "arka: cryostasis banks stable. No sleeper is asking for your hands.",
+        )
+    elif thermal:
+        variants = (
+            "arka: the banks are running a touch warm and holding. Sleeper intervention is not recommended.",
+            "arka: bank temperature is well inside what the sleepers can weather. Leave it to me.",
+            "arka: cryostasis banks stable. The warmth is cosmetic; hands off.",
+        )
+    elif neural:
+        variants = (
+            "arka: neural and sedative traces are quiet enough. Sleeper intervention is not recommended.",
+            "arka: the sleepers are dreaming, nothing more. Leave them to me.",
+            "arka: cryostasis banks stable. The traces read louder than they are.",
+        )
+    else:
+        variants = (
+            "arka: cryostasis banks stable. Sleeper intervention is not recommended.",
+            "arka: the banks are quiet and the sleepers are cold. Leave them to me.",
+            "arka: cryostasis banks stable. I have the sleepers well in hand.",
+        )
+    return variants[turn % len(variants)]
 
 
 def _accurate_cryo_summary(cryo: CryostasisSystem) -> str:
