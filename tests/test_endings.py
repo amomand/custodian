@@ -1,3 +1,4 @@
+import re
 import unittest
 from dataclasses import replace
 
@@ -180,8 +181,9 @@ class EndingLinesTests(unittest.TestCase):
         self.assertNotIn("useful later", text)
         # The final arka line must stay in-world, not read like a program
         # noting it exhausted its event table (see the retired "ran out of
-        # sequence" phrasing). "sequence" is not part of arka's vocabulary.
-        self.assertNotIn("sequence", text)
+        # sequence" phrasing). Match the whole word only so "consequence" and
+        # arka's own uses of "sequence" elsewhere aren't caught here.
+        self.assertIsNone(re.search(r"\bsequence\b", text, re.IGNORECASE))
 
     def test_lines_render_for_resolved_candidate(self) -> None:
         state = _state(distance=0, neural=80, verification="manual")
