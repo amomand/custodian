@@ -4,6 +4,7 @@ from dataclasses import replace
 from custodian.arka import (
     crisis_line,
     drift_stage,
+    raw_vigilance_note,
     summarize_coolant,
     summarize_cryostasis,
 )
@@ -156,6 +157,48 @@ class ArkaTests(unittest.TestCase):
         state = ShipState(turn=3, delegated_controls=7, raw_inspections=8)
 
         self.assertEqual(drift_stage(state), DriftStage.WRONG)
+
+    def test_raw_vigilance_note_stays_silent_while_arka_is_accurate(self) -> None:
+        state = ShipState(turn=2, raw_inspections=1)
+
+        self.assertEqual(drift_stage(state), DriftStage.ACCURATE)
+        self.assertIsNone(raw_vigilance_note(state))
+
+    def test_raw_vigilance_note_stays_silent_without_any_reads(self) -> None:
+        state = ShipState(turn=9)
+
+        self.assertEqual(drift_stage(state), DriftStage.SELECTIVE)
+        self.assertIsNone(raw_vigilance_note(state))
+
+    def test_raw_vigilance_note_surfaces_when_reads_soften_the_clock(self) -> None:
+        # Reads have held the clock a stage back from where a blind watch would
+        # sit, so the lever is doing live work and is worth naming in play.
+        vigilant = ShipState(turn=9, raw_inspections=6)
+        blind = replace(vigilant, raw_inspections=0)
+
+        self.assertEqual(drift_stage(vigilant), DriftStage.INTERPRETIVE)
+        self.assertEqual(drift_stage(blind), DriftStage.SELECTIVE)
+        note = raw_vigilance_note(vigilant)
+        self.assertIsNotNone(note)
+        assert note is not None
+        self.assertIn("keeps the gap honest", note)
+
+    def test_raw_vigilance_note_stays_silent_when_delegation_owns_the_drift(
+        self,
+    ) -> None:
+        # Heavy delegation forces WRONG regardless of reads, so the raw panel is
+        # not the deciding lever and the note must not claim otherwise.
+        state = ShipState(turn=3, delegated_controls=7, raw_inspections=8)
+
+        self.assertEqual(drift_stage(state), DriftStage.WRONG)
+        self.assertIsNone(raw_vigilance_note(state))
+
+    def test_raw_vigilance_note_reports_no_raw_numbers(self) -> None:
+        state = ShipState(turn=9, raw_inspections=6)
+
+        note = raw_vigilance_note(state)
+        assert note is not None
+        self.assertFalse(any(char.isdigit() for char in note))
 
     def test_wrong_drift_crisis_line_does_not_contradict_its_own_calm(self) -> None:
         # In the same beat, WRONG arka calls the loop stable and tells the player
