@@ -292,7 +292,7 @@ class EngineTests(unittest.TestCase):
             msg="no beat consequence line may follow arka's jump summary",
         )
 
-
+    def test_jumps_open_next_route_leg_in_order(self) -> None:
         state = ShipState(navigation=NavigationState(plotted_route_id="khepri-4"))
 
         state = self.engine.handle(state, "jump").state

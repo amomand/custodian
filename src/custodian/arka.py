@@ -27,9 +27,10 @@ def raw_vigilance_note(state: ShipState) -> str | None:
 
     Returned to the player *during play* so the vigilance lever is discoverable
     at the moment it matters, not only in the post-watch debrief. It stays
-    silent while arka's account is still accurate, once the vigilance budget is
-    spent, or once the clock has already reached WRONG regardless of reads --
-    the note only ever names a lever the player is actively pulling. It reports
+    silent while arka's account is still accurate, when no raw reads are banked,
+    or when the drift stage would be the same on a blind watch (the clock has
+    reached WRONG regardless of reads) -- the note only ever names a lever the
+    player is actively pulling. It reports
     no raw numbers and makes no promise; it is an observation, not a tutorial.
     """
     stage = drift_stage(state)
