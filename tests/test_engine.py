@@ -273,10 +273,18 @@ class EngineTests(unittest.TestCase):
         self.assertIn(jump_line, messages)
         arka_index = messages.index(jump_line)
 
+        # Match only beat-level consequences: schematic drift lines and the
+        # beat's own cryo-loss report ("... from unstable banks."). The generic
+        # "cryostasis loss report: N sleepers lost." status/outcome line shares
+        # the "loss report" substring but belongs to the status block that
+        # legitimately follows arka's summary, so it must not count here.
+        def _is_beat_consequence(line: str) -> bool:
+            return line.startswith("SCHEMATIC:") or "from unstable banks" in line
+
         consequence_markers = [
             i
             for i, line in enumerate(messages[:arka_index])
-            if line.startswith("SCHEMATIC:") or "loss report" in line
+            if _is_beat_consequence(line)
         ]
         # The jump's own arrival schematic plus any beat spatial-drift and cryo
         # losses must all be printed before arka's summary of the finished jump.
@@ -284,7 +292,7 @@ class EngineTests(unittest.TestCase):
         trailing_consequences = [
             i
             for i, line in enumerate(messages[arka_index + 1 :], start=arka_index + 1)
-            if line.startswith("SCHEMATIC:") or "loss report" in line
+            if _is_beat_consequence(line)
         ]
         self.assertEqual(
             trailing_consequences,
