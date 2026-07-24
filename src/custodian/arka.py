@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from custodian.models import CryostasisSystem, DriftStage, ReactorCoolantSystem, ShipState
 
 # The beat at which the time-driven backstop reaches WRONG once vigilance is
@@ -17,6 +19,36 @@ def raw_kept_arka_honest(state: ShipState) -> bool:
     vigilance = min(state.raw_inspections, 4)
     effective_turn = state.turn - vigilance
     return effective_turn < _WRONG_CLOCK_TURN
+
+
+def raw_vigilance_note(state: ShipState) -> str | None:
+    """One dry, in-world line surfaced when a raw read is the thing holding
+    arka's account short of the clock's WRONG backstop.
+
+    Returned to the player *during play* so the vigilance lever is discoverable
+    at the moment it matters, not only in the post-watch debrief. It stays
+    silent while arka's account is still accurate, once the vigilance budget is
+    spent, or once the clock has already reached WRONG regardless of reads --
+    the note only ever names a lever the player is actively pulling. It reports
+    no raw numbers and makes no promise; it is an observation, not a tutorial.
+    """
+    stage = drift_stage(state)
+    if stage == DriftStage.ACCURATE:
+        return None
+    vigilance = min(state.raw_inspections, 4)
+    if vigilance <= 0:
+        return None
+    # Only speak when the banked reads are actively softening the clock: a run
+    # with no reads at this same beat would sit at a worse (or equal-but-past-
+    # the-backstop) drift stage. That keeps the note to moments where the raw
+    # panel is demonstrably doing live work, not any time arka has drifted.
+    blind = replace(state, raw_inspections=0)
+    if drift_stage(blind) == stage:
+        return None
+    return (
+        "The raw feed and arka's account no longer say quite the same thing. "
+        "So far, it is your own reading that keeps the gap honest."
+    )
 
 
 def drift_stage(state: ShipState) -> DriftStage:
