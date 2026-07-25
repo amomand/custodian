@@ -13,9 +13,9 @@ permissions:
   contents: read
   pull-requests: read
 
+model: claude-opus-5
 engine:
   id: copilot
-  model: claude-opus-4.8
   concurrency:
     group: "gh-aw-copilot-simulation-truth-${{ github.event.pull_request.number }}"
 

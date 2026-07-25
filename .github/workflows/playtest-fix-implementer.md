@@ -26,9 +26,9 @@ permissions:
   pull-requests: read
   actions: read
 
+model: claude-opus-5
 engine:
   id: copilot
-  model: claude-opus-4.8
 
 imports:
   - .github/agents/custodian-playtest-implementer.md
