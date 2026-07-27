@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from custodian.arka import (
     crisis_line,
     drift_stage,
+    raw_vigilance_note,
     summarize_coolant,
     summarize_cryostasis,
     summarize_schematic,
@@ -153,50 +154,38 @@ class GameEngine:
             return StepResult(unfocused_state, correction + messages)
         if intent.action == "raw":
             target = intent.args.get("target", "coolant")
+            read_state = replace(state, raw_inspections=state.raw_inspections + 1)
             if target in {"schematic", "ship", "sectors"}:
-                return self._advance(
-                    replace(state, raw_inspections=state.raw_inspections + 1),
-                    correction
-                    + (
-                        "You pull the ship schematic into raw view.",
-                        *state.spatial.raw_lines(),
-                    ),
-                    prior=state,
+                read_lines: tuple[str, ...] = (
+                    "You pull the ship schematic into raw view.",
+                    *state.spatial.raw_lines(),
                 )
-            if target in {"nav", "navigation"}:
-                return self._advance(
-                    replace(state, raw_inspections=state.raw_inspections + 1),
-                    correction
-                    + (
-                        "You open the raw navigation solutions.",
-                        *state.navigation.raw_lines(),
-                    ),
-                    prior=state,
+            elif target in {"nav", "navigation"}:
+                read_lines = (
+                    "You open the raw navigation solutions.",
+                    *state.navigation.raw_lines(),
                 )
-            if target == "cryo":
-                return self._advance(
-                    replace(state, raw_inspections=state.raw_inspections + 1),
-                    correction
-                    + (
-                        "You lean into the raw cryostasis panel.",
-                        *state.cryostasis.raw_lines(),
-                    ),
-                    prior=state,
+            elif target == "cryo":
+                read_lines = (
+                    "You lean into the raw cryostasis panel.",
+                    *state.cryostasis.raw_lines(),
                 )
-            if target == "mission":
-                return self._advance(
-                    replace(state, raw_inspections=state.raw_inspections + 1),
-                    correction
-                    + (
-                        "You pull the mission clock into raw view.",
-                        *state.mission.raw_lines(),
-                    ),
-                    prior=state,
+            elif target == "mission":
+                read_lines = (
+                    "You pull the mission clock into raw view.",
+                    *state.mission.raw_lines(),
                 )
+            else:
+                read_lines = (
+                    "You lean into the raw coolant panel.",
+                    *state.reactor.raw_lines(),
+                )
+            note = raw_vigilance_note(read_state)
+            if note is not None:
+                read_lines = (*read_lines, note)
             return self._advance(
-                replace(state, raw_inspections=state.raw_inspections + 1),
-                correction
-                + ("You lean into the raw coolant panel.", *state.reactor.raw_lines()),
+                read_state,
+                correction + read_lines,
                 prior=state,
             )
         if intent.action == "delegate":
@@ -213,10 +202,15 @@ class GameEngine:
                 return StepResult(state, correction + messages)
             return self._advance(plotted_state, correction + messages, prior=state)
         if intent.action == "jump":
-            jumped_state, messages, executed = self._execute_jump(state)
+            jumped_state, messages, executed, arka_line = self._execute_jump(state)
             if not executed:
                 return StepResult(state, correction + messages)
-            return self._advance(jumped_state, correction + messages, prior=state)
+            return self._advance(
+                jumped_state,
+                correction + messages,
+                prior=state,
+                trailing_messages=(arka_line,) if arka_line else (),
+            )
         if intent.action in {"seal", "abandon", "reroute"}:
             sector_id = intent.args.get("sector_id", "")
             contained_state, messages, executed = self._containment_action(
@@ -335,9 +329,10 @@ class GameEngine:
         messages: tuple[str, ...],
         *,
         prior: ShipState,
+        trailing_messages: tuple[str, ...] = (),
     ) -> StepResult:
         if state.outcome is not None:
-            return StepResult(state, messages, advanced=True)
+            return StepResult(state, messages + trailing_messages, advanced=True)
 
         had_crisis = state.crisis is not None
         mission = _advance_mission_clock(state).clamped()
@@ -375,6 +370,9 @@ class GameEngine:
         next_state, loss_messages = _apply_cryo_losses(next_state)
         next_messages.extend(loss_messages)
         presentation_break = presentation_break or bool(loss_messages)
+
+        if trailing_messages:
+            next_messages.extend(trailing_messages)
 
         next_state, outcome_messages = self._check_outcome(next_state)
         next_messages.extend(outcome_messages)
@@ -458,13 +456,16 @@ class GameEngine:
             True,
         )
 
-    def _execute_jump(self, state: ShipState) -> tuple[ShipState, tuple[str, ...], bool]:
+    def _execute_jump(
+        self, state: ShipState
+    ) -> tuple[ShipState, tuple[str, ...], bool, str | None]:
         option = state.navigation.plotted_route
         if option is None:
             return (
                 state,
                 ("arka: no route is plotted. Give me a solution, or make one yourself.",),
                 False,
+                None,
             )
         if not state.navigation.is_option_active(option):
             return (
@@ -474,6 +475,7 @@ class GameEngine:
                     "Plot the next fix before you commit.",
                 ),
                 False,
+                None,
             )
 
         mission = replace(
@@ -520,6 +522,7 @@ class GameEngine:
         )
         fix = navigation.current_fix
         spatial_line = _spatial_jump_line(state.spatial, spatial)
+        arka_line = _arka_jump_line(state, option)
         return (
             jumped,
             (
@@ -530,9 +533,9 @@ class GameEngine:
                 ),
                 f"ARRIVAL FIX {fix.label}: {fix.purpose}.",
                 spatial_line,
-                _arka_jump_line(state, option),
             ),
             True,
+            arka_line,
         )
 
     def _delegate_coolant_to_arka(
