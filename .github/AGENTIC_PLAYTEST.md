@@ -177,6 +177,31 @@ is AWF's allow-list that is behind.
 
 The pins now sit on `claude-opus-4.8`, verified green on this repo's toolchain.
 
+### Getting back to Opus 5
+
+`claude-opus-5` is the correct spelling, so no naming variant will help. The
+validator normalises `.` and `_` to `-` before matching
+([`src/copilot-model.ts`](https://github.com/github/gh-aw-firewall/blob/main/src/copilot-model.ts)),
+which means `claude-opus-5.0` becomes `claude-opus-5-0` and misses too. Only the
+exact string is accepted, and it is already in `SUPPORTED_COPILOT_MODELS` on
+firewall `main`, added 28 July 2026 by
+[gh-aw-firewall#6695](https://github.com/github/gh-aw-firewall/pull/6695).
+
+This is a release-lag problem, not a configuration one. The fix is merged but
+unshipped: the newest firewall release is v0.27.42 (26 July), two days before
+the commit, and gh-aw v0.83.5 still pins firewall 0.27.41. Nothing to do at this
+end until a firewall release carries the fix and a gh-aw release pins it. Check
+with:
+
+```bash
+gh api repos/github/gh-aw-firewall/contents/src/copilot-model.ts \
+  --jq '.content' | base64 -d | grep -c "claude-opus-5"   # on the newest tag
+gh api repos/github/gh-aw/contents/pkg/actionpins/data/action_pins.json \
+  --jq '.content' | base64 -d | grep -o "gh-aw-firewall/agent:[0-9.]*"
+```
+
+When both line up, bump gh-aw, smoke-test, then move the pins.
+
 Before changing any pin, smoke-test it. Compiling is not evidence:
 
 1. Branch, add a throwaway workflow with the new `model:` and an
