@@ -138,15 +138,15 @@ pass `--no-check-update` so the extension does not silently upgrade itself
 mid-compile and drag an unrelated toolchain bump into the diff:
 
 ```bash
-gh extension install github/gh-aw --pin v0.83.1
-gh aw compile <workflow> --no-check-update
+gh extension install github/gh-aw --pin v0.83.1 && \
+  gh aw compile <workflow> --no-check-update
 node --test tests/test_agentic_review_state.cjs
 ```
 
-`gh` re-upgrades the extension between shell invocations, so run the pin and the
-compile in the same command. Check `.github/aw/actions-lock.json` is untouched
-afterwards; if it moved, the compile ran on the wrong version. Bumping gh-aw is
-fine, but do it as its own change so the toolchain diff is readable.
+`gh` re-upgrades the extension between shell invocations, which is why the pin
+and the compile are chained above. Check `.github/aw/actions-lock.json` is
+untouched afterwards; if it moved, the compile ran on the wrong version. Bumping
+gh-aw is fine, but do it as its own change so the toolchain diff is readable.
 
 The specialist skills live under `.agents/skills/`. `.agents` is the portable
 project convention; Copilot also recognises it, behind its GitHub-specific
