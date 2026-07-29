@@ -26,7 +26,9 @@ permissions:
   pull-requests: read
   actions: read
 
-model: claude-opus-5
+# Runtime-validated pin. A clean compile is not evidence the model runs; see
+# .github/AGENTIC_PLAYTEST.md "Model compatibility" and smoke-test before changing.
+model: claude-opus-4.8
 engine:
   id: copilot
 
