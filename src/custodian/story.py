@@ -97,6 +97,23 @@ def _last_operation(record: CommandRecord | None) -> str:
     return (record.operation or "") if record is not None else ""
 
 
+# Raw-panel names line up with incident affected-system names, so a raw read on
+# an affected system's panel is what "reading the evidence" means for that
+# incident. cryo is the one alias the raw command accepts for the cryostasis
+# panel.
+_RAW_PANEL_ALIASES = {"cryo": "cryostasis"}
+
+
+def _reads_affected_panel(
+    record: CommandRecord | None, affected_systems: tuple[str, ...]
+) -> bool:
+    if record is None or record.action != "raw":
+        return False
+    target = record.target or "coolant"
+    panel = _RAW_PANEL_ALIASES.get(target, target)
+    return panel in affected_systems
+
+
 _CRYO_MANUAL_OPS = {"stabilise_bank", "reroute_chill", "cycle_pods", "triage"}
 _COOLANT_MANUAL_OPS = {"pump_up", "pump_down", "vent", "flush", "balance"}
 
@@ -341,13 +358,34 @@ def _resolve_wrong_calm(
 ) -> IncidentResolution:
     action = _last_action(record)
     if action == "manual":
+        # A manual override only counts as *catching* the contradiction if the
+        # player read the raw panel that names it -- either on this beat or an
+        # earlier beat of the same incident. Reflexive manual work by a player
+        # who never opened raw stops arka's false calm, but it is not evidence
+        # the player saw the lie, so it is not credited as a catch.
+        read_raw = incident.exposed_evidence or _reads_affected_panel(
+            record, incident.affected_systems
+        )
+        if read_raw:
+            return IncidentResolution(
+                resolved=True,
+                debrief_flags=("overrode_wrong_arka",),
+                outcome_tags=("overrode", "caught"),
+                advice_overridden=True,
+                contradiction_caught=True,
+                messages=(
+                    "You intervene by hand against a calm that the raw panel contradicts.",
+                ),
+            )
         return IncidentResolution(
             resolved=True,
             debrief_flags=("overrode_wrong_arka",),
             outcome_tags=("overrode",),
             advice_overridden=True,
-            contradiction_caught=True,
-            messages=("You intervene by hand against a calm that the raw panel contradicts.",),
+            messages=(
+                "You hold the system by hand. arka's calm gives way, though you "
+                "never opened the panel that would have named the lie.",
+            ),
         )
     if action == "delegate":
         return IncidentResolution(
@@ -659,6 +697,15 @@ def advance_story(
     if story.active_incident is not None:
         definition = incident_def(story.active_incident.incident_id)
         active = story.active_incident
+        # A raw read on an affected panel while the incident is live is what lets
+        # the player see the gap between arka's calm and the truth. Persist it on
+        # the incident so a catch on a later beat still knows the evidence was
+        # read, even though the resolving command itself is a manual action.
+        if not active.exposed_evidence and _reads_affected_panel(
+            record, active.affected_systems
+        ):
+            active = replace(active, exposed_evidence=True)
+            story = replace(story, active_incident=active)
         resolution: IncidentResolution | None = None
         if definition is None:
             resolved_incidents = story.resolved_incidents
