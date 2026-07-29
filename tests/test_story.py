@@ -253,6 +253,67 @@ class IncidentSchedulerTests(unittest.TestCase):
         self.assertIsNotNone(advanced.story.active_incident)
         self.assertEqual(advanced.behaviour.contradictions_missed, 0)
 
+    def test_wrong_calm_manual_override_without_raw_read_is_not_a_catch(self) -> None:
+        # A player who acts by hand against arka's false calm but never opened
+        # the raw panel overrode arka, but did not *catch* the contradiction:
+        # they never read the evidence that names the lie. Crediting a
+        # "contradiction caught" here would tell them reflexive manual work is
+        # the same as reading raw.
+        active = IncidentState(
+            incident_id="wrong-calm-summary",
+            title="A calm the panel disagrees with",
+            affected_systems=("coolant", "cryostasis"),
+            started_beat=7,
+            urgency_remaining=2,
+        )
+        state = ShipState(
+            turn=8,
+            story=StoryState(active_incident=active),
+        )
+        record = CommandRecord(
+            raw="balance", action="manual", operation="balance",
+            advanced=True, beat_after=8,
+        )
+
+        advanced, messages = advance_story(state, record=record)
+
+        self.assertIsNone(advanced.story.active_incident)
+        self.assertIn("wrong-calm-summary", advanced.story.resolved_incidents)
+        self.assertEqual(advanced.behaviour.contradictions_caught, 0)
+        self.assertEqual(advanced.behaviour.arka_advice_overridden, 1)
+        self.assertIn("overrode_wrong_arka_blind", advanced.story.debrief_flags)
+        self.assertNotIn("overrode_wrong_arka", advanced.story.debrief_flags)
+        self.assertNotIn("raw panel contradicts", "\n".join(messages))
+
+    def test_wrong_calm_manual_override_after_raw_read_is_a_catch(self) -> None:
+        # The same override, but this time the player opened the coolant raw
+        # panel first: they read the evidence, then acted against arka. This is
+        # a genuine catch.
+        active = IncidentState(
+            incident_id="wrong-calm-summary",
+            title="A calm the panel disagrees with",
+            affected_systems=("coolant", "cryostasis"),
+            started_beat=7,
+            urgency_remaining=2,
+        )
+        state = ShipState(
+            turn=8,
+            story=StoryState(active_incident=active),
+            behaviour=BehaviourLedger(raw_by_panel={"coolant": 1}),
+        )
+        record = CommandRecord(
+            raw="balance", action="manual", operation="balance",
+            advanced=True, beat_after=8,
+        )
+
+        advanced, messages = advance_story(state, record=record)
+
+        self.assertIsNone(advanced.story.active_incident)
+        self.assertEqual(advanced.behaviour.contradictions_caught, 1)
+        self.assertEqual(advanced.behaviour.arka_advice_overridden, 1)
+        self.assertIn("overrode_wrong_arka", advanced.story.debrief_flags)
+        self.assertIn("raw panel contradicts", "\n".join(messages))
+
     def test_wrong_calm_expiry_records_an_unanswered_contradiction(self) -> None:
         active = IncidentState(
             incident_id="wrong-calm-summary",

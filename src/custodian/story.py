@@ -101,6 +101,16 @@ _CRYO_MANUAL_OPS = {"stabilise_bank", "reroute_chill", "cycle_pods", "triage"}
 _COOLANT_MANUAL_OPS = {"pump_up", "pump_down", "vent", "flush", "balance"}
 
 
+def _read_contested_panel(state: ShipState) -> bool:
+    """True when the player has opened a raw panel that names the contested
+    system this watch. Catching a contradiction means reading the evidence,
+    not acting by reflex, so the raw panel that disagrees must have been seen.
+    """
+
+    raw_by_panel = state.behaviour.raw_by_panel
+    return raw_by_panel.get("coolant", 0) > 0 or raw_by_panel.get("cryostasis", 0) > 0
+
+
 # --- the eight required incidents ------------------------------------------
 
 
@@ -341,13 +351,21 @@ def _resolve_wrong_calm(
 ) -> IncidentResolution:
     action = _last_action(record)
     if action == "manual":
+        if _read_contested_panel(state):
+            return IncidentResolution(
+                resolved=True,
+                debrief_flags=("overrode_wrong_arka",),
+                outcome_tags=("overrode",),
+                advice_overridden=True,
+                contradiction_caught=True,
+                messages=("You intervene by hand against a calm the raw panel contradicts.",),
+            )
         return IncidentResolution(
             resolved=True,
-            debrief_flags=("overrode_wrong_arka",),
+            debrief_flags=("overrode_wrong_arka_blind",),
             outcome_tags=("overrode",),
             advice_overridden=True,
-            contradiction_caught=True,
-            messages=("You intervene by hand against a calm that the raw panel contradicts.",),
+            messages=("You intervene by hand against arka's calm, without opening the panel that would name the lie.",),
         )
     if action == "delegate":
         return IncidentResolution(
