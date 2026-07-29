@@ -765,6 +765,7 @@ class BehaviourLedger:
     delegated_by_system: dict[str, int] = field(default_factory=dict)
     manual_by_system: dict[str, int] = field(default_factory=dict)
     raw_by_panel: dict[str, int] = field(default_factory=dict)
+    raw_last_beat_by_panel: dict[str, int] = field(default_factory=dict)
     standing_delegations: tuple[str, ...] = ()
     standing_adjustments: int = 0
     first_delegation_beat: int | None = None
@@ -814,9 +815,12 @@ class BehaviourLedger:
         return replace(self, manual_by_system=_increment(self.manual_by_system, system))
 
     def record_raw(self, panel: str, beat: int) -> "BehaviourLedger":
+        raw_last_beat_by_panel = dict(self.raw_last_beat_by_panel)
+        raw_last_beat_by_panel[panel] = beat
         return replace(
             self,
             raw_by_panel=_increment(self.raw_by_panel, panel),
+            raw_last_beat_by_panel=raw_last_beat_by_panel,
             first_raw_inspection_beat=(
                 self.first_raw_inspection_beat
                 if self.first_raw_inspection_beat is not None

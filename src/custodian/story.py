@@ -101,14 +101,20 @@ _CRYO_MANUAL_OPS = {"stabilise_bank", "reroute_chill", "cycle_pods", "triage"}
 _COOLANT_MANUAL_OPS = {"pump_up", "pump_down", "vent", "flush", "balance"}
 
 
-def _read_contested_panel(state: ShipState) -> bool:
+def _read_contested_panel(state: ShipState, incident: IncidentState) -> bool:
     """True when the player has opened a raw panel that names the contested
-    system this watch. Catching a contradiction means reading the evidence,
-    not acting by reflex, so the raw panel that disagrees must have been seen.
+    system since this incident began. Catching a contradiction means reading the
+    evidence this watch, not acting by reflex, so the raw panel that disagrees
+    must have been seen since the incident started — a lifetime raw read from an
+    earlier watch does not credit a blind override now.
     """
 
-    raw_by_panel = state.behaviour.raw_by_panel
-    return raw_by_panel.get("coolant", 0) > 0 or raw_by_panel.get("cryostasis", 0) > 0
+    last_beat = state.behaviour.raw_last_beat_by_panel
+    coolant_beat = last_beat.get("coolant")
+    cryo_beat = last_beat.get("cryostasis")
+    return (coolant_beat is not None and coolant_beat >= incident.started_beat) or (
+        cryo_beat is not None and cryo_beat >= incident.started_beat
+    )
 
 
 # --- the eight required incidents ------------------------------------------
@@ -351,14 +357,14 @@ def _resolve_wrong_calm(
 ) -> IncidentResolution:
     action = _last_action(record)
     if action == "manual":
-        if _read_contested_panel(state):
+        if _read_contested_panel(state, incident):
             return IncidentResolution(
                 resolved=True,
                 debrief_flags=("overrode_wrong_arka",),
                 outcome_tags=("overrode",),
                 advice_overridden=True,
                 contradiction_caught=True,
-                messages=("You intervene by hand against a calm the raw panel contradicts.",),
+                messages=("You intervene by hand against a calm that the raw panel contradicts.",),
             )
         return IncidentResolution(
             resolved=True,
