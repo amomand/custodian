@@ -106,15 +106,19 @@ def _read_contested_panel(state: ShipState, incident: IncidentState) -> bool:
     system since this incident began. Catching a contradiction means reading the
     evidence this watch, not acting by reflex, so the raw panel that disagrees
     must have been seen since the incident started — a lifetime raw read from an
-    earlier watch does not credit a blind override now.
+    earlier watch does not credit a blind override now. Only the panel for a
+    system that is actually in danger can name the lie; reading a calm, unrelated
+    panel does not credit the catch.
     """
 
     last_beat = state.behaviour.raw_last_beat_by_panel
-    coolant_beat = last_beat.get("coolant")
-    cryo_beat = last_beat.get("cryostasis")
-    return (coolant_beat is not None and coolant_beat >= incident.started_beat) or (
-        cryo_beat is not None and cryo_beat >= incident.started_beat
-    )
+    for panel in ("coolant", "cryostasis"):
+        if not _system_in_danger(state, panel):
+            continue
+        beat = last_beat.get(panel)
+        if beat is not None and beat >= incident.started_beat:
+            return True
+    return False
 
 
 # --- the eight required incidents ------------------------------------------
