@@ -133,13 +133,80 @@ fallback actor for any remaining bot-driven events.
 ## Editing the loop
 
 Edit the `.md` agentic workflows, not their generated `.lock.yml` files. Compile
-with the current gh-aw release:
+with the gh-aw release the locks are already pinned to, currently v0.83.1, and
+pass `--no-check-update` so the extension does not silently upgrade itself
+mid-compile and drag an unrelated toolchain bump into the diff:
 
 ```bash
-gh aw compile --approve --validate
+gh extension install github/gh-aw --pin v0.83.1 && \
+  gh aw compile <workflow> --no-check-update
 node --test tests/test_agentic_review_state.cjs
 ```
+
+`gh` re-upgrades the extension between shell invocations, which is why the pin
+and the compile are chained above. Check `.github/aw/actions-lock.json` is
+untouched afterwards; if it moved, the compile ran on the wrong version. Bumping
+gh-aw is fine, but do it as its own change so the toolchain diff is readable.
 
 The specialist skills live under `.agents/skills/`. `.agents` is the portable
 project convention; Copilot also recognises it, behind its GitHub-specific
 `.github/skills` location in lookup priority.
+
+## Model compatibility
+
+The implementer, adjudicator and both specialist reviewers pin a literal model
+name. That name is validated twice: once by the compiler, and again at runtime
+by AWF's own `SUPPORTED_COPILOT_MODELS` allow-list. The two lists drift apart on
+every release ([github/gh-aw#48583](https://github.com/github/gh-aw/issues/48583)),
+so a model can compile clean and still abort every run. The weekly reviewer is
+deliberately unpinned and follows the gh-aw default.
+
+That is what happened to `claude-opus-5`. It was pinned on 25 July 2026 and
+never once reached the model. The agent job dies in AWF preflight with:
+
+```
+Error: model 'claude-opus-5' is unsupported or unrecognized by this AWF version.
+Did you mean 'claude-opus-4.8'?
+```
+
+Reproduced on AWF v0.27.38 (gh-aw v0.83.1) and v0.27.42 (v0.83.4, latest at the
+time), so upgrading would not have fixed it. `gh aw compile` reported zero
+errors and zero warnings, and happily resolved Opus 5 pricing into the lock. The
+Copilot backend advertises `claude-opus-5` in the api-proxy model inventory; it
+is AWF's allow-list that is behind.
+
+The pins now sit on `claude-opus-4.8`, verified green on this repo's toolchain.
+
+### Getting back to Opus 5
+
+`claude-opus-5` is the correct spelling, so no naming variant will help. The
+validator normalises `.` and `_` to `-` before matching
+([`src/copilot-model.ts`](https://github.com/github/gh-aw-firewall/blob/main/src/copilot-model.ts)),
+which means `claude-opus-5.0` becomes `claude-opus-5-0` and misses too. Only the
+exact string is accepted, and it is already in `SUPPORTED_COPILOT_MODELS` on
+firewall `main`, added 28 July 2026 by
+[gh-aw-firewall#6695](https://github.com/github/gh-aw-firewall/pull/6695).
+
+This is a release-lag problem, not a configuration one. The fix is merged but
+unshipped: the newest firewall release is v0.27.42 (26 July), two days before
+the commit, and gh-aw v0.83.5 still pins firewall 0.27.41. Nothing to do at this
+end until a firewall release carries the fix and a gh-aw release pins it. Check
+with:
+
+```bash
+gh api repos/github/gh-aw-firewall/contents/src/copilot-model.ts \
+  --jq '.content' | base64 -d | grep -c "claude-opus-5"   # on the newest tag
+gh api repos/github/gh-aw/contents/pkg/actionpins/data/action_pins.json \
+  --jq '.content' | base64 -d | grep -o "gh-aw-firewall/agent:[0-9.]*"
+```
+
+When both line up, bump gh-aw, smoke-test, then move the pins.
+
+Before changing any pin, smoke-test it. Compiling is not evidence:
+
+1. Branch, add a throwaway workflow with the new `model:` and an
+   `on: push: branches: [<your-branch>]` trigger and a one-line prompt.
+2. Compile, push, and wait for the run.
+3. Require the `agent` job green, and confirm the model in the run's
+   `aw_info.json` (`gh run download <id>`) matches what you pinned.
+4. Delete the branch, then move the real pins.
