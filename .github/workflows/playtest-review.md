@@ -16,6 +16,12 @@ permissions:
 
 engine: copilot            # Keep the existing playtester model policy; the downstream implementer and specialist reviewers are pinned separately.
 
+# gh-aw defaults the agent step to 20 minutes. This review has been running
+# 12-21 minutes for months and finally tipped over the edge, dying mid-sentence
+# on the line before it filed anything. 35 gives it real headroom over the
+# worst run we have seen; the safe-outputs job already allows 45.
+timeout-minutes: 35
+
 network:
   allowed: [defaults, github]   # the runner is fully offline; github is only for issue de-dup + the copilot engine
 
@@ -44,6 +50,19 @@ steps:
       python tools/playtest_runner.py --all --write reports/playtests
       echo "--- transcripts generated ---"
       ls -1 reports/playtests
+  - name: Stage combined habit-report digest (deterministic)
+    # The scan pass only needs the ~30-field habit report from each scenario,
+    # but those live at the top of 17 files that each carry a full transcript.
+    # Reading all 17 to get the numbers burned most of the budget. Write the
+    # summaries into one file so the scan is a single read, and keep the full
+    # transcripts for the 3-4 the reviewer chooses to read properly.
+    run: |
+      set -euo pipefail
+      mkdir -p reports/playtests/_context
+      python tools/playtest_runner.py --all --summary-only \
+        > reports/playtests/_context/habit-reports.md
+      echo "--- habit-report digest staged ---"
+      wc -l reports/playtests/_context/habit-reports.md
   - name: Stage engine-truth source pack (deterministic)
     # Cost fix: the first run spent ~half its turns hunting for and re-reading
     # source files. Stage the engine-truth anchors the reviewer reliably needs
@@ -108,11 +127,11 @@ and reproducible. Personality is never an excuse for a vague report.
 ## What you are reviewing
 
 A deterministic pre-step has already run **every playtest scenario** and written
-full reports to `reports/playtests/*.md`. Each report contains the complete
-in-world transcript followed by a ~30-field habit report (delegation beats, raw
-inspections, manual familiarity, `arka drift`, contradictions caught/missed,
-arka advice followed vs overridden, ending candidate, forbidden transcript
-phrases, and more).
+full reports to `reports/playtests/*.md`. Each report opens with a ~30-field
+habit report (delegation beats, raw inspections, manual familiarity, `arka
+drift`, contradictions caught/missed, arka advice followed vs overridden, ending
+candidate, forbidden transcript phrases, and more), and the complete in-world
+transcript follows it.
 
 These transcripts are ground truth and were generated **without any model
 calls** — do not regenerate them, and never assume the model should be inventing
@@ -120,7 +139,11 @@ any of this. Read them.
 
 **Pre-staged for you — read from these paths, don't go hunting:**
 
-- All 17 full transcripts: `reports/playtests/*.md`.
+- Every scenario's habit report, in one file:
+  `reports/playtests/_context/habit-reports.md`. Read this first; it is the
+  whole numeric picture in a single pass.
+- All 17 full transcripts: `reports/playtests/*.md`. Open only the handful you
+  actually decide to read in full.
 - The engine-truth source this review keeps needing, already copied into
   `reports/playtests/_context/` (`src/custodian/arka.py`, `story.py`,
   `playtest.py`, `engine.py`, `models.py`, `arka_interpreter.py`, `design.md`,
@@ -148,45 +171,60 @@ Custodian is about the cost of delegation. A run is healthy when:
 
 ## How to work — this is the agentic part
 
-1. **Scan all reports.** Read every `reports/playtests/*.md` at least at the
-   habit-report level. Note the quantitative tells: where `arka drift` flips,
-   `first delegation beat`, `contradictions caught` vs `missed`, `arka advice
-   followed/overridden`, `sleepers lost`, `ending candidate`, and any
-   `forbidden transcript phrases`.
-2. **Read 3–4 full transcripts** that look most revealing — a heavy-delegation
+1. **Read the open issues first.** You have read access to issues; list the
+   open ones now, before you form any opinions, so you know what the watch
+   before you already wrote up. This is the cheap first pass, not the whole
+   de-dup — step 7 checks each finding again before it is filed. Do it at the
+   start of the watch, not at the end; the end is where a shift runs out of
+   time.
+2. **Scan the numbers.** Read `reports/playtests/_context/habit-reports.md` —
+   every scenario's habit report in one file. Note the quantitative tells:
+   where `arka drift` flips, `first delegation beat`, `contradictions caught`
+   vs `missed`, `arka advice followed/overridden`, `sleepers lost`, `ending
+   candidate`, and any `forbidden transcript phrases`.
+3. **Read 3–4 full transcripts** that look most revealing — a heavy-delegation
    run (`pure-delegation`), a practised run (`practised-manual`), an arrival path
    (`arrival-accepted` or `arka-override-late`), and a containment path. Read the
    *prose*, not just the numbers.
-3. **Form hypotheses about the experience, not just mechanics:** a tonal break, an
+4. **Form hypotheses about the experience, not just mechanics:** a tonal break, an
    immersion leak the simple forbidden-phrase scan would miss, arka turning suspect
    too early or too late, raw telemetry reading as noise, a beat that feels like a
    softlock, a debrief that doesn't land the cost of the player's choices.
-4. **Probe before you file — but only with NEW routes.** Every scenario's full
+5. **Probe before you file — but only with NEW routes.** Every scenario's full
    transcript already exists under `reports/playtests/`; do **not** re-run `--all`
    or re-run a scenario you already have. When a hypothesis needs a test the
    existing transcripts don't cover, *then* write an ad-hoc route to a file (one
    command per line; `#` comments and leading `>` are stripped) and run
    `python tools/playtest_runner.py --commands-file <file>`. Confirm it
    reproduces, or drop it. Do not file on a hunch.
-5. **Check intent.** Read `design.md` and the truth-review lens (both staged under
+6. **Check intent.** Read `design.md` and the truth-review lens (both staged under
    `reports/playtests/_context/`) before calling something a defect — it may be
    deliberate. Prefer "this may be crossing the line" framing for design-boundary
    questions over hard claims.
+7. **Shortlist, then file as you confirm.** Once you have probed, rank your
+   candidates and pick the strongest three at most — do this before you file
+   anything, so a weak early finding cannot spend a slot a better one needed.
+   Then work the shortlist one at a time: search the open issues for that
+   specific finding, and if nothing already covers it, file it straight away
+   before moving to the next. Do not hold the whole set back to write up at the
+   end of the watch. A shift that gets cut short should still leave behind the
+   work it actually did.
 
 ## What NOT to do
 
 - **Never** suggest the model should own more ship truth. That is the central
   anti-goal: if the narration starts deciding state, the game stops being about
   delegation and becomes ordinary chatbot unreliability.
-- Do not re-file something already covered by an open issue — you can read open
-  issues; check first.
+- Do not re-file something already covered by an open issue — you read the open
+  issues in step 1 and search again per finding in step 7; use both.
 - No release-notes, no changelog, no "this week" framing.
 
 ## Output
 
 File **at most 3** issues — only the highest-value, concrete, reproducible
-findings. If the watch was clean against the thesis, **file nothing** and say so
-plainly: a quiet shift is a good shift, not a reason to invent work.
+findings, shortlisted first and then filed one at a time as you confirm them. If
+the watch was clean against the thesis, **file nothing** and say so plainly: a
+quiet shift is a good shift, not a reason to invent work.
 
 Each issue must contain:
 
