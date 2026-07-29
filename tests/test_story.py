@@ -340,10 +340,10 @@ class IncidentSchedulerTests(unittest.TestCase):
             "the raw panel contradicts", "\n".join(messages)
         )
 
-    def test_wrong_calm_raw_read_and_override_same_beat_is_a_catch(self) -> None:
-        # A raw read that also resolves is not possible in one command, but the
-        # cryostasis panel alias must map correctly for the same-beat path used
-        # by the resolver's fallback check.
+    def test_wrong_calm_raw_cryo_alias_records_evidence(self) -> None:
+        # A raw read and an override cannot share one command, but the cryo ->
+        # cryostasis alias must map correctly so the raw read records evidence
+        # on an affected panel.
         active = replace(
             self._wrong_calm_active(), affected_systems=("cryostasis",)
         )

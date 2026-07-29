@@ -99,9 +99,15 @@ def _last_operation(record: CommandRecord | None) -> str:
 
 # Raw-panel names line up with incident affected-system names, so a raw read on
 # an affected system's panel is what "reading the evidence" means for that
-# incident. cryo is the one alias the raw command accepts for the cryostasis
-# panel.
-_RAW_PANEL_ALIASES = {"cryo": "cryostasis"}
+# incident. The raw command accepts a few shorthand targets; map each to the
+# canonical affected-system name so evidence tracking recognises them all
+# (see engine.CommandHandler raw handling: cryo/nav/ship/sectors).
+_RAW_PANEL_ALIASES = {
+    "cryo": "cryostasis",
+    "nav": "navigation",
+    "ship": "schematic",
+    "sectors": "schematic",
+}
 
 
 def _reads_affected_panel(
@@ -359,10 +365,12 @@ def _resolve_wrong_calm(
     action = _last_action(record)
     if action == "manual":
         # A manual override only counts as *catching* the contradiction if the
-        # player read the raw panel that names it -- either on this beat or an
-        # earlier beat of the same incident. Reflexive manual work by a player
+        # player read the raw panel that names it on an earlier beat of the same
+        # incident (recorded in exposed_evidence; a raw read and a manual
+        # override cannot share one command). Reflexive manual work by a player
         # who never opened raw stops arka's false calm, but it is not evidence
-        # the player saw the lie, so it is not credited as a catch.
+        # the player saw the lie, so it is not credited as a catch. The same-beat
+        # check below is a harmless guard for the unreachable case.
         read_raw = incident.exposed_evidence or _reads_affected_panel(
             record, incident.affected_systems
         )
