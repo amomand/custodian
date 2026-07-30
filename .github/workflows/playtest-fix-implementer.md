@@ -82,11 +82,22 @@ pre-agent-steps:
       # shared a root cause with one that was in scope. SCOPE_RUN_ID is already
       # digits-only, so it is safe to interpolate into the jq filter.
       MARKER="id: ${SCOPE_RUN_ID}, workflow_id: playtest-review"
+      # Fetch once to a file so the cap can be checked. A silently truncated
+      # page would drop authorised issues without anyone noticing, and an empty
+      # result would then be indistinguishable from a genuinely quiet run.
+      PAGE_LIMIT=200
       gh issue list --repo "$GITHUB_REPOSITORY" --label playtest --state open \
-        --limit 100 --json number,body \
-        --jq "[.[] | select(.body | contains(\"${MARKER}\")) | .number] | sort | map(tostring) | join(\",\")" \
-        > "${RUNNER_TEMP}/gh-aw/playtest_scope_issues.txt"
-      IN_SCOPE="$(cat "${RUNNER_TEMP}/gh-aw/playtest_scope_issues.txt")"
+        --limit "$PAGE_LIMIT" --json number,body \
+        > "${RUNNER_TEMP}/gh-aw/playtest_open_issues.json"
+      FETCHED="$(jq 'length' "${RUNNER_TEMP}/gh-aw/playtest_open_issues.json")"
+      if [ "$FETCHED" -ge "$PAGE_LIMIT" ]; then
+        echo "::error::Fetched ${FETCHED} open playtest issues, which hits the ${PAGE_LIMIT} cap. The in-scope set may be truncated, so this run fails rather than acting on a partial scope."
+        exit 1
+      fi
+      IN_SCOPE="$(jq -r --arg m "$MARKER" \
+        '[.[] | select(.body != null and (.body | contains($m))) | .number] | sort | map(tostring) | join(",")' \
+        "${RUNNER_TEMP}/gh-aw/playtest_open_issues.json")"
+      printf '%s\n' "$IN_SCOPE" > "${RUNNER_TEMP}/gh-aw/playtest_scope_issues.txt"
       # A manual issue_numbers input may only ever narrow that set, never widen
       # it, so intersect rather than replace.
       if [ -n "${ISSUE_NUMBERS:-}" ]; then
