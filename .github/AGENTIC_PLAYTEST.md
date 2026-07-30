@@ -12,6 +12,8 @@ playtester or create more findings.
 flowchart LR
   P["Weekly playtest"] --> I["Provenanced issues"]
   I --> F["Opus implementer"]
+  I -.->|"trigger missed"| K["Catch-up sweep"]
+  K -.->|"re-dispatch by run ID"| F
   F --> PR["Draft fix PR"]
   PR --> D["Opus diegesis review"]
   PR --> S["Opus simulation-truth review"]
@@ -75,6 +77,71 @@ PR. If a review round is still waiting on anything six hours after the waiting
 notice first appeared, the watchdog posts the `needs-human` terminal marker,
 applies the matching label and pauses the loop for that PR; deleting that
 comment resumes it, and the watchdog clears the label on its next pass.
+
+## When the implementer never wakes
+
+The `workflow_run` trigger fires once and is never retried. Two things make it
+miss: the implementer run dies before it selects anything, or the playtest
+review ran on a branch other than `main`, which the trigger refuses. Either way
+the issues sit open with nothing watching them. Both happened on 29 July 2026:
+a failed implementer run orphaned #113 and #114, and a review run on
+`fictional-disco` orphaned #111.
+
+`playtest-implementer-catchup.yml` sweeps every thirty minutes to close that
+gap. It is ordinary Actions code with no model, and the only thing it can do is
+re-dispatch the implementer against a provenance run ID it has already checked.
+Before dispatching, that ID must resolve to a real, completed, successful run of
+the weekly playtest review on the default branch. The sweep reads the run ID
+only from gh-aw's own footer comment, so a marker typed into issue prose buys
+nothing, and an issue carrying two different provenance runs is skipped rather
+than guessed at.
+
+It does not widen what the implementer may act on. It passes a run ID and the
+subset of that run's issues no fix PR already closes, and the implementer still
+re-verifies the label and the exact provenance marker on every issue it selects.
+
+Rate limits keep it boring: one dispatch per sweep, nothing dispatched while an
+implementer run is already going, nothing dispatched for a run whose issues are
+less than thirty minutes old (that window belongs to the ordinary trigger), and
+two attempts per run ID with a two hour cooldown between them. Attempts are
+counted from `<!-- playtest-catchup-dispatch:<run>:<n> -->` marker comments
+written on every open issue of that run, so the ledger survives one of those
+issues being closed by a merged fix. After the second attempt the sweep stops
+and applies `needs-human` rather than retrying forever.
+
+A review run on a branch other than `main` is deliberately **not** dispatched
+automatically. That run used its own branch's copy of the reviewer
+instructions, and auto-dispatching it would quietly hand a branch's workflow
+definition the same authority as `main`. The sweep says so once on the issue,
+applies `needs-human`, and leaves the decision to a person: dispatch
+**Implement playtest findings** by hand with that `playtest_run_id`, or close
+the issue. A provenance ID that resolves to nothing, to a failed run, or to a
+different workflow is logged as a warning and skipped.
+
+## Manual dispatch scope
+
+Runtime-imported prompt bodies get their `${{ }}` expressions resolved by
+gh-aw's own evaluator, not by Actions, and that evaluator implements `||` and
+plain property lookups only. It does not evaluate `&&` or comparisons. An
+expression like `github.event_name == 'x' && a || b` therefore skips straight to
+`b`, silently, on a clean compile.
+
+That is what broke the manual retry path. The prompt asked for
+`github.event_name == 'workflow_dispatch' && github.event.inputs.playtest_run_id
+|| github.event.workflow_run.id`, so a `workflow_dispatch` run fell through to
+`github.event.workflow_run.id`, which does not exist on that event. The agent
+received a literal unresolved expression, substituted the only run ID it could
+see, its own, matched no issues and exited green with a `noop`. Run
+30483810310 did exactly that while `playtest_run_id: 30435646548` sat correctly
+in the step env the whole time.
+
+The pins are now `github.event.inputs.playtest_run_id ||
+github.event.workflow_run.id`, which the evaluator resolves on both events, and
+the prompt refuses to guess: a run ID that is not a plain number is a
+`missing_data` stop, never a fall back to the workflow's own run ID. Note that
+an empty string fallback such as `|| ''` renders as the literal `${{ '' }}`,
+because the evaluator's literal extraction requires at least one character; use
+a named fallback like `'none'` instead.
 
 ## Agent authority
 

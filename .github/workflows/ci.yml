@@ -39,6 +39,7 @@ jobs:
           node --test
           tests/test_agentic_review_state.cjs
           tests/test_finalize_agentic_review.cjs
+          tests/test_playtest_catchup_state.cjs
       - name: Run tests
         run: PYTHONPATH=src python -m unittest discover -s tests
       - name: Compile sources
