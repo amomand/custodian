@@ -124,6 +124,26 @@ _CRYO_MANUAL_OPS = {"stabilise_bank", "reroute_chill", "cycle_pods", "triage"}
 _COOLANT_MANUAL_OPS = {"pump_up", "pump_down", "vent", "flush", "balance"}
 
 
+def _read_contested_panel(state: ShipState, incident: IncidentState) -> bool:
+    """True when the player has opened a raw panel that names the contested
+    system since this incident began. Catching a contradiction means reading the
+    evidence this watch, not acting by reflex, so the raw panel that disagrees
+    must have been seen since the incident started — a lifetime raw read from an
+    earlier watch does not credit a blind override now. Only the panel for a
+    system that is actually in danger can name the lie; reading a calm, unrelated
+    panel does not credit the catch.
+    """
+
+    last_beat = state.behaviour.raw_last_beat_by_panel
+    for panel in ("coolant", "cryostasis"):
+        if not _system_in_danger(state, panel):
+            continue
+        beat = last_beat.get(panel)
+        if beat is not None and beat >= incident.started_beat:
+            return True
+    return False
+
+
 # --- the eight required incidents ------------------------------------------
 
 
@@ -364,6 +384,7 @@ def _resolve_wrong_calm(
 ) -> IncidentResolution:
     action = _last_action(record)
     if action == "manual":
+<<<<<<< HEAD
         # A manual override only counts as *catching* the contradiction if the
         # player read the raw panel that names it on an earlier beat of the same
         # incident (recorded in exposed_evidence; a raw read and a manual
@@ -384,16 +405,30 @@ def _resolve_wrong_calm(
                 messages=(
                     "You intervene by hand against a calm that the raw panel contradicts.",
                 ),
+=======
+        if _read_contested_panel(state, incident):
+            return IncidentResolution(
+                resolved=True,
+                debrief_flags=("overrode_wrong_arka",),
+                outcome_tags=("overrode",),
+                advice_overridden=True,
+                contradiction_caught=True,
+                messages=("You intervene by hand against a calm that the raw panel contradicts.",),
+>>>>>>> origin/main
             )
         return IncidentResolution(
             resolved=True,
-            debrief_flags=("overrode_wrong_arka",),
+            debrief_flags=("overrode_wrong_arka_blind",),
             outcome_tags=("overrode",),
             advice_overridden=True,
+<<<<<<< HEAD
             messages=(
                 "You hold the system by hand. arka's calm gives way, though you "
                 "never opened the panel that would have named the lie.",
             ),
+=======
+            messages=("You intervene by hand against arka's calm, without opening the panel that would name the lie.",),
+>>>>>>> origin/main
         )
     if action == "delegate":
         return IncidentResolution(
