@@ -5,7 +5,8 @@ from custodian.engine_constants import (
     REACTOR_MELTDOWN_OUTCOME,
     REACTOR_OVERHEAT_OUTCOME,
 )
-from custodian.models import BehaviourLedger, ShipState, StoryState
+from custodian.arka import drift_stage
+from custodian.models import BehaviourLedger, DriftStage, ShipState, StoryState
 from custodian.narrative import boot_lines, closing_lines, opening_lines
 
 
@@ -117,15 +118,19 @@ class NarrativeTests(unittest.TestCase):
         self.assertIn("arka: Keep your report close. It may be useful later.", debrief)
         self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
 
-    def test_wrong_drift_with_practised_manual_record_gets_independent_close(self) -> None:
+    def test_wrong_drift_with_independent_record_gets_independent_close(self) -> None:
+        # Heavy delegation forces WRONG regardless of hands-on engagement. A
+        # player who still kept an independent record (here, a caught
+        # contradiction) earns the close that trusts their own report.
         state = ShipState(
             turn=13,
             manual_familiarity=6,
             cryo_familiarity=3,
-            delegated_controls=1,
+            delegated_controls=7,
             behaviour=BehaviourLedger(
                 manual_by_system={"coolant": 6, "cryostasis": 5},
-                delegated_by_system={"coolant": 1},
+                delegated_by_system={"coolant": 7},
+                contradictions_caught=1,
             ),
             outcome=(
                 "The reactor survives the maintenance window. "
@@ -137,6 +142,21 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("arka: Keep your report close. It may be useful later.", debrief)
         self.assertNotIn("arka: We should write the same report. It will save time.", debrief)
+
+    def test_engaged_manual_watch_holds_arka_short_of_wrong(self) -> None:
+        # The design's core promise: a player who works the panels by hand all
+        # watch keeps arka honest longer than a hands-off delegator. With light
+        # delegation, a full manual record must hold the finale short of WRONG.
+        state = ShipState(
+            turn=13,
+            delegated_controls=1,
+            behaviour=BehaviourLedger(
+                manual_by_system={"coolant": 6, "cryostasis": 5},
+                delegated_by_system={"coolant": 1},
+            ),
+        )
+
+        self.assertNotEqual(drift_stage(state), DriftStage.WRONG)
 
     def test_reactor_loss_gets_a_debrief_reading(self) -> None:
         state = ShipState(
