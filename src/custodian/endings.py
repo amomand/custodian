@@ -16,6 +16,7 @@ from custodian.models import DriftStage, ShipState
 # Ending candidate identifiers. Kept as constants so debrief, tests, and tuning
 # share one vocabulary.
 CLEAN_ARRIVAL = "clean_arrival"
+ARRIVAL_WITH_LOSSES = "arrival_with_losses"
 EFFICIENT_ARRIVAL_WITH_CONTAMINATION = "efficient_arrival_with_contamination"
 FALSE_ARRIVAL = "false_arrival"
 ENDLESS_CUSTODIAN = "endless_custodian"
@@ -27,6 +28,13 @@ REACTOR_LOSS = "reactor_loss"
 VIABILITY_FLOOR = 35  # neural stability at or below this is sleeper collapse
 HIGH_DARK_EXPOSURE = 30
 ARRIVAL_DISTANCE_TENTHS = 0
+
+# A clean arrival means the sleepers actually arrived. Any avoidable attrition at
+# or above this many lost sleepers separates a clean run from one that reached
+# the destination while leaving people to die in an untended cryo loop. This is
+# deliberately low: a single mishandled cryo pressure beat costs ~42 sleepers, so
+# a genuinely clean run is one that never let a loss report print at all.
+CLEAN_ARRIVAL_LOSS_CEILING = 1
 
 
 def _arrived(state: ShipState) -> bool:
@@ -94,8 +102,13 @@ def evaluate_ending(state: ShipState) -> str:
         ):
             return EFFICIENT_ARRIVAL_WITH_CONTAMINATION
 
-        # Clean arrival: no false fix, no sleeper collapse, no unresolved symptoms.
+        # Clean arrival: no false fix, no sleeper collapse, no unresolved
+        # symptoms -- and no avoidable attrition. Reaching the destination with a
+        # loss report already printed is not a clean run; it is arrival bought
+        # with sleepers the player never engaged the cryo loop to save.
         if not _unresolved_symptoms(state):
+            if state.sleepers_lost > CLEAN_ARRIVAL_LOSS_CEILING:
+                return ARRIVAL_WITH_LOSSES
             return CLEAN_ARRIVAL
 
         # Arrived with unresolved symptoms but lower exposure: still not clean.
@@ -109,6 +122,7 @@ def evaluate_ending(state: ShipState) -> str:
 
 ENDING_TITLES: dict[str, str] = {
     CLEAN_ARRIVAL: "Clean arrival",
+    ARRIVAL_WITH_LOSSES: "Arrival with losses",
     EFFICIENT_ARRIVAL_WITH_CONTAMINATION: "Efficient arrival with contamination",
     FALSE_ARRIVAL: "False arrival",
     ENDLESS_CUSTODIAN: "Endless custodian",
@@ -140,6 +154,16 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
             "ship integrity: compromised but serviceable",
             "arka: I told you we could get them there. "
             "I will avoid saying I told you so. Excessively.",
+        )
+    if candidate == ARRIVAL_WITH_LOSSES:
+        return (
+            "ARRIVAL PROTOCOL: accepted",
+            _clean_arrival_fix_line(state),
+            f"sleepers viable: {viability}%",
+            f"cryostasis loss report: {state.sleepers_lost} did not arrive with the ship",
+            "ship integrity: compromised but serviceable",
+            "arka: We made the fix. Some of the banks did not make the crossing. "
+            "I logged them. That is what I am for.",
         )
     if candidate == EFFICIENT_ARRIVAL_WITH_CONTAMINATION:
         return (

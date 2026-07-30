@@ -119,6 +119,11 @@ class PlaytestTests(unittest.TestCase):
         self.assertEqual(state.navigation.delegated_plots, 0)
         self.assertGreater(state.mission.cryo_decay_pct, 24)
         self.assertGreater(state.sleepers_lost, 0)
+        # A fast navigation-first run that never engages the cryo loop still
+        # loses sleepers, so its verdict must not read as a clean arrival.
+        self.assertEqual(
+            state.story.ending_candidate, "arrival_with_losses"
+        )
         self.assertEqual(report.forbidden_hits, ())
 
     def test_containment_heavy_records_multiple_containment_actions(self) -> None:
