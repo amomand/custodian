@@ -146,7 +146,10 @@ class NarrativeTests(unittest.TestCase):
     def test_engaged_manual_watch_holds_arka_short_of_wrong(self) -> None:
         # The design's core promise: a player who works the panels by hand all
         # watch keeps arka honest longer than a hands-off delegator. With light
-        # delegation, a full manual record must hold the finale short of WRONG.
+        # delegation, a full manual record spends the four-beat vigilance cap
+        # (effective turn 13 - 4 = 9), holding the finale at SELECTIVE -- short of
+        # WRONG, but never back to ACCURATE. Pinning the exact stage guards the
+        # drift arc against a silent regression to INTERPRETIVE or ACCURATE.
         state = ShipState(
             turn=13,
             delegated_controls=1,
@@ -156,7 +159,7 @@ class NarrativeTests(unittest.TestCase):
             ),
         )
 
-        self.assertNotEqual(drift_stage(state), DriftStage.WRONG)
+        self.assertEqual(drift_stage(state), DriftStage.SELECTIVE)
 
     def test_reactor_loss_gets_a_debrief_reading(self) -> None:
         state = ShipState(
