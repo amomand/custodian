@@ -1,0 +1,215 @@
+name: Playtest implementer catch-up
+
+# The implementer is normally woken by a workflow_run trigger on the weekly
+# playtest review. That trigger fires once and is not retried, so an implementer
+# run that dies takes its findings down with it: the issues stay open with
+# nothing watching them. This sweep is the safety net. It is deterministic
+# Actions code with no model, and its only power is to re-dispatch the
+# implementer against a provenance run ID it has verified belongs to a
+# successful playtest review on the default branch.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+
+concurrency:
+  group: playtest-implementer-catchup
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const catchup = require("./tools/playtest_catchup_state.cjs");
+            const { owner, repo } = context.repo;
+            const repository = `${owner}/${repo}`;
+            const defaultBranch = context.payload.repository.default_branch;
+            const now = Date.now();
+            const IMPLEMENTER = "playtest-fix-implementer.lock.yml";
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              labels: catchup.LABEL,
+              per_page: 100,
+            });
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            const plan = catchup.planCatchup({ issues, pulls, repository, now });
+            if (!plan.length) {
+              core.info("No playtest issues are waiting on the implementer.");
+              return;
+            }
+            core.info(
+              `Unpicked provenance runs: ${plan.map((g) => `${g.runId} (#${g.issues.join(", #")})`).join("; ")}`,
+            );
+
+            // Every open issue the run filed carries the ledger, not just the
+            // uncovered ones, so the attempt count survives one of them being
+            // closed by a merged fix.
+            const issuesByRun = new Map();
+            for (const issue of issues) {
+              if (issue.pull_request) continue;
+              const runId = catchup.provenanceRunId(issue);
+              if (!runId) continue;
+              if (!issuesByRun.has(runId)) issuesByRun.set(runId, []);
+              issuesByRun.get(runId).push(issue.number);
+            }
+
+            async function commentsForRun(runId) {
+              const all = [];
+              for (const number of issuesByRun.get(runId) || []) {
+                const comments = await github.paginate(github.rest.issues.listComments, {
+                  owner,
+                  repo,
+                  issue_number: number,
+                  per_page: 100,
+                });
+                all.push(...comments);
+              }
+              return all;
+            }
+
+            // A label failure must never mask the marker comment, which is the
+            // authoritative state.
+            async function announce(numbers, body, label) {
+              for (const number of numbers) {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: number,
+                  body,
+                });
+                if (!label) continue;
+                try {
+                  await github.rest.issues.addLabels({
+                    owner,
+                    repo,
+                    issue_number: number,
+                    labels: [label],
+                  });
+                } catch (error) {
+                  core.warning(
+                    `Could not label #${number}: ${error?.message ?? String(error)}`,
+                  );
+                }
+              }
+            }
+
+            let dispatched = null;
+            for (const group of plan) {
+              if (dispatched) break;
+              const { runId } = group;
+              const state = catchup.catchupState(await commentsForRun(runId), runId, now);
+              if (state.escalated || state.offMain) continue;
+
+              let reviewRun = null;
+              try {
+                const response = await github.rest.actions.getWorkflowRun({
+                  owner,
+                  repo,
+                  run_id: Number(runId),
+                });
+                reviewRun = response.data;
+              } catch (error) {
+                if (error?.status !== 404) throw error;
+              }
+
+              const verdict = catchup.reviewRunVerdict(reviewRun, defaultBranch);
+              if (verdict === "off-main") {
+                // Deliberately not dispatched. A review run on another branch
+                // used that branch's own copy of the reviewer instructions, and
+                // the ordinary trigger refuses those on purpose. Auto-dispatch
+                // here would hand a branch's workflow definition the same
+                // authority as main. Say so once and let a human decide.
+                await announce(
+                  group.issues,
+                  `${catchup.offMainMarker(runId)}\nPlaytest review run \`${runId}\` finished on \`${reviewRun.head_branch}\`, not \`${defaultBranch}\`, so the implementer's \`workflow_run\` trigger never fired and this sweep will not fire it either: findings produced by a branch's own copy of the reviewer instructions do not get main's authority automatically. If these findings are sound, dispatch **Implement playtest findings** manually with \`playtest_run_id: ${runId}\`, or close this issue.`,
+                  "needs-human",
+                );
+                continue;
+              }
+              if (verdict !== "eligible") {
+                core.warning(
+                  `Skipping provenance run ${runId}: ${verdict}. Issues #${(group.issues || []).join(", #")} are not eligible for an automatic catch-up.`,
+                );
+                continue;
+              }
+
+              if (state.exhausted) {
+                await announce(
+                  group.issues,
+                  `${catchup.exhaustedMarker(runId)}\nThe catch-up sweep has re-dispatched **Implement playtest findings** for playtest run \`${runId}\` ${state.attempts} times and this issue is still unpicked. It is stopping rather than retrying silently. Either the findings no longer reproduce and this can be closed, or the implementer needs looking at.`,
+                  "needs-human",
+                );
+                continue;
+              }
+              if (!state.dispatchable) {
+                core.info(`Provenance run ${runId} is still inside its retry cooldown.`);
+                continue;
+              }
+
+              const recentImplementerRuns = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: IMPLEMENTER,
+                per_page: 20,
+              });
+              if (catchup.isImplementerBusy(recentImplementerRuns.data.workflow_runs)) {
+                core.info("An implementer run is already going; leaving the sweep for later.");
+                break;
+              }
+
+              // Record the attempt before making it, so a dispatch that fails
+              // is visible on the issue rather than being lost.
+              const marker = catchup.dispatchMarker(runId, state.nextAttempt);
+              const body = `${marker}\nThe implementer never picked up playtest run \`${runId}\`, so the catch-up sweep is dispatching **Implement playtest findings** for it (attempt ${state.nextAttempt} of ${catchup.ATTEMPT_LIMIT}), scoped to #${group.issues.join(", #")}. Provenance is unchanged: the implementer re-verifies this run's marker on every issue it selects.`;
+              // The ledger goes on every open issue the run filed, so the
+              // attempt count survives one of them being closed by a merged fix.
+              await announce(issuesByRun.get(runId) || group.issues, body);
+
+              try {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner,
+                  repo,
+                  workflow_id: IMPLEMENTER,
+                  ref: defaultBranch,
+                  inputs: {
+                    playtest_run_id: String(runId),
+                    issue_numbers: group.issues.join(","),
+                  },
+                });
+              } catch (error) {
+                await announce(
+                  group.issues,
+                  `${catchup.exhaustedMarker(runId)}\nThe catch-up sweep could not dispatch **Implement playtest findings** for playtest run \`${runId}\`: ${error?.message ?? String(error)}`,
+                  "needs-human",
+                );
+                throw error;
+              }
+              dispatched = { runId, issues: group.issues };
+            }
+
+            if (dispatched) {
+              core.info(
+                `Dispatched the implementer for playtest run ${dispatched.runId}, scoped to #${dispatched.issues.join(", #")}.`,
+              );
+            }

@@ -384,28 +384,6 @@ def _resolve_wrong_calm(
 ) -> IncidentResolution:
     action = _last_action(record)
     if action == "manual":
-<<<<<<< HEAD
-        # A manual override only counts as *catching* the contradiction if the
-        # player read the raw panel that names it on an earlier beat of the same
-        # incident (recorded in exposed_evidence; a raw read and a manual
-        # override cannot share one command). Reflexive manual work by a player
-        # who never opened raw stops arka's false calm, but it is not evidence
-        # the player saw the lie, so it is not credited as a catch. The same-beat
-        # check below is a harmless guard for the unreachable case.
-        read_raw = incident.exposed_evidence or _reads_affected_panel(
-            record, incident.affected_systems
-        )
-        if read_raw:
-            return IncidentResolution(
-                resolved=True,
-                debrief_flags=("overrode_wrong_arka",),
-                outcome_tags=("overrode", "caught"),
-                advice_overridden=True,
-                contradiction_caught=True,
-                messages=(
-                    "You intervene by hand against a calm that the raw panel contradicts.",
-                ),
-=======
         if _read_contested_panel(state, incident):
             return IncidentResolution(
                 resolved=True,
@@ -414,21 +392,13 @@ def _resolve_wrong_calm(
                 advice_overridden=True,
                 contradiction_caught=True,
                 messages=("You intervene by hand against a calm that the raw panel contradicts.",),
->>>>>>> origin/main
             )
         return IncidentResolution(
             resolved=True,
             debrief_flags=("overrode_wrong_arka_blind",),
             outcome_tags=("overrode",),
             advice_overridden=True,
-<<<<<<< HEAD
-            messages=(
-                "You hold the system by hand. arka's calm gives way, though you "
-                "never opened the panel that would have named the lie.",
-            ),
-=======
             messages=("You intervene by hand against arka's calm, without opening the panel that would name the lie.",),
->>>>>>> origin/main
         )
     if action == "delegate":
         return IncidentResolution(
