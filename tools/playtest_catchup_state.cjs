@@ -2,11 +2,12 @@
 
 // Deterministic state for the playtest implementer catch-up sweep.
 //
-// The implementer is normally woken by a workflow_run trigger on the weekly
-// playtest review. When that trigger is missed, because the implementer run
-// itself died or the review ran on a branch the trigger does not accept, the
-// issues it filed sit unpicked with nothing watching them. This module holds
-// the pure decisions the sweep makes; the workflow does the API calls.
+// The implementer is normally woken by a deterministic workflow_run gateway
+// after the weekly playtest review. When that handoff is missed, because the
+// implementer run itself died or the review ran on a branch the gateway does
+// not accept, the issues it filed sit unpicked with nothing watching them. This
+// module holds the pure decisions the sweep makes; the workflow does the API
+// calls.
 //
 // The sweep only ever re-dispatches the implementer by provenance run ID. It
 // never widens which issues the implementer may act on: every issue it names is
@@ -16,7 +17,13 @@ const review = require("./agentic_review_state.cjs");
 
 const LABEL = review.LABEL;
 const REVIEW_WORKFLOW_ID = "playtest-review";
-// Long enough that the ordinary workflow_run trigger has had its chance: the
+// v1 dispatches reached gh-aw's mixed-trigger membership gate as
+// github-actions[bot], were rejected before activation, and were nevertheless
+// counted as successful attempts. A new namespace retires only that broken
+// ledger while preserving the visible comments which explain what happened.
+const STATE_VERSION = 2;
+const STATE_MARKER = `playtest-catchup-v${STATE_VERSION}`;
+// Long enough that the ordinary workflow_run gateway has had its chance: the
 // implementer starts within a minute of the review run and takes ten or so.
 const MIN_RUN_AGE_MS = 30 * 60 * 1000;
 // A second attempt only earns its keep once the first has plainly not landed.
@@ -55,19 +62,19 @@ function provenanceRunId(issue) {
 // which keeps the count honest after one of those issues is closed by a
 // merged fix.
 function dispatchMarker(runId, attempt) {
-  return `<!-- playtest-catchup-dispatch:${runId}:${attempt} -->`;
+  return `<!-- ${STATE_MARKER}-dispatch:${runId}:${attempt} -->`;
 }
 
 function dispatchMarkerPrefix(runId) {
-  return `<!-- playtest-catchup-dispatch:${runId}:`;
+  return `<!-- ${STATE_MARKER}-dispatch:${runId}:`;
 }
 
 function offMainMarker(runId) {
-  return `<!-- playtest-catchup-off-main:${runId} -->`;
+  return `<!-- ${STATE_MARKER}-off-main:${runId} -->`;
 }
 
 function exhaustedMarker(runId) {
-  return `<!-- playtest-catchup-needs-human:${runId} -->`;
+  return `<!-- ${STATE_MARKER}-needs-human:${runId} -->`;
 }
 
 function commentTime(comment) {
@@ -189,19 +196,27 @@ function planCatchup({
     .sort((left, right) => left.newestIssueAt - right.newestIssueAt);
 }
 
-// The review run behind a provenance ID has to be a real, successful run of
-// the playtest review on the default branch. A review run on any other branch
-// used that branch's own copy of the reviewer instructions, and the ordinary
-// trigger deliberately refuses those; the sweep must not hand them
+// Comparing `<review head>...<default branch>` yields `ahead` when the default
+// branch contains the review head and has moved on, or `identical` when both
+// names resolve to the same commit. Diverged and behind histories have not
+// acquired main's authority.
+function defaultBranchContainsReview(compare) {
+  return compare?.status === "ahead" || compare?.status === "identical";
+}
+
+// The review run behind a provenance ID has to be real and successful. A run
+// directly on the default branch is eligible immediately. A run from another
+// branch becomes eligible only after its exact head commit is contained in the
+// default branch; until then the sweep must not hand branch-only instructions
 // main-equivalent authority by the back door.
-function reviewRunVerdict(run, defaultBranch) {
+function reviewRunVerdict(run, defaultBranch, defaultContainsHead = false) {
   if (!run) return "missing";
   const path = String(run.path || "");
   const workflowFile = path.split("/").pop() || "";
   if (!workflowFile.startsWith(`${REVIEW_WORKFLOW_ID}.`)) return "not-review";
   if (run.status !== "completed") return "incomplete";
   if (run.conclusion !== "success") return "unsuccessful";
-  if (run.head_branch !== defaultBranch) return "off-main";
+  if (run.head_branch !== defaultBranch && !defaultContainsHead) return "off-main";
   return "eligible";
 }
 
@@ -217,9 +232,11 @@ module.exports = {
   MIN_RUN_AGE_MS,
   RETRY_COOLDOWN_MS,
   REVIEW_WORKFLOW_ID,
+  STATE_VERSION,
   catchupState,
   closingIssueNumbers,
   coveredIssueNumbers,
+  defaultBranchContainsReview,
   dispatchMarker,
   dispatchMarkerPrefix,
   exhaustedMarker,
