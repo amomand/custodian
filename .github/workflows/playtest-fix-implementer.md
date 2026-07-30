@@ -13,12 +13,6 @@ on:
         description: Optional comma-separated issue numbers from that run
         required: false
         type: string
-  workflow_run:
-    workflows: [Weekly playtest review]
-    types: [completed]
-    branches: [main]
-
-if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
 
 permissions:
   contents: read
@@ -53,7 +47,6 @@ pre-agent-steps:
   - name: Resolve the playtest provenance scope
     env:
       DISPATCH_RUN_ID: ${{ github.event.inputs.playtest_run_id }}
-      WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
       ISSUE_NUMBERS: ${{ github.event.inputs.issue_numbers }}
       # Read-only: `permissions.issues: read` above. Used only to resolve which
       # issues carry this run's provenance marker.
@@ -68,11 +61,8 @@ pre-agent-steps:
         exit 1
       fi
       SCOPE_RUN_ID="${DISPATCH_RUN_ID:-}"
-      if [ -z "$SCOPE_RUN_ID" ]; then
-        SCOPE_RUN_ID="${WORKFLOW_RUN_ID:-}"
-      fi
       if ! [[ "$SCOPE_RUN_ID" =~ ^[0-9]+$ ]]; then
-        echo "::error::Could not resolve a playtest provenance run ID from either the workflow_dispatch input or the workflow_run event. The implementer must never guess its own scope, so this run fails instead."
+        echo "::error::Could not resolve a playtest provenance run ID from the workflow_dispatch input. The implementer must never guess its own scope, so this run fails instead."
         exit 1
       fi
       mkdir -p "${RUNNER_TEMP}/gh-aw"

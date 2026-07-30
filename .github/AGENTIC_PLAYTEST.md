@@ -11,7 +11,9 @@ playtester or create more findings.
 ```mermaid
 flowchart LR
   P["Weekly playtest"] --> I["Provenanced issues"]
+  P --> T["Deterministic trigger"]
   I --> F["Opus implementer"]
+  T --> F
   I -.->|"trigger missed"| K["Catch-up sweep"]
   K -.->|"re-dispatch by run ID"| F
   F --> PR["Draft fix PR"]
@@ -87,14 +89,23 @@ the issues sit open with nothing watching them. Both happened on 29 July 2026:
 a failed implementer run orphaned #113 and #114, and a review run on
 `fictional-disco` orphaned #111.
 
-`playtest-implementer-catchup.yml` sweeps every thirty minutes to close that
-gap. It is ordinary Actions code with no model, and the only thing it can do is
-re-dispatch the implementer against a provenance run ID it has already checked.
+`playtest-implementer-trigger.yml` owns the privileged `workflow_run` event and
+dispatches the agentic implementer with the completed review's exact run ID.
+Keeping that event out of the compiled workflow matters: gh-aw adds a caller
+membership gate to mixed `workflow_run`/`workflow_dispatch` workflows, and an
+internal dispatch made with `GITHUB_TOKEN` arrives as `github-actions[bot]`.
+That bot has no repository membership, so the target used to stop before agent
+activation while the outer run still looked successful.
+
+`playtest-implementer-catchup.yml` sweeps every thirty minutes to close the
+remaining gap. It is ordinary Actions code with no model, and the only thing it
+can do is re-dispatch the implementer against a provenance run ID it has already
+checked.
 Before dispatching, that ID must resolve to a real, completed, successful run of
-the weekly playtest review on the default branch. The sweep reads the run ID
-only from gh-aw's own footer comment, so a marker typed into issue prose buys
-nothing, and an issue carrying two different provenance runs is skipped rather
-than guessed at.
+the weekly playtest review whose exact head is already trusted by the default
+branch. The sweep reads the run ID only from gh-aw's own footer comment, so a
+marker typed into issue prose buys nothing, and an issue carrying two different
+provenance runs is skipped rather than guessed at.
 
 It does not widen what the implementer may act on. It passes a run ID and the
 subset of that run's issues no fix PR already closes, and the implementer still
@@ -104,19 +115,24 @@ Rate limits keep it boring: one dispatch per sweep, nothing dispatched while an
 implementer run is already going, nothing dispatched for a run whose issues are
 less than thirty minutes old (that window belongs to the ordinary trigger), and
 two attempts per run ID with a two hour cooldown between them. Attempts are
-counted from `<!-- playtest-catchup-dispatch:<run>:<n> -->` marker comments
+counted from `<!-- playtest-catchup-v2-dispatch:<run>:<n> -->` marker comments
 written on every open issue of that run, so the ledger survives one of those
 issues being closed by a merged fix. After the second attempt the sweep stops
 and applies `needs-human` rather than retrying forever.
 
-A review run on a branch other than `main` is deliberately **not** dispatched
-automatically. That run used its own branch's copy of the reviewer
-instructions, and auto-dispatching it would quietly hand a branch's workflow
-definition the same authority as `main`. The sweep says so once on the issue,
-applies `needs-human`, and leaves the decision to a person: dispatch
-**Implement playtest findings** by hand with that `playtest_run_id`, or close
-the issue. A provenance ID that resolves to nothing, to a failed run, or to a
-different workflow is logged as a warning and skipped.
+A review run on a branch other than `main` is not dispatched while that head is
+still branch-only. That run used its own copy of the reviewer instructions, and
+auto-dispatching it would quietly hand unmerged workflow code the same authority
+as `main`. The sweep says so once and applies `needs-human`. On later passes it
+compares the review head with `main`: once that exact commit is contained in the
+default branch, the finding has acquired main's authority and can be retried
+normally. Squashed, divergent or still-unmerged heads remain human decisions.
+
+The retry ledger uses `playtest-catchup-v2-*` markers. The original unversioned
+ledger was retired after it counted two implementer dispatches which gh-aw had
+rejected before activation; preserving those comments keeps the incident
+visible, while ignoring them prevents false attempts from permanently spending
+the repaired workflow's retry budget.
 
 ## Manual dispatch scope
 
@@ -135,13 +151,12 @@ see, its own, matched no issues and exited green with a `noop`. Run
 30483810310 did exactly that while `playtest_run_id: 30435646548` sat correctly
 in the step env the whole time.
 
-The pins are now `github.event.inputs.playtest_run_id ||
-github.event.workflow_run.id`, which the evaluator resolves on both events, and
-the prompt refuses to guess: a run ID that is not a plain number is a
-`missing_data` stop, never a fall back to the workflow's own run ID. Note that
-an empty string fallback such as `|| ''` renders as the literal `${{ '' }}`,
-because the evaluator's literal extraction requires at least one character; use
-a named fallback like `'none'` instead.
+The prompt no longer interpolates either value. A deterministic pre-agent step
+reads `github.event.inputs.playtest_run_id`, requires plain digits, resolves the
+matching issue set, and writes both values to files under `$RUNNER_TEMP` for the
+agent to read. The ordinary trigger, catch-up sweep and manual dispatch all use
+that same path. A missing or malformed run ID fails before the model starts;
+there is no fallback to the implementer's own run ID.
 
 ## Agent authority
 

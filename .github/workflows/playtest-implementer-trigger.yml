@@ -1,0 +1,44 @@
+name: Trigger playtest implementer
+
+# Keep workflow_run outside the compiled agentic workflow. gh-aw protects a
+# workflow containing this privileged trigger with a caller membership gate,
+# which also rejects trusted GITHUB_TOKEN workflow_dispatch calls as
+# github-actions[bot]. This deterministic gateway validates the source event
+# and hands the exact provenance run ID to the dispatch-only implementer.
+
+on:
+  workflow_run:
+    workflows: [Weekly playtest review]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.repository.id == github.repository_id &&
+      !github.event.workflow_run.repository.fork
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const source = context.payload.workflow_run;
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: "playtest-fix-implementer.lock.yml",
+              ref: context.payload.repository.default_branch,
+              inputs: {
+                playtest_run_id: String(source.id),
+              },
+            });
+            core.info(
+              `Dispatched the implementer for successful main playtest run ${source.id}.`,
+            );

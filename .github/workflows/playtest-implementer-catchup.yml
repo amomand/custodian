@@ -1,12 +1,11 @@
 name: Playtest implementer catch-up
 
-# The implementer is normally woken by a workflow_run trigger on the weekly
-# playtest review. That trigger fires once and is not retried, so an implementer
-# run that dies takes its findings down with it: the issues stay open with
-# nothing watching them. This sweep is the safety net. It is deterministic
-# Actions code with no model, and its only power is to re-dispatch the
-# implementer against a provenance run ID it has verified belongs to a
-# successful playtest review on the default branch.
+# The implementer is normally woken through a deterministic workflow_run
+# gateway after the weekly playtest review. That handoff is not retried, so an
+# implementer run that dies takes its findings down with it: the issues stay
+# open with nothing watching them. This sweep is the safety net. It is
+# deterministic Actions code with no model, and its only power is to
+# re-dispatch the implementer against a verified provenance run ID.
 
 on:
   schedule:
@@ -114,12 +113,31 @@ jobs:
               }
             }
 
+            async function clearNeedsHuman(numbers) {
+              for (const number of numbers) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: number,
+                    name: "needs-human",
+                  });
+                } catch (error) {
+                  if (error?.status !== 404) {
+                    core.warning(
+                      `Could not clear needs-human from #${number}: ${error?.message ?? String(error)}`,
+                    );
+                  }
+                }
+              }
+            }
+
             let dispatched = null;
             for (const group of plan) {
               if (dispatched) break;
               const { runId } = group;
               const state = catchup.catchupState(await commentsForRun(runId), runId, now);
-              if (state.escalated || state.offMain) continue;
+              if (state.escalated) continue;
 
               let reviewRun = null;
               try {
@@ -133,18 +151,44 @@ jobs:
                 if (error?.status !== 404) throw error;
               }
 
-              const verdict = catchup.reviewRunVerdict(reviewRun, defaultBranch);
+              let defaultContainsHead = false;
+              if (
+                reviewRun?.head_branch !== defaultBranch &&
+                typeof reviewRun?.head_sha === "string" &&
+                reviewRun.head_sha
+              ) {
+                try {
+                  const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                    owner,
+                    repo,
+                    basehead: `${reviewRun.head_sha}...${defaultBranch}`,
+                  });
+                  defaultContainsHead = catchup.defaultBranchContainsReview(
+                    comparison.data,
+                  );
+                } catch (error) {
+                  if (error?.status !== 404) throw error;
+                }
+              }
+
+              const verdict = catchup.reviewRunVerdict(
+                reviewRun,
+                defaultBranch,
+                defaultContainsHead,
+              );
               if (verdict === "off-main") {
-                // Deliberately not dispatched. A review run on another branch
-                // used that branch's own copy of the reviewer instructions, and
-                // the ordinary trigger refuses those on purpose. Auto-dispatch
-                // here would hand a branch's workflow definition the same
-                // authority as main. Say so once and let a human decide.
-                await announce(
-                  group.issues,
-                  `${catchup.offMainMarker(runId)}\nPlaytest review run \`${runId}\` finished on \`${reviewRun.head_branch}\`, not \`${defaultBranch}\`, so the implementer's \`workflow_run\` trigger never fired and this sweep will not fire it either: findings produced by a branch's own copy of the reviewer instructions do not get main's authority automatically. If these findings are sound, dispatch **Implement playtest findings** manually with \`playtest_run_id: ${runId}\`, or close this issue.`,
-                  "needs-human",
-                );
+                // Deliberately not dispatched while the review head remains
+                // branch-only. It used that branch's own reviewer instructions,
+                // and auto-dispatching here would hand unmerged workflow code
+                // main's authority. Say so once, then re-check on later sweeps
+                // in case the exact commit lands in the default branch.
+                if (!state.offMain) {
+                  await announce(
+                    group.issues,
+                    `${catchup.offMainMarker(runId)}\nPlaytest review run \`${runId}\` finished on \`${reviewRun.head_branch}\`, not \`${defaultBranch}\`, and its head commit is not contained in \`${defaultBranch}\`, so the implementer trigger never fired and this sweep will not fire it either. If that exact head later lands in \`${defaultBranch}\`, the sweep can safely retry; otherwise dispatch **Implement playtest findings** manually with \`playtest_run_id: ${runId}\`, or close this issue.`,
+                    "needs-human",
+                  );
+                }
                 continue;
               }
               if (verdict !== "eligible") {
@@ -197,6 +241,7 @@ jobs:
                     issue_numbers: group.issues.join(","),
                   },
                 });
+                await clearNeedsHuman(group.issues);
               } catch (error) {
                 await announce(
                   group.issues,

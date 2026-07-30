@@ -2,11 +2,14 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const catchup = require("../tools/playtest_catchup_state.cjs");
 
 const REPOSITORY = "amomand/custodian";
 const NOW = Date.parse("2026-07-29T20:00:00Z");
 const HOUR = 60 * 60 * 1000;
+const ROOT = path.resolve(__dirname, "..");
 
 function provenance(runId, workflowId = "playtest-review") {
   return `<!-- gh-aw-agentic-workflow: Weekly playtest review, engine: copilot, version: 1.0.73, model: claude-sonnet-4.6, id: ${runId}, workflow_id: ${workflowId}, run: https://github.com/amomand/custodian/actions/runs/${runId} -->`;
@@ -34,6 +37,26 @@ function fixPullRequest(body, overrides = {}) {
     ...overrides,
   };
 }
+
+test("the compiled implementer is dispatch-only and has no caller membership gate", () => {
+  const source = fs.readFileSync(
+    path.join(ROOT, ".github/workflows/playtest-fix-implementer.md"),
+    "utf8",
+  );
+  const lock = fs.readFileSync(
+    path.join(ROOT, ".github/workflows/playtest-fix-implementer.lock.yml"),
+    "utf8",
+  );
+  const gateway = fs.readFileSync(
+    path.join(ROOT, ".github/workflows/playtest-implementer-trigger.yml"),
+    "utf8",
+  );
+
+  assert.doesNotMatch(source, /^\s+workflow_run:/m);
+  assert.doesNotMatch(lock, /^\s{2}pre_activation:/m);
+  assert.match(gateway, /^\s+workflow_run:/m);
+  assert.match(gateway, /createWorkflowDispatch/);
+});
 
 test("reads the provenance run ID out of the gh-aw footer comment", () => {
   assert.equal(catchup.provenanceRunId(issue(113, "30441857657")), "30441857657");
@@ -145,6 +168,27 @@ test("a fresh run is dispatchable and a just-attempted one is not", () => {
   assert.equal(justTried.dispatchable, false);
 });
 
+test("the broken v1 ledger does not spend the repaired v2 attempt budget", () => {
+  const state = catchup.catchupState(
+    [
+      {
+        body: "<!-- playtest-catchup-dispatch:30441857657:1 -->",
+        created_at: new Date(NOW - 3 * HOUR).toISOString(),
+      },
+      {
+        body: "<!-- playtest-catchup-needs-human:30441857657 -->",
+        created_at: new Date(NOW - 2 * HOUR).toISOString(),
+      },
+    ],
+    "30441857657",
+    NOW,
+  );
+  assert.equal(catchup.STATE_VERSION, 2);
+  assert.equal(state.attempts, 0);
+  assert.equal(state.escalated, false);
+  assert.equal(state.dispatchable, true);
+});
+
 test("the same attempt recorded on several issues counts once", () => {
   // One sweep marks every open issue the run filed, so the ledger survives one
   // of them being closed by a merged fix. That must not read as two attempts.
@@ -196,8 +240,8 @@ test("a marker forged in issue prose cannot spend the attempt budget", () => {
   // the comment must actually close.
   const state = catchup.catchupState(
     [
-      { body: "<!-- playtest-catchup-dispatch:304418576570:1 -->", created_at: "2026-07-29T13:00:00Z" },
-      { body: "<!-- playtest-catchup-dispatch:30441857657:notanumber -->", created_at: "2026-07-29T13:00:00Z" },
+      { body: "<!-- playtest-catchup-v2-dispatch:304418576570:1 -->", created_at: "2026-07-29T13:00:00Z" },
+      { body: "<!-- playtest-catchup-v2-dispatch:30441857657:notanumber -->", created_at: "2026-07-29T13:00:00Z" },
     ],
     "30441857657",
     NOW,
@@ -214,7 +258,7 @@ test("an escalated or off-main run is remembered so it is only said once", () =>
   assert.equal(catchup.catchupState(comments, "30435646548", NOW).offMain, true);
 });
 
-test("only a successful main-branch playtest review run may be re-dispatched", () => {
+test("only a successful trusted playtest review run may be re-dispatched", () => {
   const base = {
     path: ".github/workflows/playtest-review.lock.yml",
     status: "completed",
@@ -226,9 +270,25 @@ test("only a successful main-branch playtest review run may be re-dispatched", (
     catchup.reviewRunVerdict({ ...base, head_branch: "fictional-disco" }, "main"),
     "off-main",
   );
+  assert.equal(
+    catchup.reviewRunVerdict(
+      { ...base, head_branch: "fictional-disco" },
+      "main",
+      true,
+    ),
+    "eligible",
+  );
   assert.equal(catchup.reviewRunVerdict({ ...base, conclusion: "failure" }, "main"), "unsuccessful");
   assert.equal(catchup.reviewRunVerdict({ ...base, status: "in_progress" }, "main"), "incomplete");
   assert.equal(catchup.reviewRunVerdict(null, "main"), "missing");
+});
+
+test("only ahead or identical comparisons prove that main contains a review head", () => {
+  assert.equal(catchup.defaultBranchContainsReview({ status: "ahead" }), true);
+  assert.equal(catchup.defaultBranchContainsReview({ status: "identical" }), true);
+  assert.equal(catchup.defaultBranchContainsReview({ status: "diverged" }), false);
+  assert.equal(catchup.defaultBranchContainsReview({ status: "behind" }), false);
+  assert.equal(catchup.defaultBranchContainsReview(null), false);
 });
 
 test("a run ID pointing at some other workflow is refused", () => {
