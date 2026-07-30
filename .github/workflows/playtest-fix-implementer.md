@@ -80,43 +80,57 @@ pre-agent-steps:
       # Do the provenance match here too. Leaving it to the agent is what let a
       # dispatched run adopt an issue from a different playtest run because it
       # shared a root cause with one that was in scope.
-      # Fetch once to a file so the cap can be checked. A silently truncated
-      # page would drop authorised issues without anyone noticing, and an empty
-      # result would then be indistinguishable from a genuinely quiet run.
-      PAGE_LIMIT=200
+      # GraphQL rather than `gh issue list`, for one field the REST/CLI surface
+      # does not expose: lastEditedAt. `author` records who OPENED an issue and
+      # never changes, so without it anyone with write access could edit a
+      # genuine bot-authored issue to append another run's marker and walk into
+      # that run's scope. Paginating also removes the truncation question.
       ISSUES_JSON="${RUNNER_TEMP}/gh-aw/playtest_open_issues.json"
-      gh issue list --repo "$GITHUB_REPOSITORY" --label playtest --state open \
-        --limit "$PAGE_LIMIT" --json number,body,author > "$ISSUES_JSON"
+      gh api graphql --paginate --slurp \
+        -F owner="${GITHUB_REPOSITORY%%/*}" -F repo="${GITHUB_REPOSITORY##*/}" \
+        -f query='
+        query($owner:String!,$repo:String!,$endCursor:String){
+          repository(owner:$owner,name:$repo){
+            issues(first:100, states:OPEN, labels:["playtest"], after:$endCursor){
+              pageInfo{ hasNextPage endCursor }
+              nodes{ number body lastEditedAt author{ login __typename } }
+            }
+          }
+        }' \
+        | jq '[.[].data.repository.issues.nodes[]]' > "$ISSUES_JSON"
       FETCHED="$(jq 'length' "$ISSUES_JSON")"
       # A non-numeric count means the fetch produced something unexpected. Check
       # it explicitly: a failing test inside `if` does not trip `set -e`, so
-      # without this the cap check below would just be skipped and the run would
-      # go green on an empty scope.
+      # without this the run would go green on an unverified scope.
       if ! [[ "$FETCHED" =~ ^[0-9]+$ ]]; then
         echo "::error::Could not count the fetched playtest issues, got '${FETCHED}'. Refusing to run on an unverified scope."
         exit 1
       fi
-      if [ "$FETCHED" -ge "$PAGE_LIMIT" ]; then
-        echo "::error::Fetched ${FETCHED} open playtest issues, which hits the ${PAGE_LIMIT} cap. The in-scope set may be truncated, so this run fails rather than acting on a partial scope."
-        exit 1
-      fi
-      # Two anchors, because an issue body is untrusted text and a bare
-      # substring match admits anything that merely quotes another run's marker.
-      # The marker only counts inside the gh-aw HTML comment, and the issue must
-      # have been opened by the workflow app rather than by a person.
-      MARKER_AUTHOR="app/github-actions"
+      echo "Fetched ${FETCHED} open playtest issues."
+      # Three anchors, because an issue body is untrusted text. The marker only
+      # counts inside the gh-aw HTML provenance comment; the issue must have
+      # been opened by the workflow bot; and it must never have been edited,
+      # since an edit is the one way untrusted text reaches an authentic body.
+      # Both login spellings are accepted: the CLI renders this identity as
+      # `app/github-actions` and GraphQL as `github-actions`.
       MARKER_RE="<!-- gh-aw-agentic-workflow:[^>]*id: ${SCOPE_RUN_ID}, workflow_id: playtest-review"
-      IN_SCOPE="$(jq -r --arg re "$MARKER_RE" --arg who "$MARKER_AUTHOR" \
-        '[.[] | select(.author.login == $who and .body != null and (.body | test($re))) | .number] | sort | map(tostring) | join(",")' \
+      IN_SCOPE="$(jq -r --arg re "$MARKER_RE" \
+        '[.[] | select(
+            .author != null and .author.__typename == "Bot"
+            and (.author.login == "github-actions" or .author.login == "app/github-actions")
+            and .lastEditedAt == null
+            and .body != null and (.body | test($re))
+          ) | .number] | sort | map(tostring) | join(",")' \
         "$ISSUES_JSON")"
-      # Anything carrying the marker text that these anchors reject is either a
-      # spoof attempt or gh-aw changing its output format. Either way a human
-      # should see it rather than it vanishing into a quiet run.
+      # Anything carrying the marker text that these anchors reject is a spoof
+      # attempt, an edited body, or gh-aw changing its output format. The strict
+      # filter above is what keeps those out; this only makes them visible
+      # rather than letting the scope shrink silently.
       LOOSE="$(jq -r --arg m "id: ${SCOPE_RUN_ID}, workflow_id: playtest-review" \
         '[.[] | select(.body != null and (.body | contains($m))) | .number] | sort | map(tostring) | join(",")' \
         "$ISSUES_JSON")"
       if [ "$LOOSE" != "$IN_SCOPE" ]; then
-        echo "::warning::Issues [${LOOSE}] contain run ${SCOPE_RUN_ID}'s marker text but only [${IN_SCOPE}] carry it in an authentic ${MARKER_AUTHOR} provenance comment. Treating only the latter as in scope."
+        echo "::warning::Issues [${LOOSE}] contain run ${SCOPE_RUN_ID}'s marker text but only [${IN_SCOPE}] carry it in an unedited, bot-authored provenance comment. Treating only the latter as in scope."
       fi
       printf '%s\n' "$IN_SCOPE" > "${RUNNER_TEMP}/gh-aw/playtest_scope_issues.txt"
       # A manual issue_numbers input may only ever narrow that set, never widen
