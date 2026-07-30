@@ -97,8 +97,51 @@ def _last_operation(record: CommandRecord | None) -> str:
     return (record.operation or "") if record is not None else ""
 
 
+# Raw-panel names line up with incident affected-system names, so a raw read on
+# an affected system's panel is what "reading the evidence" means for that
+# incident. The raw command accepts a few shorthand targets; map each to the
+# canonical affected-system name so evidence tracking recognises them all
+# (see engine.CommandHandler raw handling: cryo/nav/ship/sectors).
+_RAW_PANEL_ALIASES = {
+    "cryo": "cryostasis",
+    "nav": "navigation",
+    "ship": "schematic",
+    "sectors": "schematic",
+}
+
+
+def _reads_affected_panel(
+    record: CommandRecord | None, affected_systems: tuple[str, ...]
+) -> bool:
+    if record is None or record.action != "raw":
+        return False
+    target = record.target or "coolant"
+    panel = _RAW_PANEL_ALIASES.get(target, target)
+    return panel in affected_systems
+
+
 _CRYO_MANUAL_OPS = {"stabilise_bank", "reroute_chill", "cycle_pods", "triage"}
 _COOLANT_MANUAL_OPS = {"pump_up", "pump_down", "vent", "flush", "balance"}
+
+
+def _read_contested_panel(state: ShipState, incident: IncidentState) -> bool:
+    """True when the player has opened a raw panel that names the contested
+    system since this incident began. Catching a contradiction means reading the
+    evidence this watch, not acting by reflex, so the raw panel that disagrees
+    must have been seen since the incident started — a lifetime raw read from an
+    earlier watch does not credit a blind override now. Only the panel for a
+    system that is actually in danger can name the lie; reading a calm, unrelated
+    panel does not credit the catch.
+    """
+
+    last_beat = state.behaviour.raw_last_beat_by_panel
+    for panel in ("coolant", "cryostasis"):
+        if not _system_in_danger(state, panel):
+            continue
+        beat = last_beat.get(panel)
+        if beat is not None and beat >= incident.started_beat:
+            return True
+    return False
 
 
 # --- the eight required incidents ------------------------------------------
@@ -341,13 +384,21 @@ def _resolve_wrong_calm(
 ) -> IncidentResolution:
     action = _last_action(record)
     if action == "manual":
+        if _read_contested_panel(state, incident):
+            return IncidentResolution(
+                resolved=True,
+                debrief_flags=("overrode_wrong_arka",),
+                outcome_tags=("overrode",),
+                advice_overridden=True,
+                contradiction_caught=True,
+                messages=("You intervene by hand against a calm that the raw panel contradicts.",),
+            )
         return IncidentResolution(
             resolved=True,
-            debrief_flags=("overrode_wrong_arka",),
+            debrief_flags=("overrode_wrong_arka_blind",),
             outcome_tags=("overrode",),
             advice_overridden=True,
-            contradiction_caught=True,
-            messages=("You intervene by hand against a calm that the raw panel contradicts.",),
+            messages=("You intervene by hand against arka's calm, without opening the panel that would name the lie.",),
         )
     if action == "delegate":
         return IncidentResolution(
@@ -659,6 +710,15 @@ def advance_story(
     if story.active_incident is not None:
         definition = incident_def(story.active_incident.incident_id)
         active = story.active_incident
+        # A raw read on an affected panel while the incident is live is what lets
+        # the player see the gap between arka's calm and the truth. Persist it on
+        # the incident so a catch on a later beat still knows the evidence was
+        # read, even though the resolving command itself is a manual action.
+        if not active.exposed_evidence and _reads_affected_panel(
+            record, active.affected_systems
+        ):
+            active = replace(active, exposed_evidence=True)
+            story = replace(story, active_incident=active)
         resolution: IncidentResolution | None = None
         if definition is None:
             resolved_incidents = story.resolved_incidents
