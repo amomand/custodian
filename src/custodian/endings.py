@@ -29,8 +29,8 @@ VIABILITY_FLOOR = 35  # neural stability at or below this is sleeper collapse
 HIGH_DARK_EXPOSURE = 30
 ARRIVAL_DISTANCE_TENTHS = 0
 
-# A clean arrival means the sleepers actually arrived. Any avoidable attrition at
-# or above this many lost sleepers separates a clean run from one that reached
+# A clean arrival means the sleepers actually arrived. Any avoidable attrition
+# above this many lost sleepers separates a clean run from one that reached
 # the destination while leaving people to die in an untended cryo loop. This is
 # deliberately low: a single mishandled cryo pressure beat costs ~42 sleepers, so
 # a genuinely clean run is one that never let a loss report print at all.
@@ -160,7 +160,7 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
             "ARRIVAL PROTOCOL: accepted",
             _clean_arrival_fix_line(state),
             f"sleepers viable: {viability}%",
-            f"cryostasis loss report: {state.sleepers_lost} did not arrive with the ship",
+            f"cryostasis loss report: {state.sleepers_lost} sleepers did not arrive with the ship",
             "ship integrity: compromised but serviceable",
             "arka: We made the fix. Some of the banks did not make the crossing. "
             "I logged them. That is what I am for.",
