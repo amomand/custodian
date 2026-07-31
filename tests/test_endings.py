@@ -235,5 +235,30 @@ class EndingLinesTests(unittest.TestCase):
             self.assertNotIn("the dark is", text)
 
 
+    def test_clean_arrival_arka_close_answers_to_drift(self) -> None:
+        # A player who kept arka honest (low drift, few delegated controls) must
+        # not get the same triumphant "I told you so" close as one who arrived
+        # clean after heavy delegation. arka's last word answers to its own drift.
+        honest_base = _state(distance=0, neural=80, turn=1)
+        honest = replace(
+            honest_base,
+            story=replace(honest_base.story, ending_candidate=CLEAN_ARRIVAL),
+        )
+        drifted_base = _state(distance=0, neural=80, turn=13, delegated_controls=8)
+        drifted = replace(
+            drifted_base,
+            story=replace(drifted_base.story, ending_candidate=CLEAN_ARRIVAL),
+        )
+
+        honest_text = "\n".join(ending_lines(honest))
+        drifted_text = "\n".join(ending_lines(drifted))
+
+        self.assertNotIn("I told you", honest_text)
+        self.assertNotIn("I told you", drifted_text)
+        self.assertIn("kept me honest", honest_text)
+        self.assertIn("I will not pretend I steered", drifted_text)
+        self.assertNotEqual(honest_text, drifted_text)
+
+
 if __name__ == "__main__":
     unittest.main()

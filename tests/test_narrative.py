@@ -102,7 +102,56 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("arka: We should write the same report. It will save time.", debrief)
 
-    def test_manual_arrival_verification_gets_separate_report_close(self) -> None:
+    def test_interpretive_close_is_honest_not_excuse_making(self) -> None:
+        # An arrival outcome with INTERPRETIVE drift (never WRONG, never the
+        # survival-window outcome) must not fall through to the old catch-all
+        # "I was still composing a safer sequence," which reads as WRONG-stage
+        # excuse-making implying the player pre-empted arka's superior plan.
+        state = ShipState(
+            turn=5,
+            outcome=ARRIVAL_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertNotIn("I was still composing a safer sequence", debrief)
+        self.assertIn("arka: Not the sequence I would have written. It held.", debrief)
+
+    def test_accurate_close_credits_the_player_not_arka(self) -> None:
+        state = ShipState(
+            turn=1,
+            outcome=ARRIVAL_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertNotIn("I was still composing a safer sequence", debrief)
+        self.assertIn("arka: You flew that yourself. I logged it as flown.", debrief)
+
+    def test_selective_close_keeps_the_composing_line(self) -> None:
+        state = ShipState(
+            turn=9,
+            outcome=ARRIVAL_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka: I was still composing a safer sequence.", debrief)
+
+    def test_wrong_close_without_report_branch_stays_wrong_toned(self) -> None:
+        # A WRONG-drift arrival that reaches neither report branch (no
+        # independent record, no heavy reliance) must not fall through to the
+        # honest below-WRONG lines. WRONG has earned the cover-for-itself
+        # excuse, not the ACCURATE "you flew that yourself" credit.
+        state = ShipState(
+            turn=13,
+            outcome=ARRIVAL_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka: I was still composing a safer sequence.", debrief)
+        self.assertNotIn("You flew that yourself", debrief)
         state = ShipState(
             turn=13,
             raw_inspections=3,

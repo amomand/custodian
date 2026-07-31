@@ -152,8 +152,7 @@ def ending_lines(state: ShipState) -> tuple[str, ...]:
             _clean_arrival_fix_line(state),
             f"sleepers viable: {viability}%",
             "ship integrity: compromised but serviceable",
-            "arka: I told you we could get them there. "
-            "I will avoid saying I told you so. Excessively.",
+            _clean_arrival_arka_line(state),
         )
     if candidate == ARRIVAL_WITH_LOSSES:
         return (
@@ -208,3 +207,20 @@ def _clean_arrival_fix_line(state: ShipState) -> str:
     if verification == "accepted_arka":
         return "external fix: ORISON candidate, accepted through arka protocol"
     return "external fix: ORISON candidate, beacon echo within arrival tolerance"
+
+
+def _clean_arrival_arka_line(state: ShipState) -> str:
+    # A clean arrival is not one story. A player who held arka honest through raw
+    # inspection and manual routing earned a different last word than one who
+    # arrived clean after leaning on arka the whole way. The old line ("I told
+    # you we could get them there... I told you so") fired for every clean
+    # arrival, letting arka take credit even when it barely participated and even
+    # when it had drifted to WRONG. Let arka's close answer to its own drift.
+    stage = drift_stage(state)
+    if stage == DriftStage.WRONG:
+        return "arka: You got them there. I will not pretend I steered."
+    if stage == DriftStage.SELECTIVE:
+        return "arka: They arrived. I would not read too much into how."
+    if stage == DriftStage.INTERPRETIVE:
+        return "arka: We got them there. Most of the flying was yours."
+    return "arka: They arrived. You kept me honest the whole way. Noted."
