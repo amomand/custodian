@@ -212,16 +212,18 @@ class EndingLinesTests(unittest.TestCase):
 
 
     def test_clean_arrival_arka_close_answers_to_drift(self) -> None:
-        # A player who kept arka honest (low drift, manual routing) must not get
-        # the same triumphant "I told you so" close as one who arrived clean
-        # after heavy delegation. arka's last word answers to its own drift.
+        # A player who kept arka honest (low drift, few delegated controls) must
+        # not get the same triumphant "I told you so" close as one who arrived
+        # clean after heavy delegation. arka's last word answers to its own drift.
+        honest_base = _state(distance=0, neural=80, turn=1)
         honest = replace(
-            _state(distance=0, neural=80, turn=1),
-            story=replace(_state().story, ending_candidate=CLEAN_ARRIVAL),
+            honest_base,
+            story=replace(honest_base.story, ending_candidate=CLEAN_ARRIVAL),
         )
+        drifted_base = _state(distance=0, neural=80, turn=13, delegated_controls=8)
         drifted = replace(
-            _state(distance=0, neural=80, turn=13, delegated_controls=8),
-            story=replace(_state().story, ending_candidate=CLEAN_ARRIVAL),
+            drifted_base,
+            story=replace(drifted_base.story, ending_candidate=CLEAN_ARRIVAL),
         )
 
         honest_text = "\n".join(ending_lines(honest))
