@@ -137,7 +137,20 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("arka: I was still composing a safer sequence.", debrief)
 
-    def test_manual_arrival_verification_gets_separate_report_close(self) -> None:
+    def test_wrong_close_without_report_branch_stays_wrong_toned(self) -> None:
+        # A WRONG-drift arrival that reaches neither report branch (no
+        # independent record, no heavy reliance) must not fall through to the
+        # honest below-WRONG lines. WRONG has earned the cover-for-itself
+        # excuse, not the ACCURATE "you flew that yourself" credit.
+        state = ShipState(
+            turn=13,
+            outcome=ARRIVAL_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka: I was still composing a safer sequence.", debrief)
+        self.assertNotIn("You flew that yourself", debrief)
         state = ShipState(
             turn=13,
             raw_inspections=3,

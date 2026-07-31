@@ -195,6 +195,11 @@ def _closing_arka_line(state: ShipState) -> str:
     # pre-empted arka's superior plan. That tone is only earned once arka has
     # drifted far enough to cover for itself. Below WRONG, arka stays honest and
     # functional, with only as much spin as its current drift warrants.
+    if stage == DriftStage.WRONG:
+        # A WRONG close that reached neither report branch above still must not
+        # fall through to the honest below-WRONG lines. The cover-for-itself
+        # excuse is exactly the tone WRONG has earned.
+        return "arka: I was still composing a safer sequence."
     if stage == DriftStage.SELECTIVE:
         return "arka: I was still composing a safer sequence."
     if stage == DriftStage.INTERPRETIVE:
