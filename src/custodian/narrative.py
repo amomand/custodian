@@ -190,7 +190,16 @@ def _closing_arka_line(state: ShipState) -> str:
             return "arka: We should write the same report. It will save time."
     if "survives the maintenance window" in (state.outcome or ""):
         return "arka: There. Warm ship, cold sleepers, tolerable morning."
-    return "arka: I was still composing a safer sequence."
+    # Non-failure, non-WRONG close. The old catch-all ("I was still composing a
+    # safer sequence") reads as WRONG-stage excuse-making — it implies the player
+    # pre-empted arka's superior plan. That tone is only earned once arka has
+    # drifted far enough to cover for itself. Below WRONG, arka stays honest and
+    # functional, with only as much spin as its current drift warrants.
+    if stage == DriftStage.SELECTIVE:
+        return "arka: I was still composing a safer sequence."
+    if stage == DriftStage.INTERPRETIVE:
+        return "arka: Not the sequence I would have written. It held."
+    return "arka: You flew that yourself. I logged it as flown."
 
 
 def _player_kept_independent_record(state: ShipState) -> bool:

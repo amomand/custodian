@@ -101,6 +101,42 @@ class NarrativeTests(unittest.TestCase):
 
         self.assertIn("arka: We should write the same report. It will save time.", debrief)
 
+    def test_interpretive_close_is_honest_not_excuse_making(self) -> None:
+        # An arrival outcome with INTERPRETIVE drift (never WRONG, never the
+        # survival-window outcome) must not fall through to the old catch-all
+        # "I was still composing a safer sequence," which reads as WRONG-stage
+        # excuse-making implying the player pre-empted arka's superior plan.
+        state = ShipState(
+            turn=5,
+            outcome=ARRIVAL_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertNotIn("I was still composing a safer sequence", debrief)
+        self.assertIn("arka: Not the sequence I would have written. It held.", debrief)
+
+    def test_accurate_close_credits_the_player_not_arka(self) -> None:
+        state = ShipState(
+            turn=1,
+            outcome=ARRIVAL_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertNotIn("I was still composing a safer sequence", debrief)
+        self.assertIn("arka: You flew that yourself. I logged it as flown.", debrief)
+
+    def test_selective_close_keeps_the_composing_line(self) -> None:
+        state = ShipState(
+            turn=9,
+            outcome=ARRIVAL_OUTCOME,
+        )
+
+        debrief = "\n".join(closing_lines(state))
+
+        self.assertIn("arka: I was still composing a safer sequence.", debrief)
+
     def test_manual_arrival_verification_gets_separate_report_close(self) -> None:
         state = ShipState(
             turn=13,
