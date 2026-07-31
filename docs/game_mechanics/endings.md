@@ -24,7 +24,7 @@ Before the final approach, the arrival-disagreement incident gives the player a
 chance to **verify** the fix by hand or **accept** arka's protocol. That choice
 feeds the verification state the ending evaluator reads.
 
-## The five ending candidates
+## The six ending candidates
 
 The evaluator checks conditions in a deliberate order, because some endings are
 darker twins of others.
@@ -43,10 +43,17 @@ darker twins of others.
    floor, or sleeper losses at or above the ceiling. If the ship arrived, it
    arrived as an ark with no colony to wake; if it did not, the watch failed its
    people either way.
-4. **Clean arrival.** Arrived with sleepers still above the collapse floor and
-   contained symptoms. The hardest target: it demands both a maintained ship and
-   a maintained crew.
-5. **Endless custodian.** Did not arrive, but the ship remains maintainable and
+4. **Arrival with losses.** Arrived viable and contained, but the cryo loop went
+   untended and a loss report already printed — more than
+   `CLEAN_ARRIVAL_LOSS_CEILING` sleepers did not make the crossing. This is the
+   navigation-first path: a player who outruns the drift arc by plotting and
+   jumping fast, never engaging coolant or cryostasis, still reaches the fix with
+   people left to die. The verdict names that cost so it cannot read as clean.
+5. **Clean arrival.** Arrived with sleepers still above the collapse floor,
+   contained symptoms, and no avoidable attrition (loss at or below
+   `CLEAN_ARRIVAL_LOSS_CEILING`). The hardest target: it demands both a maintained
+   ship and a crew that all arrived.
+6. **Endless custodian.** Did not arrive, but the ship remains maintainable and
    the sleepers viable. The watch does not close. It only continues.
 
 ## Thresholds
@@ -57,6 +64,8 @@ ending deterministically and so balancing has a single place to move them:
 - `VIABILITY_FLOOR` — neural stability at or below this is sleeper collapse.
 - `HIGH_DARK_EXPOSURE` — Dark exposure that, with unresolved symptoms, reads as
   contamination.
+- `CLEAN_ARRIVAL_LOSS_CEILING` — the most sleepers a clean arrival may have lost.
+  Above it, an otherwise-clean arrival is downgraded to arrival with losses.
 - `ARRIVAL_DISTANCE_TENTHS` — distance at which the ship has arrived.
 
 ## Debrief

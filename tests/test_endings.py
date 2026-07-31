@@ -4,6 +4,7 @@ from dataclasses import replace
 
 from custodian.endings import (
     CLEAN_ARRIVAL,
+    ARRIVAL_WITH_LOSSES,
     EFFICIENT_ARRIVAL_WITH_CONTAMINATION,
     ENDING_TITLES,
     ENDLESS_CUSTODIAN,
@@ -71,6 +72,28 @@ def _state(
 class EvaluateEndingTests(unittest.TestCase):
     def test_clean_arrival_when_viable_and_contained(self) -> None:
         state = _state(distance=0, neural=80, open_symptom=0, verification="manual")
+        self.assertEqual(evaluate_ending(state), CLEAN_ARRIVAL)
+
+    def test_arrival_with_losses_when_sleepers_died_but_ship_arrived(self) -> None:
+        # Navigation-first attrition: the ship reaches the fix with the cryo loop
+        # untended, so a loss report already printed. That is not a clean run.
+        state = _state(
+            distance=0,
+            neural=70,
+            sleepers_lost=54,
+            open_symptom=0,
+            verification="unverified",
+        )
+        self.assertEqual(evaluate_ending(state), ARRIVAL_WITH_LOSSES)
+
+    def test_clean_arrival_tolerates_no_avoidable_losses(self) -> None:
+        state = _state(
+            distance=0,
+            neural=80,
+            sleepers_lost=0,
+            open_symptom=0,
+            verification="manual",
+        )
         self.assertEqual(evaluate_ending(state), CLEAN_ARRIVAL)
 
     def test_clean_arrival_when_sleepers_survive_and_symptoms_are_contained(self) -> None:
@@ -160,6 +183,7 @@ class EndingLinesTests(unittest.TestCase):
     def test_every_candidate_has_a_title(self) -> None:
         for candidate in (
             CLEAN_ARRIVAL,
+            ARRIVAL_WITH_LOSSES,
             EFFICIENT_ARRIVAL_WITH_CONTAMINATION,
             FALSE_ARRIVAL,
             ENDLESS_CUSTODIAN,
