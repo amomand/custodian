@@ -9,6 +9,7 @@ from custodian.arka import (
     summarize_cryostasis,
 )
 from custodian.models import (
+    BehaviourLedger,
     CrisisState,
     CryostasisSystem,
     DriftStage,
@@ -309,6 +310,45 @@ class ArkaTests(unittest.TestCase):
         relentless = ShipState(turn=13, raw_inspections=12)
 
         self.assertEqual(drift_stage(relentless), DriftStage.SELECTIVE)
+
+
+    def test_manual_engagement_delays_time_based_drift(self) -> None:
+        # Working the panels by hand is hands-on contact with ship truth, so it
+        # holds the time backstop off just as reading raw does. A hands-off
+        # watch is WRONG at the finale; a full manual record holds SELECTIVE.
+        blind = ShipState(turn=13)
+        hands_on = ShipState(
+            turn=13,
+            behaviour=BehaviourLedger(
+                manual_by_system={"coolant": 6, "cryostasis": 5},
+            ),
+        )
+
+        self.assertEqual(drift_stage(blind), DriftStage.WRONG)
+        self.assertEqual(drift_stage(hands_on), DriftStage.SELECTIVE)
+
+    def test_manual_and_raw_engagement_share_the_vigilance_cap(self) -> None:
+        # Raw reads and manual actions both count toward the same four-beat cap;
+        # they do not stack past it, so engagement is a weak backstop, never an
+        # off switch.
+        mixed = ShipState(
+            turn=13,
+            raw_inspections=3,
+            behaviour=BehaviourLedger(manual_by_system={"coolant": 6}),
+        )
+
+        self.assertEqual(drift_stage(mixed), DriftStage.SELECTIVE)
+
+    def test_engagement_does_not_hold_off_heavy_delegation(self) -> None:
+        # Delegation stays the independent primary driver: a full manual record
+        # cannot rescue a heavily delegated watch from WRONG.
+        state = ShipState(
+            turn=3,
+            delegated_controls=7,
+            behaviour=BehaviourLedger(manual_by_system={"coolant": 8}),
+        )
+
+        self.assertEqual(drift_stage(state), DriftStage.WRONG)
 
 
 if __name__ == "__main__":

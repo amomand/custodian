@@ -54,13 +54,16 @@ def raw_vigilance_note(state: ShipState) -> str | None:
 
 def drift_stage(state: ShipState) -> DriftStage:
     # Delegation is the primary driver: handing arka the panels is what lets its
-    # account of the ship rot. Time is only a weak backstop. Reading the raw
-    # layer (vigilance) holds that backstop off -- each raw inspection buys one
-    # honest beat, up to four. A player who actually keeps reading raw can hold
-    # arka short of WRONG through the finale (the design's "keeps arka honest
-    # longer"); a blind watch still drifts to WRONG on the clock alone, and
-    # heavy delegation rots arka regardless of how much raw the player reads.
-    vigilance = min(state.raw_inspections, 4)
+    # account of the ship rot. Time is only a weak backstop. Staying engaged
+    # with the real ship holds that backstop off -- both reading the raw layer
+    # and working the panels by hand are hands-on contact with ship truth, so
+    # each raw inspection or manual action buys one honest beat, up to a shared
+    # cap of four. A player who actually keeps reading raw or working the panels
+    # can hold arka short of WRONG through the finale (the design's "keeps arka
+    # honest longer"); a blind, hands-off watch still drifts to WRONG on the
+    # clock alone, and heavy delegation rots arka regardless of that engagement.
+    engagement = state.raw_inspections + state.behaviour.total_manual_actions
+    vigilance = min(engagement, 4)
     effective_turn = state.turn - vigilance
     delegated = state.delegated_controls
 

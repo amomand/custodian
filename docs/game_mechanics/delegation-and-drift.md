@@ -98,10 +98,12 @@ Drift is deterministic. Its inputs, in order of weight:
 2. **Time (weak backstop).** Late in the watch, arka drifts even for a careful
    player, so the finale still bites. `wrong` overlaps the final crisis beat so
    the "calmly contradicting the raw feed" moment actually lands.
-3. **Vigilance (mitigation).** Reading the raw layer buys honest beats: every two
-   `raw` inspections delay the time-based backstop by one beat (capped). A player
-   who keeps looking keeps arka honest longer; a player who delegated their eyes
-   gets blindsided. Vigilance never offsets delegation-driven drift.
+3. **Engagement (mitigation).** Staying in hands-on contact with the real ship
+   buys honest beats: every `raw` inspection *and* every manual panel action
+   delays the time-based backstop by one beat, sharing a single four-beat cap. A
+   player who keeps looking or keeps working the panels keeps arka honest longer;
+   a player who delegated their eyes and hands gets blindsided on the clock alone.
+   Engagement never offsets delegation-driven drift.
 
 This is the thesis as difficulty, not as a cutscene: the player who stopped
 looking pays for it; the player who kept checking has a fighting chance.
