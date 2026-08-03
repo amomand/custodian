@@ -30,10 +30,10 @@ network:
 # the runner, so this is repeatable, fast, free, and never invents ship truth.
 # The agent only ever READS this evidence — it does not generate it.
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v7.0.1
     with:
       persist-credentials: false   # strict mode: don't leak the git token into the agent's workspace
-  - uses: actions/setup-python@v5
+  - uses: actions/setup-python@v7.0.0
     with:
       python-version: "3.13"
       cache: pip

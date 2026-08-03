@@ -20,9 +20,9 @@ permissions:
   pull-requests: read
   actions: read
 
-# Runtime-validated pin. A clean compile is not evidence the model runs; see
-# .github/AGENTIC_PLAYTEST.md "Model compatibility" and smoke-test before changing.
-model: claude-opus-4.8
+# Runtime pin: gh-aw v0.84.3 bundles AWF v0.27.43, whose Copilot allowlist
+# includes Opus 5. Keep the smoke-test requirement in AGENTIC_PLAYTEST.md.
+model: claude-opus-5
 engine:
   id: copilot
 
