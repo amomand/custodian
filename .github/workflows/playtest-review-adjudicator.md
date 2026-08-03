@@ -42,9 +42,9 @@ concurrency:
   group: "gh-aw-${{ github.workflow }}-${{ github.event.inputs.pull_request_number }}"
   cancel-in-progress: true
 
-# Runtime-validated pin. A clean compile is not evidence the model runs; see
-# .github/AGENTIC_PLAYTEST.md "Model compatibility" and smoke-test before changing.
-model: claude-opus-4.8
+# Runtime pin: gh-aw v0.84.3 bundles AWF v0.27.43, whose Copilot allowlist
+# includes Opus 5. Keep the smoke-test requirement in AGENTIC_PLAYTEST.md.
+model: claude-opus-5
 engine:
   id: copilot
 
@@ -179,7 +179,7 @@ safe-outputs:
           required: true
           type: string
       steps:
-        - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
           with:
             persist-credentials: false
         - name: Validate and record review state
