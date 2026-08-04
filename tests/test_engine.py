@@ -886,6 +886,28 @@ class FocusModeTests(unittest.TestCase):
         self.assertEqual(state.spatial.sealed_count, 0)
         self.assertEqual(state.spatial.abandoned_count, 0)
 
+    def test_focus_entry_does_not_claim_controls_are_gone(self) -> None:
+        state = self._past_first_beat()
+
+        result = self.engine.handle(state, "focus")
+        joined = "\n".join(result.messages).lower()
+
+        # Focus quiets the desk; it never removes the raw or manual paths, so the
+        # entry narration must not promise a restriction the engine does not keep.
+        self.assertNotIn("fold away", joined)
+        self.assertIn("still there", joined)
+
+    def test_raw_and_manual_still_work_as_narrated_during_focus(self) -> None:
+        state = self.engine.handle(self._past_first_beat(), "focus").state
+
+        raw_result = self.engine.handle(state, "raw coolant")
+        self.assertGreater(raw_result.state.raw_inspections, state.raw_inspections)
+
+        manual_result = self.engine.handle(raw_result.state, "pump up")
+        self.assertGreater(
+            manual_result.state.manual_familiarity, raw_result.state.manual_familiarity
+        )
+
     def test_leave_focus_restores_and_does_not_advance(self) -> None:
         state = self.engine.handle(self._past_first_beat(), "focus").state
 

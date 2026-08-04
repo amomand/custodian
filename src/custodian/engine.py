@@ -1744,8 +1744,8 @@ def _enter_focus(state: ShipState) -> tuple[ShipState, tuple[str, ...]]:
         replace(state, behaviour=state.behaviour.with_focus()),
         (
             "arka: I've got it. Rest your eyes.",
-            "The desk quiets. Raw panels and manual controls fold away. "
-            "Leave the watch whenever you want them back.",
+            "The desk quiets. The raw panels and manual controls go dark in front "
+            "of you; reach for one and it is still there.",
         ),
     )
 

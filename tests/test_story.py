@@ -486,6 +486,39 @@ class ManifestAnchorTests(unittest.TestCase):
         self.assertEqual(len(resolved.story.anchors_saved), 1)
         self.assertIn("manifest_anchor_saved", resolved.story.debrief_flags)
 
+    def test_anchor_wobble_saved_by_standing_cryo_delegation(self) -> None:
+        state = ShipState(
+            turn=3,
+            cryostasis=CryostasisSystem(neural_stability_pct=70, sleepers_at_risk=8),
+            behaviour=BehaviourLedger(standing_delegations=("cryostasis",)),
+        )
+        activated, _ = advance_story(state)
+        self.assertEqual(
+            activated.story.active_incident.incident_id, "manifest-anchor-wobble"
+        )
+
+        idle = CommandRecord(raw="wait", action="wait", advanced=True, beat_after=4)
+        resolved, _ = advance_story(replace(activated, turn=4), record=idle)
+
+        self.assertEqual(len(resolved.story.anchors_saved), 1)
+        self.assertIn("manifest_anchor_saved", resolved.story.debrief_flags)
+        self.assertIn("manifest_anchor_saved_by_arka", resolved.story.debrief_flags)
+
+    def test_anchor_wobble_saved_while_arka_holds_the_whole_watch(self) -> None:
+        state = ShipState(
+            turn=3,
+            cryostasis=CryostasisSystem(neural_stability_pct=70, sleepers_at_risk=8),
+            behaviour=BehaviourLedger(focus_mode=True),
+        )
+        activated, _ = advance_story(state)
+        idle = CommandRecord(raw="wait", action="wait", advanced=True, beat_after=4)
+
+        resolved, _ = advance_story(replace(activated, turn=4), record=idle)
+
+        self.assertEqual(len(resolved.story.anchors_saved), 1)
+        self.assertIn("manifest_anchor_saved", resolved.story.debrief_flags)
+        self.assertIn("manifest_anchor_saved_by_arka", resolved.story.debrief_flags)
+
     def test_anchor_wobble_lost_when_left_unanswered(self) -> None:
         state = ShipState(
             turn=3,

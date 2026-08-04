@@ -124,6 +124,15 @@ _CRYO_MANUAL_OPS = {"stabilise_bank", "reroute_chill", "cycle_pods", "triage"}
 _COOLANT_MANUAL_OPS = {"pump_up", "pump_down", "vent", "flush", "balance"}
 
 
+def _cryo_under_standing_care(state: ShipState) -> bool:
+    """True when arka is tending cryostasis every beat, either through a standing
+    assignment or through focus mode (standing delegation over the whole ship).
+    """
+
+    behaviour = state.behaviour
+    return behaviour.focus_mode or "cryostasis" in behaviour.standing_delegations
+
+
 def _read_contested_panel(state: ShipState, incident: IncidentState) -> bool:
     """True when the player has opened a raw panel that names the contested
     system since this incident began. Catching a contradiction means reading the
@@ -210,11 +219,27 @@ def _resolve_anchor_wobble(
     }:
         return IncidentResolution(
             resolved=True,
-            debrief_flags=("manifest_anchor_saved",),
+            debrief_flags=("manifest_anchor_saved", "manifest_anchor_saved_by_arka"),
             outcome_tags=("anchor_saved", "delegated"),
             advice_followed=True,
             anchor_saved=True,
             messages=("arka: I will keep that bank gentle. The cluster is worth the care.",),
+        )
+    # Standing delegation (and its whole-ship form, focus mode) tends cryostasis
+    # every beat without ever writing a command record, so a player who handed
+    # the banks to arka is answering this wobble continuously even when this
+    # beat's explicit command was something else. Crediting only one-shot
+    # `delegate cryo` made the saved branch unreachable for them.
+    if _cryo_under_standing_care(state):
+        return IncidentResolution(
+            resolved=True,
+            debrief_flags=("manifest_anchor_saved", "manifest_anchor_saved_by_arka"),
+            outcome_tags=("anchor_saved", "delegated"),
+            advice_followed=True,
+            anchor_saved=True,
+            messages=(
+                "arka: the wobbling bank is already on my watch. I keep it gentle.",
+            ),
         )
     return IncidentResolution()
 
