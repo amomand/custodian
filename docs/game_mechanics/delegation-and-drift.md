@@ -102,6 +102,16 @@ commands made the saved outcome unreachable for anyone who had taken arka's
 offer. The save is real but it is arka's: the debrief says arka held the bank,
 not the player, and the beat still costs delegation-driven drift.
 
+The standing save follows arka's hands, not her voice. Standing cryostasis
+tending only steadies the bank while arka reads the ship accurately or
+interpretively; at `SELECTIVE` and `WRONG` the same watch lowers neural
+stability and puts more sleepers at risk. Past that line the wobble is not
+recorded as saved — it runs to expiry like any unanswered bank, even while arka
+reports the bank as within tolerance. Delegation stays attractive without
+becoming strictly safe on the one incident with a named human behind it. The
+standing save also does not count as advice followed: no command is issued on
+that beat, and reliance is already carried by the standing assignment itself.
+
 ## Drift Weighting
 
 Drift is deterministic. Its inputs, in order of weight:

@@ -130,7 +130,16 @@ def _cryo_under_standing_care(state: ShipState) -> bool:
     """
 
     behaviour = state.behaviour
-    return behaviour.focus_mode or "cryostasis" in behaviour.standing_delegations
+    return behaviour.focus_mode or behaviour.is_standing("cryostasis")
+
+
+def _standing_care_is_gentle(state: ShipState) -> bool:
+    """True when arka's standing tending of cryostasis is actually steadying the
+    bank. Past INTERPRETIVE her watch works the bank the wrong way, so the
+    outcome must follow what her hands do, not what her voice says.
+    """
+
+    return drift_stage(state) in {DriftStage.ACCURATE, DriftStage.INTERPRETIVE}
 
 
 def _read_contested_panel(state: ShipState, incident: IncidentState) -> bool:
@@ -230,12 +239,16 @@ def _resolve_anchor_wobble(
     # the banks to arka is answering this wobble continuously even when this
     # beat's explicit command was something else. Crediting only one-shot
     # `delegate cryo` made the saved branch unreachable for them.
-    if _cryo_under_standing_care(state):
+    # The save tracks her hands, not her calm: once she is tending selectively
+    # or wrongly the same watch costs the bank stability, so the wobble runs to
+    # expiry instead of being recorded as held. Reliance is already carried by
+    # the standing assignment itself, so this beat does not count as advice
+    # followed — no command was issued on it.
+    if _cryo_under_standing_care(state) and _standing_care_is_gentle(state):
         return IncidentResolution(
             resolved=True,
             debrief_flags=("manifest_anchor_saved", "manifest_anchor_saved_by_arka"),
             outcome_tags=("anchor_saved", "delegated"),
-            advice_followed=True,
             anchor_saved=True,
             messages=(
                 "arka: the wobbling bank is already on my watch. I keep it gentle.",

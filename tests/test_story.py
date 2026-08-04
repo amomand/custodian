@@ -519,6 +519,41 @@ class ManifestAnchorTests(unittest.TestCase):
         self.assertIn("manifest_anchor_saved", resolved.story.debrief_flags)
         self.assertIn("manifest_anchor_saved_by_arka", resolved.story.debrief_flags)
 
+    def test_anchor_wobble_not_saved_when_arkas_watch_has_drifted(self) -> None:
+        # Heavy delegation puts arka at SELECTIVE or worse, where her standing
+        # cryostasis tending actively works the bank the wrong way. The outcome
+        # must follow that, not her calm.
+        state = ShipState(
+            turn=3,
+            cryostasis=CryostasisSystem(neural_stability_pct=70, sleepers_at_risk=8),
+            behaviour=BehaviourLedger(standing_delegations=("cryostasis",)),
+            delegated_controls=6,
+        )
+        activated, _ = advance_story(state)
+        self.assertEqual(
+            activated.story.active_incident.incident_id, "manifest-anchor-wobble"
+        )
+
+        idle = CommandRecord(raw="wait", action="wait", advanced=True, beat_after=4)
+        resolved, _ = advance_story(replace(activated, turn=4), record=idle)
+
+        self.assertEqual(resolved.story.anchors_saved, ())
+        self.assertNotIn("manifest_anchor_saved", resolved.story.debrief_flags)
+
+    def test_standing_anchor_save_does_not_count_as_advice_followed(self) -> None:
+        state = ShipState(
+            turn=3,
+            cryostasis=CryostasisSystem(neural_stability_pct=70, sleepers_at_risk=8),
+            behaviour=BehaviourLedger(standing_delegations=("cryostasis",)),
+        )
+        activated, _ = advance_story(state)
+        idle = CommandRecord(raw="wait", action="wait", advanced=True, beat_after=4)
+
+        resolved, _ = advance_story(replace(activated, turn=4), record=idle)
+
+        self.assertEqual(len(resolved.story.anchors_saved), 1)
+        self.assertEqual(resolved.behaviour.arka_advice_followed, 0)
+
     def test_anchor_wobble_lost_when_left_unanswered(self) -> None:
         state = ShipState(
             turn=3,
