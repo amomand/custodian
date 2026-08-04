@@ -239,9 +239,10 @@ def _resolve_anchor_wobble(
     # the banks to arka is answering this wobble continuously even when this
     # beat's explicit command was something else. Crediting only one-shot
     # `delegate cryo` made the saved branch unreachable for them.
-    # The save tracks her hands, not her calm: once she is tending selectively
-    # or wrongly the same watch costs the bank stability, so the wobble runs to
-    # expiry instead of being recorded as held. Reliance is already carried by
+    # The save tracks her hands, not her calm: at SELECTIVE her tending stops
+    # steadying neural stability at all, and at WRONG the same watch lowers
+    # stability and puts more sleepers at risk, so past that line the wobble
+    # runs to expiry instead of being recorded as held. Reliance is already carried by
     # the standing assignment itself, so this beat does not count as advice
     # followed — no command was issued on it.
     if _cryo_under_standing_care(state) and _standing_care_is_gentle(state):
@@ -251,7 +252,7 @@ def _resolve_anchor_wobble(
             outcome_tags=("anchor_saved", "delegated"),
             anchor_saved=True,
             messages=(
-                "arka: the wobbling bank is already on my watch. I keep it gentle.",
+                "arka: The wobbling bank is already on my watch. I keep it gentle.",
             ),
         )
     return IncidentResolution()
