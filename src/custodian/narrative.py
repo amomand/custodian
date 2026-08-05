@@ -277,7 +277,12 @@ def _anchor_debrief(state: ShipState) -> str | None:
     parts: list[str] = []
     if saved:
         names = ", ".join(_anchor_name(anchor_id) for anchor_id in saved)
-        parts.append(f"you held the bank for {names}.")
+        # Credit the hands that actually held it. A bank steadied by arka's
+        # standing watch is still a save, but it is not the player's save.
+        if state.story.has_flag("manifest_anchor_saved_by_arka"):
+            parts.append(f"arka held the bank for {names}.")
+        else:
+            parts.append(f"you held the bank for {names}.")
     if lost:
         names = ", ".join(_anchor_name(anchor_id) for anchor_id in lost)
         parts.append(f"{names} went quiet on your watch.")

@@ -88,6 +88,31 @@ chose to stop looking. The raw layer that could contradict arka is one click (or
 tends every system, focus mode drives drift quickly; it is meant to be dipped
 into, not lived in. See `../ui/zen-mode.md` and `trust-ledger.md`.
 
+Entering focus quiets the desk; it does not lock the desk. Raw panels and manual
+controls remain fully available while arka has the watch, and the entry narration
+must not claim otherwise.
+
+### A bank arka is already tending counts as answered
+
+The manifest-anchor wobble resolves as saved when the player steadies the bank by
+hand, when they hand cryostasis to arka in the moment, and also when cryostasis
+is already under a standing assignment or focus mode. Standing tending happens
+every beat without producing a command record, so crediting only explicit
+commands made the saved outcome unreachable for anyone who had taken arka's
+offer. The save is real but it is arka's: the debrief says arka held the bank,
+not the player, and the beat still costs delegation-driven drift.
+
+The standing save follows arka's hands, not her voice. Standing cryostasis
+tending only steadies the bank while arka reads the ship accurately or
+interpretively; at `SELECTIVE` her tending stops steadying neural stability at
+all, and at `WRONG` the same watch lowers stability and puts more sleepers at
+risk. Past that line the wobble is not
+recorded as saved — it runs to expiry like any unanswered bank, even while arka
+reports the bank as within tolerance. Delegation stays attractive without
+becoming strictly safe on the one incident with a named human behind it. The
+standing save also does not count as advice followed: no command is issued on
+that beat, and reliance is already carried by the standing assignment itself.
+
 ## Drift Weighting
 
 Drift is deterministic. Its inputs, in order of weight:

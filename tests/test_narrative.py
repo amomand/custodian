@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 from custodian.engine import ARRIVAL_OUTCOME
 from custodian.engine_constants import (
@@ -6,7 +7,14 @@ from custodian.engine_constants import (
     REACTOR_OVERHEAT_OUTCOME,
 )
 from custodian.arka import drift_stage
-from custodian.models import BehaviourLedger, DriftStage, ShipState, StoryState
+from custodian.models import (
+    ANCHOR_SAVED,
+    BehaviourLedger,
+    DriftStage,
+    ShipState,
+    StoryState,
+    default_anchor_states,
+)
 from custodian.narrative import boot_lines, closing_lines, opening_lines
 
 
@@ -56,6 +64,28 @@ class NarrativeTests(unittest.TestCase):
         )
         self.assertNotIn("manual_familiarity", debrief)
         self.assertNotIn("delegated_controls", debrief)
+
+    def test_anchor_debrief_credits_the_hands_that_held_the_bank(self) -> None:
+        anchor_id = next(iter(default_anchor_states()))
+        base = ShipState(turn=13, outcome="The watch closes.")
+
+        by_hand = replace(
+            base,
+            story=StoryState(
+                manifest_anchor_states={anchor_id: ANCHOR_SAVED},
+                debrief_flags=("manifest_anchor_saved",),
+            ),
+        )
+        by_arka = replace(
+            base,
+            story=StoryState(
+                manifest_anchor_states={anchor_id: ANCHOR_SAVED},
+                debrief_flags=("manifest_anchor_saved", "manifest_anchor_saved_by_arka"),
+            ),
+        )
+
+        self.assertIn("you held the bank", "\n".join(closing_lines(by_hand)))
+        self.assertIn("arka held the bank", "\n".join(closing_lines(by_arka)))
 
     def test_raw_debrief_praise_requires_holding_arka_short_of_wrong(self) -> None:
         # At the final beat, three raw reads leave effective_turn at the WRONG
