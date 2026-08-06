@@ -38,13 +38,14 @@ built-in Copilot workflows were left alone because they are not dispatch paths
 for this playtest loop.
 
 The repository Actions secrets used only by this system are
-`COPILOT_GITHUB_TOKEN` and `GH_AW_CI_TRIGGER_TOKEN`. They remained configured
-at freeze time pending separate deletion approval because GitHub cannot reveal
-or restore their values after removal.
+`COPILOT_GITHUB_TOKEN` and `GH_AW_CI_TRIGGER_TOKEN`. Both were deleted on 6
+August 2026 after the workflow freeze was verified. GitHub cannot reveal or
+restore their former values.
 
-To revive this exact system, restore both repository secrets, re-enable the
-workflows above in dependency order, and run a manual smoke path before
-restoring schedules or event-driven dispatch. First verify the current gh-aw
+To revive this exact system, issue and configure both repository secrets
+again, then re-enable the workflows above in dependency order, and run a
+manual smoke path before restoring schedules or event-driven dispatch. First
+verify the current gh-aw
 release, model support, token permissions and GitHub event behaviour; all four
 are time-sensitive. If Custodian returns in a substantially different form,
 design its automation again around that project rather than assuming this loop
