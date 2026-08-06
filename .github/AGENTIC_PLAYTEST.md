@@ -1,5 +1,53 @@
 # Agentic playtest repair loop
 
+## Freeze record: 6 August 2026
+
+This control plane is preserved as a working experiment, but it is no longer
+active. It proved that the playtest-to-fix loop could carry evidence through a
+bounded implementation and review cycle. Custodian may now be sunset or change
+shape substantially, so continuing to spend automation and maintenance effort
+on the present design would be premature.
+
+The freeze was applied against `main` at
+`56a9a34ad88e0a39176cb661532e7916d62e4fef`. At the stopping point GitHub had
+no open issues or pull requests and no queued or in-progress Actions runs. The
+last agent-authored pull request was #132; it reached `validated-clean`, was
+merged, and produced the successful `main` CI run at the baseline SHA. The
+last observed scheduled runs were Playtest implementer catch-up run
+`31121362387` and Agentic review watchdog run `31119463686`; both had failed
+without leaving active work behind.
+
+The following workflows were manually disabled in GitHub:
+
+- `playtest-review.lock.yml` (Weekly playtest review)
+- `playtest-fix-implementer.lock.yml` (Implement playtest findings)
+- `custodian-diegesis-review.lock.yml` (Custodian diegesis review)
+- `custodian-simulation-truth-review.lock.yml` (Custodian simulation-truth review)
+- `playtest-review-adjudicator.lock.yml` (Adjudicate playtest fix reviews)
+- `playtest-implementer-trigger.yml` (Trigger playtest implementer)
+- `playtest-implementer-catchup.yml` (Playtest implementer catch-up)
+- `agentic-review-barrier.yml` (Agentic review barrier)
+- `agentic-review-watchdog.yml` (Agentic review watchdog)
+- `agentics-maintenance.yml` (Agentic Maintenance)
+- the retired `model-smoke-test.lock.yml` workflow record
+
+Ordinary `ci.yml` remains enabled. `copilot-setup-steps.yml` and GitHub's
+built-in Copilot workflows were left alone because they are not dispatch paths
+for this playtest loop.
+
+The repository Actions secrets used only by this system are
+`COPILOT_GITHUB_TOKEN` and `GH_AW_CI_TRIGGER_TOKEN`. They remained configured
+at freeze time pending separate deletion approval because GitHub cannot reveal
+or restore their values after removal.
+
+To revive this exact system, restore both repository secrets, re-enable the
+workflows above in dependency order, and run a manual smoke path before
+restoring schedules or event-driven dispatch. First verify the current gh-aw
+release, model support, token permissions and GitHub event behaviour; all four
+are time-sensitive. If Custodian returns in a substantially different form,
+design its automation again around that project rather than assuming this loop
+still fits.
+
 The weekly playtester still stops at issues. A second workflow picks up only the
 issues carrying that run's hidden gh-aw provenance marker, checks them against
 the current game, and opens one draft PR per coherent root cause. It may open
