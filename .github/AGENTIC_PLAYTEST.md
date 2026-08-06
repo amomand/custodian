@@ -13,9 +13,11 @@ The freeze was applied against `main` at
 no open issues or pull requests and no queued or in-progress Actions runs. The
 last agent-authored pull request was #132; it reached `validated-clean`, was
 merged, and produced the successful `main` CI run at the baseline SHA. The
-last observed scheduled runs were Playtest implementer catch-up run
-`31121362387` and Agentic review watchdog run `31119463686`; both had failed
-without leaving active work behind.
+last observed scheduled runs were [Playtest implementer catch-up run
+31121362387](https://github.com/amomand/custodian/actions/runs/31121362387) and
+[Agentic review watchdog run
+31119463686](https://github.com/amomand/custodian/actions/runs/31119463686);
+both had failed without leaving active work behind.
 
 The following workflows were manually disabled in GitHub:
 
